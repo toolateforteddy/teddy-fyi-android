@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import fyi.teddy.android.todo.ui.TodoScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -51,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     LoginScreen(onLoginSuccess = { name, token ->
                         session.userName = name
                         session.idToken = token
-                        Log.d("MainActivity", "Session updated: name=$name, tokenPresent=${token != null}")
+                        Log.d("MainActivity", "Session updated: name=$name")
                         navController.navigate("hello") {
                             popUpTo("login") { inclusive = true }
                         }
@@ -60,8 +61,10 @@ class MainActivity : ComponentActivity() {
                 composable("hello") {
                     HelloTeddyApp(
                         userName = session.userName,
+                        idToken = session.idToken,
                         onNavigateToWeather = { navController.navigate("weather") },
                         onNavigateToAuthed = { navController.navigate("authed") },
+                        onNavigateToTodo = { navController.navigate("todo") },
                         onLogout = {
                             session.userName = null
                             session.idToken = null
@@ -76,6 +79,9 @@ class MainActivity : ComponentActivity() {
                 }
                 composable("authed") {
                     AuthedHelloScreen(idToken = session.idToken, onBack = { navController.popBackStack() })
+                }
+                composable("todo") {
+                    TodoScreen(onBack = { navController.popBackStack() })
                 }
             }
         }
@@ -182,8 +188,10 @@ private fun handleSignIn(result: GetCredentialResponse): Pair<String?, String?> 
 @Composable
 fun HelloTeddyApp(
     userName: String?,
+    idToken: String?,
     onNavigateToWeather: () -> Unit,
     onNavigateToAuthed: () -> Unit,
+    onNavigateToTodo: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -204,13 +212,22 @@ fun HelloTeddyApp(
                 fontSize = 24.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (idToken != null) "Token: ${idToken.take(20)}..." else "Token: MISSING",
+                color = if (idToken != null) Color.Green else Color.Red,
+                fontSize = 12.sp
+            )
             Spacer(modifier = Modifier.height(20.dp))
             Button(onClick = onNavigateToWeather) {
                 Text("Check Weather in Arlington, MA")
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Button(onClick = onNavigateToAuthed) {
+            Button(onClick = onNavigateToAuthed, enabled = idToken != null) {
                 Text("Call Authed Endpoint")
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(onClick = onNavigateToTodo) {
+                Text("Manage Todo List")
             }
             Spacer(modifier = Modifier.height(40.dp))
             TextButton(onClick = {
