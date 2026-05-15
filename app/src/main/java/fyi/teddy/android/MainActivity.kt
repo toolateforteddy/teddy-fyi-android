@@ -1,17 +1,21 @@
 package fyi.teddy.android
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,9 +28,11 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.todo.ui.TodoScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,6 +44,32 @@ import java.net.URL
 class UserSession {
     var userName by mutableStateOf<String?>(null)
     var idToken by mutableStateOf<String?>(null)
+    var profilePictureUri by mutableStateOf<String?>(null)
+
+    fun save(context: Context) {
+        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putString("user_name", userName)
+            putString("id_token", idToken)
+            putString("profile_pic", profilePictureUri)
+            apply()
+        }
+    }
+
+    fun load(context: Context) {
+        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+        userName = sharedPref.getString("user_name", null)
+        idToken = sharedPref.getString("id_token", null)
+        profilePictureUri = sharedPref.getString("profile_pic", null)
+    }
+
+    fun clear(context: Context) {
+        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+        sharedPref.edit().clear().apply()
+        userName = null
+        idToken = null
+        profilePictureUri = null
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -57,12 +89,24 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = DarkColorScheme) {
                 val navController = rememberNavController()
                 val session = remember { UserSession() }
+                val context = LocalContext.current
+
+                LaunchedEffect(Unit) {
+                    session.load(context)
+                    if (session.idToken != null) {
+                        navController.navigate("hello") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
+                }
 
                 NavHost(navController = navController, startDestination = "login") {
                     composable("login") {
-                        LoginScreen(onLoginSuccess = { name, token ->
+                        LoginScreen(onLoginSuccess = { name, token, pic ->
                             session.userName = name
                             session.idToken = token
+                            session.profilePictureUri = pic?.toString()
+                            session.save(context)
                             Log.d("MainActivity", "Session updated: name=$name")
                             navController.navigate("hello") {
                                 popUpTo("login") { inclusive = true }
@@ -72,13 +116,13 @@ class MainActivity : ComponentActivity() {
                     composable("hello") {
                         HelloTeddyApp(
                             userName = session.userName,
-                            idToken = session.idToken,
+                            profilePic = session.profilePictureUri,
                             onNavigateToWeather = { navController.navigate("weather") },
                             onNavigateToAuthed = { navController.navigate("authed") },
                             onNavigateToTodo = { navController.navigate("todo") },
+                            onNavigateToGrocery = { navController.navigate("grocery") },
                             onLogout = {
-                                session.userName = null
-                                session.idToken = null
+                                session.clear(context)
                                 navController.navigate("login") {
                                     popUpTo("hello") { inclusive = true }
                                 }
@@ -94,6 +138,9 @@ class MainActivity : ComponentActivity() {
                     composable("todo") {
                         TodoScreen(onBack = { navController.popBackStack() })
                     }
+                    composable("grocery") {
+                        GroceryScreen(onBack = { navController.popBackStack() })
+                    }
                 }
             }
         }
@@ -101,7 +148,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LoginScreen(onLoginSuccess: (String?, String) -> Unit) {
+fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = CredentialManager.create(context)
@@ -142,15 +189,15 @@ fun LoginScreen(onLoginSuccess: (String?, String) -> Unit) {
                                 request = request,
                                 context = context,
                             )
-                            val (name, token) = handleSignIn(result)
-                            if (token != null) {
-                                onLoginSuccess(name, token)
+                            val cred = handleSignIn(result)
+                            if (cred?.second != null) {
+                                onLoginSuccess(cred.first, cred.second!!, cred.third)
                             } else {
-                                errorMessage = "Google Sign-In succeeded but no ID Token was returned. This might happen if the Client ID is misconfigured."
+                                errorMessage = "Google Sign-In succeeded but no ID Token was returned."
                                 Log.e("MainActivity", "Login succeeded but token was null")
                             }
                         } catch (e: GetCredentialException) {
-                            errorMessage = "Auth Error: ${e.message} (${e.javaClass.simpleName})"
+                            errorMessage = "Auth Error: ${e.message}"
                             Log.e("MainActivity", "Login Error", e)
                         } finally {
                             isLoggingIn = false
@@ -175,35 +222,31 @@ fun LoginScreen(onLoginSuccess: (String?, String) -> Unit) {
     }
 }
 
-private fun handleSignIn(result: GetCredentialResponse): Pair<String?, String?> {
+private fun handleSignIn(result: GetCredentialResponse): Triple<String?, String?, android.net.Uri?>? {
     val credential = result.credential
-    Log.d("MainActivity", "Received credential type: ${credential.type}")
-
+    
     if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
         try {
             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-            Log.d("MainActivity", "Got ID token and user: ${googleIdTokenCredential.displayName}")
-            return Pair(googleIdTokenCredential.displayName, googleIdTokenCredential.idToken)
+            return Triple(googleIdTokenCredential.displayName, googleIdTokenCredential.idToken, googleIdTokenCredential.profilePictureUri)
         } catch (e: GoogleIdTokenParsingException) {
             Log.e("MainActivity", "Received an invalid google id token response", e)
         }
     } else if (credential is GoogleIdTokenCredential) {
-        // Some versions of the library might handle the unwrapping automatically
-        Log.d("MainActivity", "Got ID token and user: ${credential.displayName}")
-        return Pair(credential.displayName, credential.idToken)
+        return Triple(credential.displayName, credential.idToken, credential.profilePictureUri)
     }
 
-    Log.e("MainActivity", "Unexpected credential type: ${credential.type}")
-    return Pair(null, null)
+    return null
 }
 
 @Composable
 fun HelloTeddyApp(
     userName: String?,
-    idToken: String?,
+    profilePic: String?,
     onNavigateToWeather: () -> Unit,
     onNavigateToAuthed: () -> Unit,
     onNavigateToTodo: () -> Unit,
+    onNavigateToGrocery: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -218,28 +261,38 @@ fun HelloTeddyApp(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (profilePic != null) {
+                AsyncImage(
+                    model = profilePic,
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
             Text(
                 text = "Hello ${userName ?: "Teddy"}",
                 color = Color.White,
                 fontSize = 24.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = if (idToken != null) "Token: ${idToken.take(20)}..." else "Token: MISSING",
-                color = if (idToken != null) Color.Green else Color.Red,
-                fontSize = 12.sp
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(onClick = onNavigateToWeather) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onNavigateToWeather, modifier = Modifier.fillMaxWidth(0.8f)) {
                 Text("Check Weather in Arlington, MA")
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Button(onClick = onNavigateToAuthed, enabled = idToken != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onNavigateToAuthed, modifier = Modifier.fillMaxWidth(0.8f)) {
                 Text("Call Authed Endpoint")
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Button(onClick = onNavigateToTodo) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onNavigateToTodo, modifier = Modifier.fillMaxWidth(0.8f)) {
                 Text("Manage Todo List")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onNavigateToGrocery, modifier = Modifier.fillMaxWidth(0.8f)) {
+                Text("Manage Grocery List")
             }
             Spacer(modifier = Modifier.height(40.dp))
             TextButton(onClick = {
@@ -300,16 +353,13 @@ fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
 
     LaunchedEffect(idToken) {
         if (idToken == null) {
-            result = "Error: No ID Token found.\n" +
-                    "Debug Info:\n" +
-                    "- session.idToken was null when LaunchedEffect started.\n" +
-                    "- Current time: ${System.currentTimeMillis()}"
+            result = "Error: No ID Token found."
             return@LaunchedEffect
         }
         result = try {
             callAuthedHello(idToken)
         } catch (e: Exception) {
-            "Error: ${e.localizedMessage}\n\nToken was present (length: ${idToken.length})"
+            "Error: ${e.localizedMessage}"
         }
     }
 
