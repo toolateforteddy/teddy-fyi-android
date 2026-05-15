@@ -27,4 +27,5 @@ Current Features List.
 - [ ] **Due Dates**: Set reminders and deadlines.
 
 ## Bugs
-- [ ] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
+- [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
+- [x] **Empty Title on Real Mode**: Fixed a race condition where the task title was being reset to empty before the async database save operation could read it.

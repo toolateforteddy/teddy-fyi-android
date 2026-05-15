@@ -44,44 +44,56 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val navController = rememberNavController()
-            val session = remember { UserSession() }
+            val DarkColorScheme = darkColorScheme(
+                primary = Color(0xFFD0BCFF),
+                secondary = Color(0xFFCCC2DC),
+                tertiary = Color(0xFFEFB8C8),
+                background = Color.Black,
+                surface = Color.Black,
+                onBackground = Color.White,
+                onSurface = Color.White,
+            )
 
-            NavHost(navController = navController, startDestination = "login") {
-                composable("login") {
-                    LoginScreen(onLoginSuccess = { name, token ->
-                        session.userName = name
-                        session.idToken = token
-                        Log.d("MainActivity", "Session updated: name=$name")
-                        navController.navigate("hello") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    })
-                }
-                composable("hello") {
-                    HelloTeddyApp(
-                        userName = session.userName,
-                        idToken = session.idToken,
-                        onNavigateToWeather = { navController.navigate("weather") },
-                        onNavigateToAuthed = { navController.navigate("authed") },
-                        onNavigateToTodo = { navController.navigate("todo") },
-                        onLogout = {
-                            session.userName = null
-                            session.idToken = null
-                            navController.navigate("login") {
-                                popUpTo("hello") { inclusive = true }
+            MaterialTheme(colorScheme = DarkColorScheme) {
+                val navController = rememberNavController()
+                val session = remember { UserSession() }
+
+                NavHost(navController = navController, startDestination = "login") {
+                    composable("login") {
+                        LoginScreen(onLoginSuccess = { name, token ->
+                            session.userName = name
+                            session.idToken = token
+                            Log.d("MainActivity", "Session updated: name=$name")
+                            navController.navigate("hello") {
+                                popUpTo("login") { inclusive = true }
                             }
-                        }
-                    )
-                }
-                composable("weather") {
-                    WeatherScreen(onBack = { navController.popBackStack() })
-                }
-                composable("authed") {
-                    AuthedHelloScreen(idToken = session.idToken, onBack = { navController.popBackStack() })
-                }
-                composable("todo") {
-                    TodoScreen(onBack = { navController.popBackStack() })
+                        })
+                    }
+                    composable("hello") {
+                        HelloTeddyApp(
+                            userName = session.userName,
+                            idToken = session.idToken,
+                            onNavigateToWeather = { navController.navigate("weather") },
+                            onNavigateToAuthed = { navController.navigate("authed") },
+                            onNavigateToTodo = { navController.navigate("todo") },
+                            onLogout = {
+                                session.userName = null
+                                session.idToken = null
+                                navController.navigate("login") {
+                                    popUpTo("hello") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("weather") {
+                        WeatherScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("authed") {
+                        AuthedHelloScreen(idToken = session.idToken, onBack = { navController.popBackStack() })
+                    }
+                    composable("todo") {
+                        TodoScreen(onBack = { navController.popBackStack() })
+                    }
                 }
             }
         }

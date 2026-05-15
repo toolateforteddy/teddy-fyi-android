@@ -38,6 +38,20 @@ fun TodoScreen(onBack: () -> Unit) {
     val currentItems = if (isDebugMode) debugItems else realItems
     var newItemTitle by remember { mutableStateOf("") }
 
+    val onAddNewItem = {
+        if (newItemTitle.isNotBlank()) {
+            val titleToSave = newItemTitle
+            if (isDebugMode) {
+                debugItems = listOf(TodoItem(title = titleToSave)) + debugItems
+            } else {
+                scope.launch {
+                    dao.insertItem(TodoItem(title = titleToSave))
+                }
+            }
+            newItemTitle = ""
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -66,7 +80,7 @@ fun TodoScreen(onBack: () -> Unit) {
                         Icon(
                             Icons.Default.Edit, 
                             contentDescription = "Edit Mode",
-                            tint = if (isEditMode) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                            tint = if (isEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                     
@@ -82,7 +96,13 @@ fun TodoScreen(onBack: () -> Unit) {
                     }) {
                         Icon(Icons.Default.Delete, contentDescription = "Clear All", tint = Color.Red)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Black,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
             )
         }
     ) { paddingValues ->
@@ -101,35 +121,20 @@ fun TodoScreen(onBack: () -> Unit) {
                         value = newItemTitle,
                         onValueChange = { newItemTitle = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Add new task...") },
+                        placeholder = { Text("Add new task...", color = Color.Gray) },
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedContainerColor = Color(0xFF1A1A1A),
+                            unfocusedContainerColor = Color(0xFF1A1A1A),
+                            cursorColor = Color.White
+                        ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (newItemTitle.isNotBlank()) {
-                                    if (isDebugMode) {
-                                        debugItems = listOf(TodoItem(title = newItemTitle)) + debugItems
-                                    } else {
-                                        scope.launch {
-                                            dao.insertItem(TodoItem(title = newItemTitle))
-                                        }
-                                    }
-                                    newItemTitle = ""
-                                }
-                            }
+                            onDone = { onAddNewItem() }
                         )
                     )
-                    IconButton(onClick = {
-                        if (newItemTitle.isNotBlank()) {
-                            if (isDebugMode) {
-                                debugItems = listOf(TodoItem(title = newItemTitle)) + debugItems
-                            } else {
-                                scope.launch {
-                                    dao.insertItem(TodoItem(title = newItemTitle))
-                                }
-                            }
-                            newItemTitle = ""
-                        }
-                    }) {
+                    IconButton(onClick = { onAddNewItem() }) {
                         Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
                     }
                 }
