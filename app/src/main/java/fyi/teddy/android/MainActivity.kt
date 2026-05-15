@@ -1,6 +1,7 @@
 package fyi.teddy.android
 
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -33,6 +34,7 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import fyi.teddy.android.grocery.ui.GroceryScreen
+import fyi.teddy.android.grocery.ui.StoreManagementScreen
 import fyi.teddy.android.todo.ui.TodoScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -139,7 +141,13 @@ class MainActivity : ComponentActivity() {
                         TodoScreen(onBack = { navController.popBackStack() })
                     }
                     composable("grocery") {
-                        GroceryScreen(onBack = { navController.popBackStack() })
+                        GroceryScreen(
+                            onBack = { navController.popBackStack() },
+                            onManageStores = { navController.navigate("stores") }
+                        )
+                    }
+                    composable("stores") {
+                        StoreManagementScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }
@@ -154,6 +162,20 @@ fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
     val credentialManager = CredentialManager.create(context)
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoggingIn by remember { mutableStateOf(false) }
+
+    val isEmulator = remember {
+        Build.FINGERPRINT.startsWith("generic")
+                || Build.FINGERPRINT.startsWith("unknown")
+                || Build.FINGERPRINT.contains("sdk_gphone")
+                || Build.MODEL.contains("google_sdk")
+                || Build.MODEL.contains("Emulator")
+                || Build.MODEL.contains("Android SDK built for x86")
+                || Build.MANUFACTURER.contains("Genymotion")
+                || Build.HARDWARE.contains("goldfish")
+                || Build.HARDWARE.contains("ranchu")
+                || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+                || "google_sdk" == Build.PRODUCT
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -205,6 +227,15 @@ fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
                     }
                 }) {
                     Text("Sign in with Google")
+                }
+
+                if (isEmulator) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(onClick = {
+                        onLoginSuccess("Emulator Guest", "fake_emulator_token", null)
+                    }) {
+                        Text("Skip Auth (Emulator only)", color = Color.Gray)
+                    }
                 }
             }
             

@@ -11,6 +11,7 @@ Current Features List.
 - [x] **Auth Caching**: User session is saved to SharedPreferences. On app launch, if a valid session exists, the user is automatically navigated to the home screen.
 - [x] **Profile Picture**: The user's Google profile picture is displayed on the home screen.
 - [x] **Grocery List**: A dedicated Grocery List manager with quantity support and local persistence.
+- [x] **Unauthed Mode**: Added a "Skip Auth" option visible only when running on an emulator, allowing development without a Google account.
 
 ## Requested Features
 
