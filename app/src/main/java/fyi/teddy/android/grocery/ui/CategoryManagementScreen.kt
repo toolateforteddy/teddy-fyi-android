@@ -16,26 +16,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.data.AppDatabase
-import fyi.teddy.android.grocery.data.Store
+import fyi.teddy.android.grocery.data.Category
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StoreManagementScreen(onBack: () -> Unit) {
+fun CategoryManagementScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
     val dao = database.groceryDao()
     
-    val stores by dao.getAllStores().collectAsState(initial = emptyList())
-    var newStoreName by remember { mutableStateOf("") }
+    val categories by dao.getAllCategories().collectAsState(initial = emptyList())
+    var newCategoryName by remember { mutableStateOf("") }
 
-    val onAddStore = {
-        if (newStoreName.isNotBlank()) {
+    val onAddCategory = {
+        if (newCategoryName.isNotBlank()) {
             scope.launch {
-                val maxPos = stores.maxByOrNull { it.position }?.position ?: -1
-                dao.insertStore(Store(name = newStoreName, position = maxPos + 1))
-                newStoreName = ""
+                val maxPos = categories.maxByOrNull { it.position }?.position ?: -1
+                dao.insertCategory(Category(name = newCategoryName, position = maxPos + 1))
+                newCategoryName = ""
             }
         }
     }
@@ -43,8 +43,7 @@ fun StoreManagementScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Stores") },
-                // Back arrow removed as requested
+                title = { Text("Manage Categories") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,
                     titleContentColor = Color.White
@@ -64,10 +63,10 @@ fun StoreManagementScreen(onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextField(
-                        value = newStoreName,
-                        onValueChange = { newStoreName = it },
+                        value = newCategoryName,
+                        onValueChange = { newCategoryName = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Store name...", color = Color.Gray) },
+                        placeholder = { Text("Category name...", color = Color.Gray) },
                         colors = TextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
@@ -75,9 +74,9 @@ fun StoreManagementScreen(onBack: () -> Unit) {
                             unfocusedContainerColor = Color(0xFF1A1A1A)
                         ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { onAddStore() })
+                        keyboardActions = KeyboardActions(onDone = { onAddCategory() })
                     )
-                    IconButton(onClick = { onAddStore() }) {
+                    IconButton(onClick = { onAddCategory() }) {
                         Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
                     }
                 }
@@ -85,31 +84,20 @@ fun StoreManagementScreen(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    itemsIndexed(stores) { index, store ->
+                    itemsIndexed(categories) { index, category ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(store.name, color = Color.White)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(
-                                        checked = store.isDefaultSupported,
-                                        onCheckedChange = { isChecked ->
-                                            scope.launch { dao.updateStore(store.copy(isDefaultSupported = isChecked)) }
-                                        }
-                                    )
-                                    Text("Default ON for new items", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
+                            Text(category.name, color = Color.White, modifier = Modifier.weight(1f))
                             
                             IconButton(
                                 onClick = {
                                     if (index > 0) {
-                                        val prevStore = stores[index - 1]
+                                        val prevCat = categories[index - 1]
                                         scope.launch {
-                                            dao.updateStore(store.copy(position = prevStore.position))
-                                            dao.updateStore(prevStore.copy(position = store.position))
+                                            dao.updateCategory(category.copy(position = prevCat.position))
+                                            dao.updateCategory(prevCat.copy(position = category.position))
                                         }
                                     }
                                 },
@@ -120,21 +108,21 @@ fun StoreManagementScreen(onBack: () -> Unit) {
                             
                             IconButton(
                                 onClick = {
-                                    if (index < stores.size - 1) {
-                                        val nextStore = stores[index + 1]
+                                    if (index < categories.size - 1) {
+                                        val nextCat = categories[index + 1]
                                         scope.launch {
-                                            dao.updateStore(store.copy(position = nextStore.position))
-                                            dao.updateStore(nextStore.copy(position = store.position))
+                                            dao.updateCategory(category.copy(position = nextCat.position))
+                                            dao.updateCategory(nextCat.copy(position = category.position))
                                         }
                                     }
                                 },
-                                enabled = index < stores.size - 1
+                                enabled = index < categories.size - 1
                             ) {
                                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = Color.White)
                             }
 
                             IconButton(onClick = {
-                                scope.launch { dao.deleteStore(store) }
+                                scope.launch { dao.deleteCategory(category) }
                             }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                             }

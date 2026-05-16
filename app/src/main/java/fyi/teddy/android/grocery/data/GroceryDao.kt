@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface GroceryDao {
-    @Query("SELECT * FROM grocery_items ORDER BY createdAt DESC")
+    @Query("SELECT * FROM grocery_items ORDER BY position ASC, createdAt DESC")
     fun getAllItems(): Flow<List<GroceryItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -20,11 +20,14 @@ interface GroceryDao {
     @Query("DELETE FROM grocery_items")
     suspend fun deleteAll()
 
-    @Query("SELECT * FROM stores ORDER BY name ASC")
+    @Query("SELECT * FROM stores ORDER BY position ASC, name ASC")
     fun getAllStores(): Flow<List<Store>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStore(store: Store)
+
+    @Update
+    suspend fun updateStore(store: Store)
 
     @Delete
     suspend fun deleteStore(store: Store)
@@ -37,4 +40,16 @@ interface GroceryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStoreInfo(info: GroceryItemStoreInfo)
+
+    @Query("SELECT * FROM categories ORDER BY position ASC, name ASC")
+    fun getAllCategories(): Flow<List<Category>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: Category)
+
+    @Update
+    suspend fun updateCategory(category: Category)
+
+    @Delete
+    suspend fun deleteCategory(category: Category)
 }

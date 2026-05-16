@@ -1,10 +1,13 @@
-.PHONY: build clean install run
+.PHONY: build clean install run test
 
 build:
 	./gradlew assembleDebug
 
 clean:
 	./gradlew clean
+
+test:
+	./gradlew testDebugUnitTest
 
 # Default to the physical device if one is connected
 DEVICE_ID ?= $(shell adb devices | grep -v "List" | grep "device$$" | awk '{print $$1}' | head -n 1)

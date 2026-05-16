@@ -21,13 +21,18 @@ Current Features List.
     - [x] **Planning Mode**: Select which store or stores to plan for. Shows only available items.
     - [x] **Shopping Mode**: Single store view. Tap to add price and see history.
 - [x] **Item Autocomplete**: When adding a new item, if a similar item is in the database, offer it as a suggestion.
+- [x] **Ordering of list items**: Items can be reordered using up/down arrows in Edit Mode.
+- [x] **Ordering of Store Lists**: Stores can be reordered using up/down arrows in the Manage Stores screen.
+- [x] **Store Default Status**: Stores can be toggled to be "OFF" by default for new items.
+- [x] **Edit Quantity**: Tapping the quantity label on an item allows editing it.
+- [x] **Back Arrow Visual Noise**: Removed the back arrow from the navigation bar.
+- [x] **Categories**: Group items by grocery store section (Produce, Dairy, etc.).
 
 ## Requested Features
 
 ## Planned Features
 - [ ] **Auth Integration**: Associate grocery lists with a user account.
 - [ ] **Cloud Sync**: Sync grocery data with the backend.
-- [ ] **Categories**: Group items by grocery store section (Produce, Dairy, etc.).
 - [ ] **Clear Bought Items**: Quickly remove all items marked as bought.
 - [ ] **Receipt Mode**: Submit pictures or screenshots of a receipt to populate the list with known items and prices.
 
@@ -35,3 +40,6 @@ Current Features List.
 - [x] **Entering Shopping Mode Crash**: Entering Shopping Mode without any items crashes the app.
 - [x] **Manage Stores Submit on Enter**: Tapping enter on the keyboard should be the same as tapping plus after adding a store.
 - [x] **Capitalized Phases**: Please don't yell at me with all caps in the title of each screen.
+- [x] **Cursor Position After Add**: Cursor now correctly returns to the item name field after adding an item.
+- [x] **No Checkboxes in Needs or Planning Mode**: Checkboxes are now only visible in Shopping Mode.
+- [x] **Planning page Pill Wrap**: On planning screen, the pills now wrap to a second line correctly.

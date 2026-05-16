@@ -9,5 +9,7 @@ data class GroceryItem(
     val name: String,
     val quantity: String = "1",
     val isBought: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val position: Int = 0,
+    val categoryId: Int? = null
 )

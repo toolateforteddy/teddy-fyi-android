@@ -33,6 +33,7 @@ import coil.compose.AsyncImage
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import fyi.teddy.android.grocery.ui.CategoryManagementScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
 import fyi.teddy.android.todo.ui.TodoScreen
@@ -143,11 +144,15 @@ class MainActivity : ComponentActivity() {
                     composable("grocery") {
                         GroceryScreen(
                             onBack = { navController.popBackStack() },
-                            onManageStores = { navController.navigate("stores") }
+                            onManageStores = { navController.navigate("stores") },
+                            onManageCategories = { navController.navigate("categories") }
                         )
                     }
                     composable("stores") {
                         StoreManagementScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("categories") {
+                        CategoryManagementScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }
