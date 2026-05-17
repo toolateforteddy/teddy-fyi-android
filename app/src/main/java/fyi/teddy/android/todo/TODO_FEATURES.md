@@ -14,7 +14,6 @@ Current Features List.
 - [x] **Reactive UI**: List updates automatically using Kotlin Flow.
 - [x] **Insertion Improvement**: The keyboard "Done/Enter" key now submits the task.
 - [x] **Clear All**: Added a trash icon in the header to clear all tasks (supports both Real and Debug modes).
-- [x] **Debug Mode**: A toggle in the nav bar allows entering a sandbox mode. In this mode, the list is initialized with a copy of the real list, but changes are in-memory only and do not affect the persistent database.
 - [x] **Edit Mode**: A pencil icon in the nav bar toggles "Edit Mode". The delete trash can icons on individual items are only visible when Edit Mode is active.
 - [x] **Clear All Confirmation**: It is too easy to clear all items. Let's make it harder in two ways. First, don't show the trash can except in edit mode. Second, add a confirmation modal before actually clearing the data with explanation of what is about to happen, and a way to abort or confirm that this is desired.
 - [x] **Completed Task Management**: Completed tasks should be removed from the screen after a 2 second delay to appreciate the joy of crossing something off the list. Subtasks should just be moved to the bottom of the subtask list upon completion. There should be a way to access the list of all completed tasks.
@@ -24,6 +23,7 @@ Current Features List.
 - [x] **Mode Management**: Instead of the icon in the top to move through the three modes, add a mode switcher at the bottom so you can easily see which mode you are in, the selected state, and switch to either of the other two modes quickly.
 
 ## Requested Features
+- [] **Back Arrow Visual Noise**: Removed the back arrow from the navigation bar.
 
 ## Planned Features
 - [ ] **Auth Integration**: Link todo items to the authenticated user's ID.

@@ -44,8 +44,6 @@ fun TodoScreen(onBack: () -> Unit) {
     val realItems by dao.getAllItems().collectAsState(initial = emptyList())
     val todayItems by dao.getTodayItems().collectAsState(initial = emptyList())
     
-    var debugItems by remember { mutableStateOf<List<TodoItem>>(emptyList()) }
-    var isDebugMode by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
     var showClearAllConfirmation by remember { mutableStateOf(false) }
@@ -56,11 +54,7 @@ fun TodoScreen(onBack: () -> Unit) {
     // Track recently completed items to hide them after 2 seconds
     val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
     
-    val baseItems = when {
-        isDebugMode -> debugItems
-        currentMode == TodoMode.TODAY -> todayItems
-        else -> realItems
-    }
+    val baseItems = if (currentMode == TodoMode.TODAY) todayItems else realItems
     
     // Check for midnight reset on load
     LaunchedEffect(Unit) {
@@ -79,7 +73,7 @@ fun TodoScreen(onBack: () -> Unit) {
         }
     }
     
-    val displayedItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList(), currentMode) {
+    val displayedItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
         if (showCompletedOnly) {
             baseItems.filter { it.isCompleted }
         } else {
@@ -92,13 +86,9 @@ fun TodoScreen(onBack: () -> Unit) {
     val onAddNewItem = {
         if (newItemTitle.isNotBlank()) {
             val titleToSave = newItemTitle
-            if (isDebugMode) {
-                debugItems = listOf(TodoItem(id = -(debugItems.size + 1), title = titleToSave)) + debugItems
-            } else {
-                scope.launch {
-                    val maxPos = realItems.maxByOrNull { it.position }?.position ?: -1
-                    dao.insertItem(TodoItem(title = titleToSave, position = maxPos + 1))
-                }
+            scope.launch {
+                val maxPos = realItems.maxByOrNull { it.position }?.position ?: -1
+                dao.insertItem(TodoItem(title = titleToSave, position = maxPos + 1))
             }
             newItemTitle = ""
         }
@@ -108,16 +98,12 @@ fun TodoScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showClearAllConfirmation = false },
             title = { Text("Clear All Tasks?") },
-            text = { Text("This will permanently delete all tasks in the current ${if (isDebugMode) "sandbox" else "database"}. This action cannot be undone.") },
+            text = { Text("This will permanently delete all tasks in the database. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         scope.launch {
-                            if (isDebugMode) {
-                                debugItems = emptyList()
-                            } else {
-                                dao.deleteAll()
-                            }
+                            dao.deleteAll()
                             showClearAllConfirmation = false
                         }
                     }
@@ -140,7 +126,6 @@ fun TodoScreen(onBack: () -> Unit) {
                     title = { 
                         Text(
                             text = when {
-                                isDebugMode -> "Todo (DEBUG)"
                                 currentMode == TodoMode.TODAY_PLANNING -> "Planning Today"
                                 currentMode == TodoMode.TODAY -> "Today's Tasks"
                                 showCompletedOnly -> "Completed Tasks"
@@ -154,18 +139,6 @@ fun TodoScreen(onBack: () -> Unit) {
                         }
                     },
                     actions = {
-                        // Debug Mode Toggle
-                        Text("Debug", style = MaterialTheme.typography.labelSmall)
-                        Switch(
-                            checked = isDebugMode,
-                            onCheckedChange = { 
-                                isDebugMode = it
-                                if (it) {
-                                    debugItems = realItems.toList()
-                                }
-                            }
-                        )
-                        
                         // Show Completed Toggle
                         IconButton(onClick = { showCompletedOnly = !showCompletedOnly }) {
                             Icon(
@@ -262,7 +235,7 @@ fun TodoScreen(onBack: () -> Unit) {
                     }
                     
                     LazyColumn(modifier = Modifier.weight(1f)) {
-                        itemsIndexed(displayedItems, key = { _, it -> if (isDebugMode) it.hashCode() else it.id }) { index, item ->
+                        itemsIndexed(displayedItems, key = { _, it -> it.id }) { index, item ->
                             TodoItemRow(
                                 item = item,
                                 showDelete = isEditMode,
@@ -271,13 +244,7 @@ fun TodoScreen(onBack: () -> Unit) {
                                 totalItems = displayedItems.size,
                                 onCheckedChange = { isChecked ->
                                     if (currentMode == TodoMode.TODAY_PLANNING) {
-                                        if (isDebugMode) {
-                                            debugItems = debugItems.map { 
-                                                if (it.id == item.id) it.copy(isPlannedForToday = isChecked) else it 
-                                            }
-                                        } else {
-                                            scope.launch { dao.updateItem(item.copy(isPlannedForToday = isChecked)) }
-                                        }
+                                        scope.launch { dao.updateItem(item.copy(isPlannedForToday = isChecked)) }
                                         return@TodoItemRow
                                     }
 
@@ -304,74 +271,38 @@ fun TodoScreen(onBack: () -> Unit) {
                                         recentlyCompletedIds.remove(item.id)
                                     }
 
-                                    if (isDebugMode) {
-                                        debugItems = debugItems.map { 
-                                            if (it.id == item.id) it.copy(isCompleted = isChecked) else it 
-                                        }
-                                    } else {
-                                        scope.launch { dao.updateItem(item.copy(isCompleted = isChecked)) }
-                                    }
+                                    scope.launch { dao.updateItem(item.copy(isCompleted = isChecked)) }
                                 },
                                 onDelete = {
-                                    if (isDebugMode) {
-                                        debugItems = debugItems.filter { it.id != item.id }
-                                    } else {
-                                        scope.launch { dao.deleteItem(item) }
-                                    }
+                                    scope.launch { dao.deleteItem(item) }
                                 },
                                 onMoveToTop = {
-                                    if (isDebugMode) {
-                                        debugItems = listOf(item) + (debugItems - item)
-                                    } else {
-                                        scope.launch {
-                                            val minPos = realItems.minByOrNull { it.position }?.position ?: 0
-                                            dao.updateItem(item.copy(position = minPos - 1))
-                                        }
+                                    scope.launch {
+                                        val minPos = realItems.minByOrNull { it.position }?.position ?: 0
+                                        dao.updateItem(item.copy(position = minPos - 1))
                                     }
                                 },
                                 onMoveToBottom = {
-                                    if (isDebugMode) {
-                                        debugItems = (debugItems - item) + listOf(item)
-                                    } else {
-                                        scope.launch {
-                                            val maxPos = realItems.maxByOrNull { it.position }?.position ?: 0
-                                            dao.updateItem(item.copy(position = maxPos + 1))
-                                        }
+                                    scope.launch {
+                                        val maxPos = realItems.maxByOrNull { it.position }?.position ?: 0
+                                        dao.updateItem(item.copy(position = maxPos + 1))
                                     }
                                 },
                                 onMoveUp = {
                                     if (index > 0) {
                                         val prevItem = displayedItems[index - 1]
-                                        if (isDebugMode) {
-                                            debugItems = debugItems.toMutableList().apply {
-                                                val i1 = indexOf(item)
-                                                val i2 = indexOf(prevItem)
-                                                this[i1] = prevItem
-                                                this[i2] = item
-                                            }
-                                        } else {
-                                            scope.launch {
-                                                dao.updateItem(item.copy(position = prevItem.position))
-                                                dao.updateItem(prevItem.copy(position = item.position))
-                                            }
+                                        scope.launch {
+                                            dao.updateItem(item.copy(position = prevItem.position))
+                                            dao.updateItem(prevItem.copy(position = item.position))
                                         }
                                     }
                                 },
                                 onMoveDown = {
                                     if (index < displayedItems.size - 1) {
                                         val nextItem = displayedItems[index + 1]
-                                        if (isDebugMode) {
-                                            debugItems = debugItems.toMutableList().apply {
-                                                val i1 = indexOf(item)
-                                                val i2 = indexOf(nextItem)
-                                                this[i1] = nextItem
-                                                this[i2] = item
-                                            }
-                                        } else {
-                                            scope.launch {
-                                                dao.updateItem(item.copy(position = nextItem.position))
-                                                dao.updateItem(nextItem.copy(position = item.position))
-                                            }
+                                        scope.launch {
+                                            dao.updateItem(item.copy(position = nextItem.position))
+                                            dao.updateItem(nextItem.copy(position = item.position))
                                         }
                                     }
                                 }
