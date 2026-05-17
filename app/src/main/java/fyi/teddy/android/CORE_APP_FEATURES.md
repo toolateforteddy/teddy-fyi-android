@@ -22,3 +22,4 @@ Current Features List.
 ## Bugs
 - [x] **Token display**: Removed the Token display from the home screen.
 - [x] **Profile picture missing**: Added a default profile icon and improved error handling for image loading on the home screen.
+- [x] **App crashes when calling authed endpoint**: Added robust error handling and logging to the network repository to prevent crashes on invalid tokens or server errors.
