@@ -18,6 +18,10 @@ Current Features List.
 - [x] **Edit Mode**: A pencil icon in the nav bar toggles "Edit Mode". The delete trash can icons on individual items are only visible when Edit Mode is active.
 - [x] **Clear All Confirmation**: It is too easy to clear all items. Let's make it harder in two ways. First, don't show the trash can except in edit mode. Second, add a confirmation modal before actually clearing the data with explanation of what is about to happen, and a way to abort or confirm that this is desired.
 - [x] **Completed Task Management**: Completed tasks should be removed from the screen after a 2 second delay to appreciate the joy of crossing something off the list. Subtasks should just be moved to the bottom of the subtask list upon completion. There should be a way to access the list of all completed tasks.
+- [x] **Confetti Upon Completion**: When you check off an item, during the 2 seconds before the item clears, throw out a small burst of confetti across the screen.
+- [x] **Item ordering**: In edit mode, items can be reordered using up/down arrows. There is also an overflow menu on each item with "Move to Top" and "Move to Bottom" options.
+- [x] **Today Planning**: Added "Planning Today" and "Today's Tasks" modes. Checking an item in Planning mode marks it for today. At midnight, any uncompleted today-plan items are automatically reset.
+- [x] **Mode Management**: Instead of the icon in the top to move through the three modes, add a mode switcher at the bottom so you can easily see which mode you are in, the selected state, and switch to either of the other two modes quickly.
 
 ## Requested Features
 
@@ -34,3 +38,4 @@ Current Features List.
 ## Bugs
 - [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
 - [x] **Empty Title on Real Mode**: Fixed a race condition where the task title was being reset to empty before the async database save operation could read it.
+- [x] **Move to Top/Bottom**: The topmost item shouldn't have the option to move to top. The bottommost item shouldn't have the option to move to bottom.

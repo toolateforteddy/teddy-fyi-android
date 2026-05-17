@@ -11,5 +11,6 @@ data class GroceryItem(
     val isBought: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val position: Int = 0,
-    val categoryId: Int? = null
+    val categoryId: Int? = null,
+    val timesBought: Int = 0
 )

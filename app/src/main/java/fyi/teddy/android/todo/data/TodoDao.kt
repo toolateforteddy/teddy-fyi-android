@@ -5,8 +5,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TodoDao {
-    @Query("SELECT * FROM todo_items ORDER BY createdAt DESC")
+    @Query("SELECT * FROM todo_items ORDER BY position ASC, createdAt DESC")
     fun getAllItems(): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE isPlannedForToday = 1 ORDER BY position ASC, createdAt DESC")
+    fun getTodayItems(): Flow<List<TodoItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: TodoItem)
@@ -19,4 +22,7 @@ interface TodoDao {
 
     @Query("DELETE FROM todo_items")
     suspend fun deleteAll()
+
+    @Query("UPDATE todo_items SET isPlannedForToday = 0 WHERE isCompleted = 0")
+    suspend fun resetPlannedItems()
 }

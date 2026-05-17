@@ -27,6 +27,8 @@ Current Features List.
 - [x] **Edit Quantity**: Tapping the quantity label on an item allows editing it.
 - [x] **Back Arrow Visual Noise**: Removed the back arrow from the navigation bar.
 - [x] **Categories**: Group items by grocery store section (Produce, Dairy, etc.).
+- [x] **Config Management**: Consolidated store and category management into a single Settings view.
+- [x] **Recurring Groceries**: Added a "Recommended" button in planning mode to quickly re-add frequently bought items.
 
 ## Requested Features
 
@@ -43,3 +45,4 @@ Current Features List.
 - [x] **Cursor Position After Add**: Cursor now correctly returns to the item name field after adding an item.
 - [x] **No Checkboxes in Needs or Planning Mode**: Checkboxes are now only visible in Shopping Mode.
 - [x] **Planning page Pill Wrap**: On planning screen, the pills now wrap to a second line correctly.
+- [x] **First Letter Cap**: All text boxes in this section of the app now default to sentence capitalization.

@@ -12,10 +12,13 @@ Current Features List.
 - [x] **Profile Picture**: The user's Google profile picture is displayed on the home screen.
 - [x] **Grocery List**: A dedicated Grocery List manager with quantity support and local persistence.
 - [x] **Unauthed Mode**: Added a "Skip Auth" option visible only when running on an emulator, allowing development without a Google account.
+- [x] **Health Checks for teddy.fyi**: The home screen makes an async request to https://teddy.fyi/ on load and displays a green (success) or red (failure) cloud icon in the bottom right corner.
 
 ## Requested Features
 
 ## Planned Features
+- [ ] **Deeper Health Checks**: There should be another screen to tap into that can show some version of health checks for all api services at teddy.fyi, and not just the nginx static proxy.
 
 ## Bugs
 - [x] **Token display**: Removed the Token display from the home screen.
+- [x] **Profile picture missing**: Added a default profile icon and improved error handling for image loading on the home screen.

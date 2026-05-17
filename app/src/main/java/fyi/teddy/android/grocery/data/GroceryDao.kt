@@ -20,6 +20,9 @@ interface GroceryDao {
     @Query("DELETE FROM grocery_items")
     suspend fun deleteAll()
 
+    @Query("SELECT * FROM grocery_items WHERE timesBought > 0 ORDER BY timesBought DESC")
+    fun getRecommendedItems(): Flow<List<GroceryItem>>
+
     @Query("SELECT * FROM stores ORDER BY position ASC, name ASC")
     fun getAllStores(): Flow<List<Store>>
 

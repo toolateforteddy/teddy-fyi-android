@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.Store
@@ -74,7 +75,10 @@ fun StoreManagementScreen(onBack: () -> Unit) {
                             focusedContainerColor = Color(0xFF1A1A1A),
                             unfocusedContainerColor = Color(0xFF1A1A1A)
                         ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done
+                        ),
                         keyboardActions = KeyboardActions(onDone = { onAddStore() })
                     )
                     IconButton(onClick = { onAddStore() }) {

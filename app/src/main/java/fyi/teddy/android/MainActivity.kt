@@ -6,10 +6,13 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +37,7 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import fyi.teddy.android.grocery.ui.CategoryManagementScreen
+import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
 import fyi.teddy.android.todo.ui.TodoScreen
@@ -144,6 +148,12 @@ class MainActivity : ComponentActivity() {
                     composable("grocery") {
                         GroceryScreen(
                             onBack = { navController.popBackStack() },
+                            onManageConfig = { navController.navigate("grocery_config") }
+                        )
+                    }
+                    composable("grocery_config") {
+                        GroceryConfigScreen(
+                            onBack = { navController.popBackStack() },
                             onManageStores = { navController.navigate("stores") },
                             onManageCategories = { navController.navigate("categories") }
                         )
@@ -169,7 +179,8 @@ fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
     var isLoggingIn by remember { mutableStateOf(false) }
 
     val isEmulator = remember {
-        Build.FINGERPRINT.startsWith("generic")
+        Build.FINGERPRINT.startsWith("google")
+                || Build.FINGERPRINT.startsWith("generic")
                 || Build.FINGERPRINT.startsWith("unknown")
                 || Build.FINGERPRINT.contains("sdk_gphone")
                 || Build.MODEL.contains("google_sdk")
@@ -287,59 +298,110 @@ fun HelloTeddyApp(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var isClusterHappy by remember { mutableStateOf<Boolean?>(null) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.Black
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+    LaunchedEffect(Unit) {
+        isClusterHappy = checkClusterHealth()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black
         ) {
-            if (profilePic != null) {
-                AsyncImage(
-                    model = profilePic,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            
-            Text(
-                text = "Hello ${userName ?: "Teddy"}",
-                color = Color.White,
-                fontSize = 24.sp
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onNavigateToWeather, modifier = Modifier.fillMaxWidth(0.8f)) {
-                Text("Check Weather in Arlington, MA")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onNavigateToAuthed, modifier = Modifier.fillMaxWidth(0.8f)) {
-                Text("Call Authed Endpoint")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onNavigateToTodo, modifier = Modifier.fillMaxWidth(0.8f)) {
-                Text("Manage Todo List")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onNavigateToGrocery, modifier = Modifier.fillMaxWidth(0.8f)) {
-                Text("Manage Grocery List")
-            }
-            Spacer(modifier = Modifier.height(40.dp))
-            TextButton(onClick = {
-                scope.launch {
-                    val credentialManager = CredentialManager.create(context)
-                    credentialManager.clearCredentialState(ClearCredentialStateRequest())
-                    onLogout()
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (profilePic != null) {
+                    AsyncImage(
+                        model = profilePic,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        onError = {
+                            Log.e("MainActivity", "Error loading profile picture: ${it.result.throwable.message}")
+                        }
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Default Profile Picture",
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.Gray
+                    )
                 }
-            }) {
-                Text("Logout", color = Color.Gray)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Hello ${userName ?: "Teddy"}",
+                    color = Color.White,
+                    fontSize = 24.sp
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onNavigateToWeather, modifier = Modifier.fillMaxWidth(0.8f)) {
+                    Text("Check Weather in Arlington, MA")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onNavigateToAuthed, modifier = Modifier.fillMaxWidth(0.8f)) {
+                    Text("Call Authed Endpoint")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onNavigateToTodo, modifier = Modifier.fillMaxWidth(0.8f)) {
+                    Text("Manage Todo List")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onNavigateToGrocery, modifier = Modifier.fillMaxWidth(0.8f)) {
+                    Text("Manage Grocery List")
+                }
+                Spacer(modifier = Modifier.height(40.dp))
+                TextButton(onClick = {
+                    scope.launch {
+                        val credentialManager = CredentialManager.create(context)
+                        credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                        onLogout()
+                    }
+                }) {
+                    Text("Logout", color = Color.Gray)
+                }
             }
+        }
+        
+        // Health Check Icon in bottom right
+        if (isClusterHappy != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(if (isClusterHappy!!) Color.Green else Color.Red)
+            ) {
+                Icon(
+                    imageVector = if (isClusterHappy!!) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                    contentDescription = "Health Check",
+                    modifier = Modifier.size(16.dp).align(Alignment.Center),
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+private suspend fun checkClusterHealth(): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://teddy.fyi/")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            connection.responseCode == 200
+        } catch (e: Exception) {
+            false
         }
     }
 }

@@ -19,7 +19,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
@@ -37,7 +39,7 @@ enum class GroceryPhase {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCategories: () -> Unit) {
+fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
@@ -47,11 +49,13 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
     val stores by dao.getAllStores().collectAsState(initial = emptyList())
     val categories by dao.getAllCategories().collectAsState(initial = emptyList())
     val storeInfos by dao.getAllStoreInfo().collectAsState(initial = emptyList())
+    val recommendedItems by dao.getRecommendedItems().collectAsState(initial = emptyList())
     
     var currentPhase by remember { mutableStateOf(GroceryPhase.NEED) }
     var selectedStoreIds by remember { mutableStateOf(setOf<Int>()) }
     var shoppingStoreId by remember { mutableStateOf<Int?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
+    var showRecommendedDialog by remember { mutableStateOf(false) }
     
     var newItemName by remember { mutableStateOf("") }
     var newItemQuantity by remember { mutableStateOf("1") }
@@ -104,11 +108,8 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                             )
                         }
                     }
-                    IconButton(onClick = onManageCategories) {
-                        Icon(Icons.Default.List, contentDescription = "Manage Categories")
-                    }
-                    IconButton(onClick = onManageStores) {
-                        Icon(Icons.Default.Settings, contentDescription = "Manage Stores")
+                    IconButton(onClick = onManageConfig) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -149,7 +150,17 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                 modifier = Modifier.fillMaxSize().padding(16.dp)
             ) {
                 if (currentPhase == GroceryPhase.PLANNING) {
-                    Text("Select Stores to Plan for:", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Stores:", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { showRecommendedDialog = true },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("Recommended", fontSize = 10.sp)
+                        }
+                    }
                     FlowRow(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -213,7 +224,10 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                                     focusedContainerColor = Color(0xFF1A1A1A),
                                     unfocusedContainerColor = Color(0xFF1A1A1A)
                                 ),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Sentences,
+                                    imeAction = ImeAction.Next
+                                )
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             TextField(
@@ -227,7 +241,10 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                                     focusedContainerColor = Color(0xFF1A1A1A),
                                     unfocusedContainerColor = Color(0xFF1A1A1A)
                                 ),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Sentences,
+                                    imeAction = ImeAction.Done
+                                ),
                                 keyboardActions = KeyboardActions(onDone = { onAddNewItem() })
                             )
                             IconButton(onClick = { onAddNewItem() }) {
@@ -333,7 +350,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                                     onUpdateStoreInfo = { info ->
                                         scope.launch { dao.insertStoreInfo(info) }
                                     },
-                                    onMoveItem = { fromIndex, toIndex ->
+                                    onMoveItem = { _, toIndex ->
                                         val targetItem = categoryItems[toIndex]
                                         scope.launch {
                                             dao.updateItem(item.copy(position = targetItem.position))
@@ -370,7 +387,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                                 onUpdateStoreInfo = { info ->
                                     scope.launch { dao.insertStoreInfo(info) }
                                 },
-                                onMoveItem = { fromIndex, toIndex ->
+                                onMoveItem = { _, toIndex ->
                                     val targetItem = uncategorizedItems[toIndex]
                                     scope.launch {
                                         dao.updateItem(item.copy(position = targetItem.position))
@@ -382,6 +399,59 @@ fun GroceryScreen(onBack: () -> Unit, onManageStores: () -> Unit, onManageCatego
                     }
                 }
             }
+        }
+        
+        if (showRecommendedDialog) {
+            val unboughtNames = items.filter { !it.isBought }.map { it.name }.toSet()
+            val availableRecommendations = recommendedItems.filter { !unboughtNames.contains(it.name) }
+            val selectedItemIds = remember { mutableStateListOf<Int>() }
+
+            AlertDialog(
+                onDismissRequest = { showRecommendedDialog = false },
+                title = { Text("Recommended Items") },
+                text = {
+                    if (availableRecommendations.isEmpty()) {
+                        Text("No recommendations yet. Buy items to see them here!")
+                    } else {
+                        LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                            items(availableRecommendations) { item ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth().clickable { 
+                                        if (selectedItemIds.contains(item.id)) selectedItemIds.remove(item.id)
+                                        else selectedItemIds.add(item.id)
+                                    }
+                                ) {
+                                    Checkbox(
+                                        checked = selectedItemIds.contains(item.id), 
+                                        onCheckedChange = { isChecked ->
+                                            if (isChecked) selectedItemIds.add(item.id)
+                                            else selectedItemIds.remove(item.id)
+                                        } 
+                                    )
+                                    Text(item.name, modifier = Modifier.weight(1f))
+                                    Text("(${item.timesBought})", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    if (availableRecommendations.isNotEmpty()) {
+                        TextButton(onClick = {
+                            scope.launch {
+                                availableRecommendations.filter { selectedItemIds.contains(it.id) }.forEach { item ->
+                                    dao.updateItem(item.copy(isBought = false))
+                                }
+                                showRecommendedDialog = false
+                            }
+                        }) { Text("Add Selected") }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRecommendedDialog = false }) { Text("Cancel") }
+                }
+            )
         }
     }
 }
@@ -412,7 +482,6 @@ fun GroceryItemRowContainer(
     onUpdateStoreInfo: (GroceryItemStoreInfo) -> Unit,
     onMoveItem: (Int, Int) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     var showStoreTagging by remember { mutableStateOf(false) }
     var showEditQuantity by remember { mutableStateOf(false) }
     var showEditCategory by remember { mutableStateOf(false) }
@@ -425,7 +494,11 @@ fun GroceryItemRowContainer(
         stores = stores,
         isEditMode = isEditMode,
         onCheckedChange = { isChecked ->
-            onUpdateItem(item.copy(isBought = isChecked))
+            var updatedItem = item.copy(isBought = isChecked)
+            if (isChecked && currentPhase == GroceryPhase.SHOPPING) {
+                updatedItem = updatedItem.copy(timesBought = item.timesBought + 1)
+            }
+            onUpdateItem(updatedItem)
         },
         onDelete = onDeleteItem,
         onTagStores = { showStoreTagging = true },
@@ -466,7 +539,10 @@ fun GroceryItemRowContainer(
                 TextField(
                     value = editedQuantity,
                     onValueChange = { editedQuantity = it },
-                    label = { Text("Quantity") }
+                    label = { Text("Quantity") },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences
+                    )
                 )
             },
             confirmButton = {
@@ -608,7 +684,10 @@ fun GroceryItemRow(
                         onValueChange = { priceText = it },
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Enter price paid...") },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done
+                        ),
                         keyboardActions = KeyboardActions(onDone = {
                             priceText.toDoubleOrNull()?.let { onUpdatePrice(shoppingStoreId, it) }
                             showPriceInput = false
