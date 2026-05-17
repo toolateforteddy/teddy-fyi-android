@@ -1,7 +1,5 @@
 package fyi.teddy.android
 
-import android.content.Context
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -36,64 +34,23 @@ import coil.compose.AsyncImage
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import fyi.teddy.android.auth.GoogleSignInResult
+import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.grocery.ui.CategoryManagementScreen
 import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
+import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.todo.ui.TodoScreen
-import kotlinx.coroutines.Dispatchers
+import fyi.teddy.android.ui.theme.TeddyTheme
+import fyi.teddy.android.utils.EmulatorUtils
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-
-class UserSession {
-    var userName by mutableStateOf<String?>(null)
-    var idToken by mutableStateOf<String?>(null)
-    var profilePictureUri by mutableStateOf<String?>(null)
-
-    fun save(context: Context) {
-        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-        with(sharedPref.edit()) {
-            putString("user_name", userName)
-            putString("id_token", idToken)
-            putString("profile_pic", profilePictureUri)
-            apply()
-        }
-    }
-
-    fun load(context: Context) {
-        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-        userName = sharedPref.getString("user_name", null)
-        idToken = sharedPref.getString("id_token", null)
-        profilePictureUri = sharedPref.getString("profile_pic", null)
-    }
-
-    fun clear(context: Context) {
-        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-        sharedPref.edit().clear().apply()
-        userName = null
-        idToken = null
-        profilePictureUri = null
-    }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val DarkColorScheme = darkColorScheme(
-                primary = Color(0xFFD0BCFF),
-                secondary = Color(0xFFCCC2DC),
-                tertiary = Color(0xFFEFB8C8),
-                background = Color.Black,
-                surface = Color.Black,
-                onBackground = Color.White,
-                onSurface = Color.White,
-            )
-
-            MaterialTheme(colorScheme = DarkColorScheme) {
+            TeddyTheme {
                 val navController = rememberNavController()
                 val session = remember { UserSession() }
                 val context = LocalContext.current
@@ -109,12 +66,11 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(navController = navController, startDestination = "login") {
                     composable("login") {
-                        LoginScreen(onLoginSuccess = { name, token, pic ->
-                            session.userName = name
-                            session.idToken = token
-                            session.profilePictureUri = pic?.toString()
+                        LoginScreen(onLoginSuccess = { result ->
+                            session.userName = result.displayName
+                            session.idToken = result.idToken
+                            session.profilePictureUri = result.profilePictureUri?.toString()
                             session.save(context)
-                            Log.d("MainActivity", "Session updated: name=$name")
                             navController.navigate("hello") {
                                 popUpTo("login") { inclusive = true }
                             }
@@ -171,27 +127,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
+fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = CredentialManager.create(context)
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoggingIn by remember { mutableStateOf(false) }
 
-    val isEmulator = remember {
-        Build.FINGERPRINT.startsWith("google")
-                || Build.FINGERPRINT.startsWith("generic")
-                || Build.FINGERPRINT.startsWith("unknown")
-                || Build.FINGERPRINT.contains("sdk_gphone")
-                || Build.MODEL.contains("google_sdk")
-                || Build.MODEL.contains("Emulator")
-                || Build.MODEL.contains("Android SDK built for x86")
-                || Build.MANUFACTURER.contains("Genymotion")
-                || Build.HARDWARE.contains("goldfish")
-                || Build.HARDWARE.contains("ranchu")
-                || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
-                || "google_sdk" == Build.PRODUCT
-    }
+    val isEmulator = remember { EmulatorUtils.isEmulator() }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -227,16 +170,14 @@ fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
                                 request = request,
                                 context = context,
                             )
-                            val cred = handleSignIn(result)
-                            if (cred?.second != null) {
-                                onLoginSuccess(cred.first, cred.second!!, cred.third)
+                            val signInResult = handleSignIn(result)
+                            if (signInResult != null) {
+                                onLoginSuccess(signInResult)
                             } else {
                                 errorMessage = "Google Sign-In succeeded but no ID Token was returned."
-                                Log.e("MainActivity", "Login succeeded but token was null")
                             }
                         } catch (e: GetCredentialException) {
                             errorMessage = "Auth Error: ${e.message}"
-                            Log.e("MainActivity", "Login Error", e)
                         } finally {
                             isLoggingIn = false
                         }
@@ -248,7 +189,7 @@ fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
                 if (isEmulator) {
                     Spacer(modifier = Modifier.height(16.dp))
                     TextButton(onClick = {
-                        onLoginSuccess("Emulator Guest", "fake_emulator_token", null)
+                        onLoginSuccess(GoogleSignInResult("Emulator Guest", "fake_emulator_token", null))
                     }) {
                         Text("Skip Auth (Emulator only)", color = Color.Gray)
                     }
@@ -269,18 +210,26 @@ fun LoginScreen(onLoginSuccess: (String?, String, android.net.Uri?) -> Unit) {
     }
 }
 
-private fun handleSignIn(result: GetCredentialResponse): Triple<String?, String?, android.net.Uri?>? {
+private fun handleSignIn(result: GetCredentialResponse): GoogleSignInResult? {
     val credential = result.credential
     
     if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
         try {
             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-            return Triple(googleIdTokenCredential.displayName, googleIdTokenCredential.idToken, googleIdTokenCredential.profilePictureUri)
+            return GoogleSignInResult(
+                displayName = googleIdTokenCredential.displayName,
+                idToken = googleIdTokenCredential.idToken,
+                profilePictureUri = googleIdTokenCredential.profilePictureUri
+            )
         } catch (e: GoogleIdTokenParsingException) {
             Log.e("MainActivity", "Received an invalid google id token response", e)
         }
     } else if (credential is GoogleIdTokenCredential) {
-        return Triple(credential.displayName, credential.idToken, credential.profilePictureUri)
+        return GoogleSignInResult(
+            displayName = credential.displayName,
+            idToken = credential.idToken,
+            profilePictureUri = credential.profilePictureUri
+        )
     }
 
     return null
@@ -301,7 +250,7 @@ fun HelloTeddyApp(
     var isClusterHappy by remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(Unit) {
-        isClusterHappy = checkClusterHealth()
+        isClusterHappy = TeddyRepository.checkClusterHealth()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -391,28 +340,13 @@ fun HelloTeddyApp(
     }
 }
 
-private suspend fun checkClusterHealth(): Boolean {
-    return withContext(Dispatchers.IO) {
-        try {
-            val url = URL("https://teddy.fyi/")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.responseCode == 200
-        } catch (e: Exception) {
-            false
-        }
-    }
-}
-
 @Composable
 fun WeatherScreen(onBack: () -> Unit) {
     var temperature by remember { mutableStateOf<String?>("Loading...") }
 
     LaunchedEffect(Unit) {
         temperature = try {
-            fetchTemperature()
+            TeddyRepository.fetchTemperature()
         } catch (e: Exception) {
             "Error: ${e.localizedMessage}"
         }
@@ -455,7 +389,7 @@ fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
             return@LaunchedEffect
         }
         result = try {
-            callAuthedHello(idToken)
+            TeddyRepository.callAuthedHello(idToken)
         } catch (e: Exception) {
             "Error: ${e.localizedMessage}"
         }
@@ -488,37 +422,5 @@ fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
                 Text("Back")
             }
         }
-    }
-}
-
-private suspend fun fetchTemperature(): String {
-    return withContext(Dispatchers.IO) {
-        val url = "https://api.open-meteo.com/v1/forecast?latitude=42.4154&longitude=-71.1565&current_weather=true&temperature_unit=fahrenheit"
-        val response = URL(url).readText()
-        val json = JSONObject(response)
-        val currentWeather = json.getJSONObject("current_weather")
-        val temp = currentWeather.getDouble("temperature")
-        "$temp°F"
-    }
-}
-
-private suspend fun callAuthedHello(idToken: String): String {
-    return withContext(Dispatchers.IO) {
-        val url = URL("https://api-rust.teddy.fyi/authed/hello")
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Authorization", "Bearer $idToken")
-        
-        val statusCode = connection.responseCode
-        val headers = connection.headerFields.entries.joinToString("\n") { (key, values) ->
-            "${key ?: "Status"}: ${values.joinToString(", ")}"
-        }
-        val body = try {
-            connection.inputStream.bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            connection.errorStream?.bufferedReader()?.use { it.readText() } ?: e.localizedMessage
-        }
-        
-        "Status: $statusCode\n\nHeaders:\n$headers\n\nBody:\n$body"
     }
 }
