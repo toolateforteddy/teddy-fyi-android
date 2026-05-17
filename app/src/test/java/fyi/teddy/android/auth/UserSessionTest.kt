@@ -2,7 +2,7 @@ package fyi.teddy.android.auth
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import fyi.teddy.android.UserSession
+import fyi.teddy.android.auth.UserSession
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
