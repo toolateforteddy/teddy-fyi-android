@@ -21,21 +21,26 @@ Current Features List.
 - [x] **Item ordering**: In edit mode, items can be reordered using up/down arrows. There is also an overflow menu on each item with "Move to Top" and "Move to Bottom" options.
 - [x] **Today Planning**: Added "Planning Today" and "Today's Tasks" modes. Checking an item in Planning mode marks it for today. At midnight, any uncompleted today-plan items are automatically reset.
 - [x] **Mode Management**: Instead of the icon in the top to move through the three modes, add a mode switcher at the bottom so you can easily see which mode you are in, the selected state, and switch to either of the other two modes quickly.
+- [x] **Back Arrow Visual Noise**: Removed the back arrow from the navigation bar.
+- [x] **Recurring Tasks**: Some items, such as mowing the lawn, should be scheduled once a week. Create a way to create a recurrence schedule. The timer to decide when to schedule the task again should only start after the task is marked complete. For example, if mow the lawn shows up on my list on Monday, but I don't do it until Thursday, it should show back up on my list the following Thursday, not the following Monday.
+- [x] **Edit Mode UX**: When in task edit mode, the box to add a new task is hidden to focus on editing existing tasks.
+- [x] **Auth Integration**: Todo items are now linked to the authenticated user's ID. Existing unowned items are automatically assigned to the user upon login.
+- [x] **Edit Task Name**: In the overflow menu in edit mode, add an option to edit the title of the task.
 
 ## Requested Features
-- [] **Back Arrow Visual Noise**: Removed the back arrow from the navigation bar.
 
 ## Planned Features
-- [ ] **Auth Integration**: Link todo items to the authenticated user's ID.
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
 - [ ] **Offline Support**: Gracefully handle data sync when connectivity returns.
 - [ ] **Categories/Tags**: Organize tasks by type.
 - [ ] **Due Dates**: Set reminders and deadlines.
 - [ ] **Nested Tasks**: I should be able to create subtasks in side a single task. When viewing the task list, I should be able to toggle between showing nested tasks and not, by tapping on an arrow expand icon. When collapsed, the task should display X/Y, X being the number of completed subtasks, and Y being the total number of subtasks.
 - [ ] **Daily Tasks**: I want to be able to mark some tasks as recurring daily. It doesn't matter that I completed the task the previous day, it should still be on my todo list for today, auto added at 8am local time. For example, I should empty the dishwasher every day.
-- [ ] **Non-Daily Recurring Tasks**: Some items, such as mowing the lawn, should be scheduled once a week. Create a way to create a recurrence schedule. The timer to decide when to schedule the task again should only start after the task is marked complete. For example, if mow the lawn shows up on my list on Monday, but I don't do it until Thursday, it should show back up on my list the following Thursday, not the following Monday.
+
 
 ## Bugs
 - [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
 - [x] **Empty Title on Real Mode**: Fixed a race condition where the task title was being reset to empty before the async database save operation could read it.
 - [x] **Move to Top/Bottom**: The topmost item shouldn't have the option to move to top. The bottommost item shouldn't have the option to move to bottom.
+- [x] **Reorder items once only**: Fixed logic that failed when two items had the same position (common after migration).
+- [x] **New Items Hidden**: Fixed a race condition in the DAO query where items added after the initial screen load were filtered out until a manual refresh.

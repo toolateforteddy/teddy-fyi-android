@@ -10,5 +10,8 @@ data class TodoItem(
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val position: Int = 0,
-    val isPlannedForToday: Boolean = false
+    val isPlannedForToday: Boolean = false,
+    val recurrenceIntervalDays: Int? = null,
+    val scheduledAt: Long = System.currentTimeMillis(),
+    val userId: String? = null
 )

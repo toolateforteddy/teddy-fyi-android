@@ -15,7 +15,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.todo.data.TodoItem
 import kotlinx.coroutines.delay
@@ -33,7 +35,7 @@ enum class TodoMode {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoScreen(onBack: () -> Unit) {
+fun TodoScreen(userId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
@@ -41,8 +43,8 @@ fun TodoScreen(onBack: () -> Unit) {
     
     var currentMode by remember { mutableStateOf(TodoMode.NORMAL) }
     
-    val realItems by dao.getAllItems().collectAsState(initial = emptyList())
-    val todayItems by dao.getTodayItems().collectAsState(initial = emptyList())
+    val realItems by dao.getAllItems(userId).collectAsState(initial = emptyList())
+    val todayItems by dao.getTodayItems(userId).collectAsState(initial = emptyList())
     
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
@@ -56,8 +58,10 @@ fun TodoScreen(onBack: () -> Unit) {
     
     val baseItems = if (currentMode == TodoMode.TODAY) todayItems else realItems
     
-    // Check for midnight reset on load
-    LaunchedEffect(Unit) {
+    // Check for midnight reset on load and claim unowned items
+    LaunchedEffect(userId) {
+        dao.claimUnownedItems(userId)
+        
         val sharedPref = context.getSharedPreferences("todo_prefs", android.content.Context.MODE_PRIVATE)
         val lastReset = sharedPref.getLong("last_reset_day", 0)
         val currentDay = Calendar.getInstance().apply {
@@ -68,7 +72,7 @@ fun TodoScreen(onBack: () -> Unit) {
         }.timeInMillis
         
         if (currentDay > lastReset) {
-            dao.resetPlannedItems()
+            dao.resetPlannedItems(userId)
             sharedPref.edit().putLong("last_reset_day", currentDay).apply()
         }
     }
@@ -87,8 +91,11 @@ fun TodoScreen(onBack: () -> Unit) {
         if (newItemTitle.isNotBlank()) {
             val titleToSave = newItemTitle
             scope.launch {
+                // To avoid the "hidden new item" bug even further, 
+                // ensure the new item has a smaller position than the smallest if we want it at top,
+                // or just follow the DAO query fix.
                 val maxPos = realItems.maxByOrNull { it.position }?.position ?: -1
-                dao.insertItem(TodoItem(title = titleToSave, position = maxPos + 1))
+                dao.insertItem(TodoItem(title = titleToSave, position = maxPos + 1, userId = userId))
             }
             newItemTitle = ""
         }
@@ -103,7 +110,7 @@ fun TodoScreen(onBack: () -> Unit) {
                 TextButton(
                     onClick = {
                         scope.launch {
-                            dao.deleteAll()
+                            dao.deleteAll(userId)
                             showClearAllConfirmation = false
                         }
                     }
@@ -132,11 +139,6 @@ fun TodoScreen(onBack: () -> Unit) {
                                 else -> "Todo List"
                             }
                         ) 
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                        }
                     },
                     actions = {
                         // Show Completed Toggle
@@ -202,7 +204,7 @@ fun TodoScreen(onBack: () -> Unit) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp)
                 ) {
-                    if (!showCompletedOnly && currentMode != TodoMode.TODAY) {
+                    if (!showCompletedOnly && currentMode != TodoMode.TODAY && !isEditMode) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -264,6 +266,17 @@ fun TodoScreen(onBack: () -> Unit) {
                                         scope.launch {
                                             delay(2000)
                                             recentlyCompletedIds.remove(item.id)
+                                            
+                                            // Handle recurrence
+                                            if (item.recurrenceIntervalDays != null) {
+                                                val nextTime = System.currentTimeMillis() + item.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
+                                                dao.updateItem(item.copy(
+                                                    isCompleted = false, 
+                                                    scheduledAt = nextTime,
+                                                    isPlannedForToday = false
+                                                ))
+                                            }
+                                            
                                             delay(1000) 
                                             parties.remove(party)
                                         }
@@ -275,6 +288,9 @@ fun TodoScreen(onBack: () -> Unit) {
                                 },
                                 onDelete = {
                                     scope.launch { dao.deleteItem(item) }
+                                },
+                                onUpdateItem = { updatedItem ->
+                                    scope.launch { dao.updateItem(updatedItem) }
                                 },
                                 onMoveToTop = {
                                     scope.launch {
@@ -292,8 +308,14 @@ fun TodoScreen(onBack: () -> Unit) {
                                     if (index > 0) {
                                         val prevItem = displayedItems[index - 1]
                                         scope.launch {
-                                            dao.updateItem(item.copy(position = prevItem.position))
-                                            dao.updateItem(prevItem.copy(position = item.position))
+                                            if (item.position == prevItem.position) {
+                                                // Force distinct positions if they are equal (migration artifact)
+                                                dao.updateItem(item.copy(position = prevItem.position - 1))
+                                            } else {
+                                                val oldPos = item.position
+                                                dao.updateItem(item.copy(position = prevItem.position))
+                                                dao.updateItem(prevItem.copy(position = oldPos))
+                                            }
                                         }
                                     }
                                 },
@@ -301,8 +323,14 @@ fun TodoScreen(onBack: () -> Unit) {
                                     if (index < displayedItems.size - 1) {
                                         val nextItem = displayedItems[index + 1]
                                         scope.launch {
-                                            dao.updateItem(item.copy(position = nextItem.position))
-                                            dao.updateItem(nextItem.copy(position = item.position))
+                                            if (item.position == nextItem.position) {
+                                                // Force distinct positions
+                                                dao.updateItem(item.copy(position = nextItem.position + 1))
+                                            } else {
+                                                val oldPos = item.position
+                                                dao.updateItem(item.copy(position = nextItem.position))
+                                                dao.updateItem(nextItem.copy(position = oldPos))
+                                            }
                                         }
                                     }
                                 }
@@ -332,12 +360,15 @@ fun TodoItemRow(
     totalItems: Int,
     onCheckedChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onUpdateItem: (TodoItem) -> Unit,
     onMoveToTop: () -> Unit,
     onMoveToBottom: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showRecurrenceDialog by remember { mutableStateOf(false) }
+    var showEditTitleDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -351,14 +382,22 @@ fun TodoItemRow(
                 checkedColor = if (isPlanningMode) Color.Cyan else MaterialTheme.colorScheme.primary
             )
         )
-        Text(
-            text = item.title,
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
-            color = if (!isPlanningMode && item.isCompleted) Color.Gray else Color.White,
-            style = if (!isPlanningMode && item.isCompleted) MaterialTheme.typography.bodyLarge.copy(
-                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-            ) else MaterialTheme.typography.bodyLarge
-        )
+        Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+            Text(
+                text = item.title,
+                color = if (!isPlanningMode && item.isCompleted) Color.Gray else Color.White,
+                style = if (!isPlanningMode && item.isCompleted) MaterialTheme.typography.bodyLarge.copy(
+                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                ) else MaterialTheme.typography.bodyLarge
+            )
+            if (item.recurrenceIntervalDays != null) {
+                Text(
+                    text = "Every ${item.recurrenceIntervalDays} days",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
         
         if (showDelete) {
             IconButton(onClick = onMoveUp, enabled = index > 0) {
@@ -384,6 +423,21 @@ fun TodoItemRow(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit Title") },
+                        onClick = {
+                            showEditTitleDialog = true
+                            showMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Recurrence") },
+                        onClick = {
+                            showRecurrenceDialog = true
+                            showMenu = false
+                        }
+                    )
+                    Divider()
                     if (index > 0) {
                         DropdownMenuItem(
                             text = { Text("Move to Top") },
@@ -402,9 +456,7 @@ fun TodoItemRow(
                             }
                         )
                     }
-                    if (index > 0 || index < totalItems - 1) {
-                        Divider()
-                    }
+                    Divider()
                     DropdownMenuItem(
                         text = { Text("Delete", color = Color.Red) },
                         onClick = {
@@ -415,5 +467,75 @@ fun TodoItemRow(
                 }
             }
         }
+    }
+
+    if (showRecurrenceDialog) {
+        var daysText by remember { mutableStateOf(item.recurrenceIntervalDays?.toString() ?: "") }
+        AlertDialog(
+            onDismissRequest = { showRecurrenceDialog = false },
+            title = { Text("Set Recurrence") },
+            text = {
+                Column {
+                    Text("Re-schedule this task X days after completion.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextField(
+                        value = daysText,
+                        onValueChange = { daysText = it },
+                        label = { Text("Days") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val days = daysText.toIntOrNull()
+                    onUpdateItem(item.copy(recurrenceIntervalDays = days))
+                    showRecurrenceDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    onUpdateItem(item.copy(recurrenceIntervalDays = null))
+                    showRecurrenceDialog = false
+                }) {
+                    Text("Clear")
+                }
+            }
+        )
+    }
+
+    if (showEditTitleDialog) {
+        var editedTitle by remember { mutableStateOf(item.title) }
+        AlertDialog(
+            onDismissRequest = { showEditTitleDialog = false },
+            title = { Text("Edit Task Title") },
+            text = {
+                TextField(
+                    value = editedTitle,
+                    onValueChange = { editedTitle = it },
+                    label = { Text("Title") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (editedTitle.isNotBlank()) {
+                        onUpdateItem(item.copy(title = editedTitle))
+                        showEditTitleDialog = false
+                    }
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditTitleDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

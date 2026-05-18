@@ -15,6 +15,22 @@ object AuthUtils {
         return md.digest(input.lowercase().trim().toByteArray()).joinToString("") { "%02x".format(it) }
     }
 
+    fun extractUserIdFromToken(idToken: String): String? {
+        try {
+            val parts = idToken.split(".")
+            if (parts.size < 2) return null
+            val payloadRaw = parts[1]
+            val decodedBytes = Base64.decode(payloadRaw, Base64.URL_SAFE)
+            val payload = String(decodedBytes, Charset.forName("UTF-8"))
+            val json = JSONObject(payload)
+            val sub = json.optString("sub", "")
+            return if (sub.isNotEmpty()) sub else null
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract sub from token", e)
+        }
+        return null
+    }
+
     fun extractPictureFromToken(idToken: String): Uri? {
         try {
             val parts = idToken.split(".")
