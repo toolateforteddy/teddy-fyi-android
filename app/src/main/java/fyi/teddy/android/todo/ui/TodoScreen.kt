@@ -1,7 +1,9 @@
 package fyi.teddy.android.todo.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,20 +45,21 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     
     var currentMode by remember { mutableStateOf(TodoMode.NORMAL) }
     
-    val realItems by dao.getAllItems(userId).collectAsState(initial = emptyList())
-    val todayItems by dao.getTodayItems(userId).collectAsState(initial = emptyList())
+    // We fetch ALL items for the user to handle nesting logic in memory
+    val allItems by dao.getAllItems(userId).collectAsState(initial = emptyList())
     
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
     var showClearAllConfirmation by remember { mutableStateOf(false) }
+
+    // Expansion state
+    val expandedParentIds = remember { mutableStateOf(setOf<Int>()) }
 
     // Confetti state
     val parties = remember { mutableStateListOf<Party>() }
 
     // Track recently completed items to hide them after 2 seconds
     val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
-    
-    val baseItems = if (currentMode == TodoMode.TODAY) todayItems else realItems
     
     // Check for midnight reset on load and claim unowned items
     LaunchedEffect(userId) {
@@ -77,27 +80,60 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         }
     }
     
-    val displayedItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
-        if (showCompletedOnly) {
-            baseItems.filter { it.isCompleted }
-        } else {
-            baseItems.filter { !it.isCompleted || recentlyCompletedIds.contains(it.id) }
+    val filteredItems = remember(allItems, showCompletedOnly, recentlyCompletedIds.toList(), currentMode) {
+        val base = allItems.filter { item ->
+            if (showCompletedOnly) item.isCompleted
+            else !item.isCompleted || recentlyCompletedIds.contains(item.id)
         }
+
+        if (currentMode == TodoMode.TODAY) {
+            // Today logic:
+            // 1. Include items marked for today.
+            // 2. If parent marked for today, include all its children.
+            // 3. If child marked for today, include its parent.
+            val planned = base.filter { it.isPlannedForToday }
+            val plannedIds = planned.map { it.id }.toSet()
+            
+            val result = mutableSetOf<TodoItem>()
+            base.forEach { item ->
+                if (item.isPlannedForToday) {
+                    result.add(item)
+                } else if (item.parentId != null && plannedIds.contains(item.parentId)) {
+                    // Child of planned parent
+                    result.add(item)
+                } else if (item.parentId == null) {
+                    // Parent - check if any child is planned
+                    val anyChildPlanned = base.any { it.parentId == item.id && it.isPlannedForToday }
+                    if (anyChildPlanned) {
+                        result.add(item)
+                    }
+                }
+            }
+            result.toList()
+        } else {
+            base
+        }
+    }
+
+    val groupedItems = remember(filteredItems) {
+        val parents = filteredItems.filter { it.parentId == null }
+        val children = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
+        parents.map { it to (children[it.id] ?: emptyList()) }
     }
     
     var newItemTitle by remember { mutableStateOf("") }
 
-    val onAddNewItem = {
-        if (newItemTitle.isNotBlank()) {
-            val titleToSave = newItemTitle
+    val onAddNewItem = { title: String, parentId: Int? ->
+        if (title.isNotBlank()) {
             scope.launch {
-                // To avoid the "hidden new item" bug even further, 
-                // ensure the new item has a smaller position than the smallest if we want it at top,
-                // or just follow the DAO query fix.
-                val maxPos = realItems.maxByOrNull { it.position }?.position ?: -1
-                dao.insertItem(TodoItem(title = titleToSave, position = maxPos + 1, userId = userId))
+                val maxPos = allItems.filter { it.parentId == parentId }.maxByOrNull { it.position }?.position ?: -1
+                dao.insertItem(TodoItem(
+                    title = title, 
+                    position = maxPos + 1, 
+                    userId = userId,
+                    parentId = parentId
+                ))
             }
-            newItemTitle = ""
         }
     }
 
@@ -105,7 +141,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showClearAllConfirmation = false },
             title = { Text("Clear All Tasks?") },
-            text = { Text("This will permanently delete all tasks in the database. This action cannot be undone.") },
+            text = { Text("This will permanently delete all tasks in the database for your account. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -226,10 +262,16 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     imeAction = ImeAction.Done
                                 ),
                                 keyboardActions = KeyboardActions(
-                                    onDone = { onAddNewItem() }
+                                    onDone = { 
+                                        onAddNewItem(newItemTitle, null)
+                                        newItemTitle = ""
+                                    }
                                 )
                             )
-                            IconButton(onClick = { onAddNewItem() }) {
+                            IconButton(onClick = { 
+                                onAddNewItem(newItemTitle, null)
+                                newItemTitle = ""
+                            }) {
                                 Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
                             }
                         }
@@ -237,104 +279,168 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                     }
                     
                     LazyColumn(modifier = Modifier.weight(1f)) {
-                        itemsIndexed(displayedItems, key = { _, it -> it.id }) { index, item ->
-                            TodoItemRow(
-                                item = item,
-                                showDelete = isEditMode,
-                                isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
-                                index = index,
-                                totalItems = displayedItems.size,
-                                onCheckedChange = { isChecked ->
-                                    if (currentMode == TodoMode.TODAY_PLANNING) {
-                                        scope.launch { dao.updateItem(item.copy(isPlannedForToday = isChecked)) }
-                                        return@TodoItemRow
-                                    }
+                        groupedItems.forEachIndexed { parentIndex, (parent, children) ->
+                            item(key = parent.id) {
+                                val isExpanded = expandedParentIds.value.contains(parent.id)
+                                TodoItemRow(
+                                    item = parent,
+                                    subtaskCount = children.size,
+                                    completedSubtaskCount = children.count { it.isCompleted },
+                                    isExpanded = isExpanded,
+                                    onToggleExpand = {
+                                        expandedParentIds.value = if (isExpanded) {
+                                            expandedParentIds.value - parent.id
+                                        } else {
+                                            expandedParentIds.value + parent.id
+                                        }
+                                    },
+                                    showDelete = isEditMode,
+                                    isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
+                                    index = parentIndex,
+                                    totalItems = groupedItems.size,
+                                    onCheckedChange = { isChecked ->
+                                        if (currentMode == TodoMode.TODAY_PLANNING) {
+                                            scope.launch { 
+                                                dao.updateItem(parent.copy(isPlannedForToday = isChecked))
+                                                // If parent is added to today, all subtasks should be too
+                                                if (isChecked) {
+                                                    children.forEach { 
+                                                        dao.updateItem(it.copy(isPlannedForToday = true))
+                                                    }
+                                                }
+                                            }
+                                            return@TodoItemRow
+                                        }
 
-                                    if (isChecked && !showCompletedOnly) {
-                                        recentlyCompletedIds.add(item.id)
-                                        val party = Party(
-                                            speed = 0f,
-                                            maxSpeed = 30f,
-                                            damping = 0.9f,
-                                            spread = 360,
-                                            colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
-                                            emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
-                                            position = Position.Relative(0.5, 0.3)
-                                        )
-                                        parties.add(party)
-                                        
-                                        scope.launch {
-                                            delay(2000)
-                                            recentlyCompletedIds.remove(item.id)
+                                        if (isChecked && !showCompletedOnly) {
+                                            recentlyCompletedIds.add(parent.id)
+                                            val party = Party(
+                                                speed = 0f,
+                                                maxSpeed = 30f,
+                                                damping = 0.9f,
+                                                spread = 360,
+                                                colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+                                                emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                                                position = Position.Relative(0.5, 0.3)
+                                            )
+                                            parties.add(party)
                                             
-                                            // Handle recurrence
-                                            if (item.recurrenceIntervalDays != null) {
-                                                val nextTime = System.currentTimeMillis() + item.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
-                                                dao.updateItem(item.copy(
-                                                    isCompleted = false, 
-                                                    scheduledAt = nextTime,
-                                                    isPlannedForToday = false
-                                                ))
+                                            scope.launch {
+                                                delay(2000)
+                                                recentlyCompletedIds.remove(parent.id)
+                                                if (parent.recurrenceIntervalDays != null) {
+                                                    val nextTime = System.currentTimeMillis() + parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
+                                                    dao.updateItem(parent.copy(isCompleted = false, scheduledAt = nextTime, isPlannedForToday = false))
+                                                }
+                                                delay(1000) 
+                                                parties.remove(party)
                                             }
-                                            
-                                            delay(1000) 
-                                            parties.remove(party)
+                                        } else if (!isChecked) {
+                                            recentlyCompletedIds.remove(parent.id)
                                         }
-                                    } else if (!isChecked) {
-                                        recentlyCompletedIds.remove(item.id)
-                                    }
-
-                                    scope.launch { dao.updateItem(item.copy(isCompleted = isChecked)) }
-                                },
-                                onDelete = {
-                                    scope.launch { dao.deleteItem(item) }
-                                },
-                                onUpdateItem = { updatedItem ->
-                                    scope.launch { dao.updateItem(updatedItem) }
-                                },
-                                onMoveToTop = {
-                                    scope.launch {
-                                        val minPos = realItems.minByOrNull { it.position }?.position ?: 0
-                                        dao.updateItem(item.copy(position = minPos - 1))
-                                    }
-                                },
-                                onMoveToBottom = {
-                                    scope.launch {
-                                        val maxPos = realItems.maxByOrNull { it.position }?.position ?: 0
-                                        dao.updateItem(item.copy(position = maxPos + 1))
-                                    }
-                                },
-                                onMoveUp = {
-                                    if (index > 0) {
-                                        val prevItem = displayedItems[index - 1]
+                                        scope.launch { dao.updateItem(parent.copy(isCompleted = isChecked)) }
+                                    },
+                                    onDelete = { scope.launch { dao.deleteItem(parent) } },
+                                    onUpdateItem = { scope.launch { dao.updateItem(it) } },
+                                    onAddSubtask = { title -> onAddNewItem(title, parent.id) },
+                                    onMoveToTop = {
                                         scope.launch {
-                                            if (item.position == prevItem.position) {
-                                                // Force distinct positions if they are equal (migration artifact)
-                                                dao.updateItem(item.copy(position = prevItem.position - 1))
-                                            } else {
-                                                val oldPos = item.position
-                                                dao.updateItem(item.copy(position = prevItem.position))
-                                                dao.updateItem(prevItem.copy(position = oldPos))
-                                            }
+                                            val minPos = allItems.filter { it.parentId == null }.minByOrNull { it.position }?.position ?: 0
+                                            dao.updateItem(parent.copy(position = minPos - 1))
                                         }
-                                    }
-                                },
-                                onMoveDown = {
-                                    if (index < displayedItems.size - 1) {
-                                        val nextItem = displayedItems[index + 1]
+                                    },
+                                    onMoveToBottom = {
                                         scope.launch {
-                                            if (item.position == nextItem.position) {
-                                                // Force distinct positions
-                                                dao.updateItem(item.copy(position = nextItem.position + 1))
-                                            } else {
-                                                val oldPos = item.position
-                                                dao.updateItem(item.copy(position = nextItem.position))
-                                                dao.updateItem(nextItem.copy(position = oldPos))
+                                            val maxPos = allItems.filter { it.parentId == null }.maxByOrNull { it.position }?.position ?: 0
+                                            dao.updateItem(parent.copy(position = maxPos + 1))
+                                        }
+                                    },
+                                    onMoveUp = {
+                                        if (parentIndex > 0) {
+                                            val prevParent = groupedItems[parentIndex - 1].first
+                                            scope.launch {
+                                                val oldPos = parent.position
+                                                dao.updateItem(parent.copy(position = prevParent.position))
+                                                dao.updateItem(prevParent.copy(position = oldPos))
+                                            }
+                                        }
+                                    },
+                                    onMoveDown = {
+                                        if (parentIndex < groupedItems.size - 1) {
+                                            val nextParent = groupedItems[parentIndex + 1].first
+                                            scope.launch {
+                                                val oldPos = parent.position
+                                                dao.updateItem(parent.copy(position = nextParent.position))
+                                                dao.updateItem(nextParent.copy(position = oldPos))
                                             }
                                         }
                                     }
+                                )
+                            }
+                            
+                            if (expandedParentIds.value.contains(parent.id) || currentMode == TodoMode.TODAY) {
+                                items(children, key = { it.id }) { child ->
+                                    val childIndex = children.indexOf(child)
+                                    TodoItemRow(
+                                        item = child,
+                                        isSubtask = true,
+                                        showDelete = isEditMode,
+                                        isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
+                                        index = childIndex,
+                                        totalItems = children.size,
+                                        onCheckedChange = { isChecked ->
+                                            if (currentMode == TodoMode.TODAY_PLANNING) {
+                                                scope.launch { dao.updateItem(child.copy(isPlannedForToday = isChecked)) }
+                                                return@TodoItemRow
+                                            }
+                                            if (isChecked && !showCompletedOnly) {
+                                                recentlyCompletedIds.add(child.id)
+                                                scope.launch {
+                                                    delay(2000)
+                                                    recentlyCompletedIds.remove(child.id)
+                                                }
+                                            } else if (!isChecked) {
+                                                recentlyCompletedIds.remove(child.id)
+                                            }
+                                            scope.launch { dao.updateItem(child.copy(isCompleted = isChecked)) }
+                                        },
+                                        onDelete = { scope.launch { dao.deleteItem(child) } },
+                                        onUpdateItem = { scope.launch { dao.updateItem(it) } },
+                                        onMoveToTop = {
+                                            scope.launch {
+                                                val minPos = children.minByOrNull { it.position }?.position ?: 0
+                                                dao.updateItem(child.copy(position = minPos - 1))
+                                            }
+                                        },
+                                        onMoveToBottom = {
+                                            scope.launch {
+                                                val maxPos = children.maxByOrNull { it.position }?.position ?: 0
+                                                dao.updateItem(child.copy(position = maxPos + 1))
+                                            }
+                                        },
+                                        onMoveUp = {
+                                            if (childIndex > 0) {
+                                                val prevChild = children[childIndex - 1]
+                                                scope.launch {
+                                                    val oldPos = child.position
+                                                    dao.updateItem(child.copy(position = prevChild.position))
+                                                    dao.updateItem(prevChild.copy(position = oldPos))
+                                                }
+                                            }
+                                        },
+                                        onMoveDown = {
+                                            if (childIndex < children.size - 1) {
+                                                val nextChild = children[childIndex + 1]
+                                                scope.launch {
+                                                    val oldPos = child.position
+                                                    dao.updateItem(child.copy(position = nextChild.position))
+                                                    dao.updateItem(nextChild.copy(position = oldPos))
+                                                }
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -354,6 +460,11 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
 @Composable
 fun TodoItemRow(
     item: TodoItem,
+    isSubtask: Boolean = false,
+    subtaskCount: Int = 0,
+    completedSubtaskCount: Int = 0,
+    isExpanded: Boolean = false,
+    onToggleExpand: () -> Unit = {},
     showDelete: Boolean,
     isPlanningMode: Boolean,
     index: Int,
@@ -361,6 +472,7 @@ fun TodoItemRow(
     onCheckedChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onUpdateItem: (TodoItem) -> Unit,
+    onAddSubtask: (String) -> Unit = {},
     onMoveToTop: () -> Unit,
     onMoveToBottom: () -> Unit,
     onMoveUp: () -> Unit,
@@ -369,11 +481,27 @@ fun TodoItemRow(
     var showMenu by remember { mutableStateOf(false) }
     var showRecurrenceDialog by remember { mutableStateOf(false) }
     var showEditTitleDialog by remember { mutableStateOf(false) }
+    var showAddSubtaskDialog by remember { mutableStateOf(false) }
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .padding(start = if (isSubtask) 32.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (!isSubtask && subtaskCount > 0) {
+            IconButton(onClick = onToggleExpand) {
+                Icon(
+                    if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = Color.Gray
+                )
+            }
+        } else if (!isSubtask) {
+            Spacer(modifier = Modifier.width(48.dp))
+        }
+
         Checkbox(
             checked = if (isPlanningMode) item.isPlannedForToday else item.isCompleted,
             onCheckedChange = onCheckedChange,
@@ -383,13 +511,23 @@ fun TodoItemRow(
             )
         )
         Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-            Text(
-                text = item.title,
-                color = if (!isPlanningMode && item.isCompleted) Color.Gray else Color.White,
-                style = if (!isPlanningMode && item.isCompleted) MaterialTheme.typography.bodyLarge.copy(
-                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                ) else MaterialTheme.typography.bodyLarge
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.title,
+                    color = if (!isPlanningMode && item.isCompleted) Color.Gray else Color.White,
+                    style = if (!isPlanningMode && item.isCompleted) MaterialTheme.typography.bodyLarge.copy(
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                    ) else MaterialTheme.typography.bodyLarge
+                )
+                if (!isSubtask && subtaskCount > 0 && !isExpanded) {
+                    Text(
+                        text = " ($completedSubtaskCount/$subtaskCount)",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
             if (item.recurrenceIntervalDays != null) {
                 Text(
                     text = "Every ${item.recurrenceIntervalDays} days",
@@ -423,6 +561,15 @@ fun TodoItemRow(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    if (!isSubtask) {
+                        DropdownMenuItem(
+                            text = { Text("Add Subtask") },
+                            onClick = {
+                                showAddSubtaskDialog = true
+                                showMenu = false
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Edit Title") },
                         onClick = {
@@ -533,6 +680,38 @@ fun TodoItemRow(
             },
             dismissButton = {
                 TextButton(onClick = { showEditTitleDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showAddSubtaskDialog) {
+        var subtaskTitle by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddSubtaskDialog = false },
+            title = { Text("Add Subtask") },
+            text = {
+                TextField(
+                    value = subtaskTitle,
+                    onValueChange = { subtaskTitle = it },
+                    label = { Text("Subtask Title") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (subtaskTitle.isNotBlank()) {
+                        onAddSubtask(subtaskTitle)
+                        showAddSubtaskDialog = false
+                    }
+                }) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddSubtaskDialog = false }) {
                     Text("Cancel")
                 }
             }

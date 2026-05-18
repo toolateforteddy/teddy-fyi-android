@@ -13,5 +13,6 @@ data class TodoItem(
     val isPlannedForToday: Boolean = false,
     val recurrenceIntervalDays: Int? = null,
     val scheduledAt: Long = System.currentTimeMillis(),
-    val userId: String? = null
+    val userId: String? = null,
+    val parentId: Int? = null
 )

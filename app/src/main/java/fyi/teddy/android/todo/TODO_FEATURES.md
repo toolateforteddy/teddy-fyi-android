@@ -26,6 +26,7 @@ Current Features List.
 - [x] **Edit Mode UX**: When in task edit mode, the box to add a new task is hidden to focus on editing existing tasks.
 - [x] **Auth Integration**: Todo items are now linked to the authenticated user's ID. Existing unowned items are automatically assigned to the user upon login.
 - [x] **Edit Task Name**: In the overflow menu in edit mode, add an option to edit the title of the task.
+- [x] **Nested Tasks**: I should be able to create subtasks inside a single task. When viewing the task list, I should be able to toggle between showing nested tasks and not, by tapping on an arrow expand icon. When collapsed, the task should display X/Y, X being the number of completed subtasks, and Y being the total number of subtasks. If a subtask is added to the today list, then when viewing the today list, the main task should be shown, but only the one selected nested task underneath it. If a task with subtasks is added to the today list, then all subtasks should be added to the today list.
 
 ## Requested Features
 
@@ -34,7 +35,6 @@ Current Features List.
 - [ ] **Offline Support**: Gracefully handle data sync when connectivity returns.
 - [ ] **Categories/Tags**: Organize tasks by type.
 - [ ] **Due Dates**: Set reminders and deadlines.
-- [ ] **Nested Tasks**: I should be able to create subtasks in side a single task. When viewing the task list, I should be able to toggle between showing nested tasks and not, by tapping on an arrow expand icon. When collapsed, the task should display X/Y, X being the number of completed subtasks, and Y being the total number of subtasks.
 - [ ] **Daily Tasks**: I want to be able to mark some tasks as recurring daily. It doesn't matter that I completed the task the previous day, it should still be on my todo list for today, auto added at 8am local time. For example, I should empty the dishwasher every day.
 
 
