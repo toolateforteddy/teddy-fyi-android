@@ -269,7 +269,10 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                 )
                             )
                             IconButton(onClick = { onAddNewItem() }) {
-                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.add), tint = Color.White,
+                                )
                             }
                         }
                         
