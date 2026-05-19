@@ -45,7 +45,10 @@ class MainActivity : ComponentActivity() {
                         }
                         session.save(context)
                     }
-                    Log.d("MainActivity", "Session loaded: name=${session.userName}, tokenPrefix=${session.idToken?.take(10)}, picUri=${session.profilePictureUri}")
+                    Log.d(
+                        "MainActivity", 
+                        "Session loaded: name=${session.userName}, tokenPrefix=${session.idToken?.take(10)}, picUri=${session.profilePictureUri}"
+                    )
                     if (session.idToken != null) {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }

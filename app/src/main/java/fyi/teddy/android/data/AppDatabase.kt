@@ -14,6 +14,7 @@ import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
 
+@Suppress("MagicNumber")
 @Database(entities = [TodoItem::class, GroceryItem::class, Store::class, GroceryItemStoreInfo::class, Category::class], version = 13, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao

@@ -1,0 +1,203 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:GroceryItemRow.kt$@Composable fun GroceryItemRow( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, isEditMode: Boolean, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onTagStores: () -&gt; Unit, onEditQuantity: () -&gt; Unit, onEditCategory: () -&gt; Unit, onUpdatePrice: (Int, Double) -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:GroceryScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun GroceryScreen(userId: String, onBack: () -&gt; Unit, onManageConfig: () -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:TodoScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TodoItemRow( item: TodoItem, isSubtask: Boolean = false, subtaskCount: Int = 0, completedSubtaskCount: Int = 0, isExpanded: Boolean = false, onToggleExpand: () -&gt; Unit = {}, showDelete: Boolean, isPlanningMode: Boolean, index: Int, totalItems: Int, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onUpdateItem: (TodoItem) -&gt; Unit, onAddSubtask: (String) -&gt; Unit = {}, onMoveToTop: () -&gt; Unit, onMoveToBottom: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:TodoScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TodoScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>EmptyCatchBlock:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;${}</ID>
+    <ID>ExplicitItLambdaParameter:TodoScreen.kt${ _, it -&gt; it.id }</ID>
+    <ID>FunctionNaming:AuthedHelloScreen.kt$@Composable fun AuthedHelloScreen(idToken: String?, onBack: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:CategoryManagementScreen.kt$@Composable fun CategoryItemRow( category: Category, onDelete: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit, isFirst: Boolean, isLast: Boolean )</ID>
+    <ID>FunctionNaming:CategoryManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CategoryManagementScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:ConfirmationDialog.kt$@Composable fun ConfirmationDialog( title: String, text: String, onDismiss: () -&gt; Unit, onConfirm: () -&gt; Unit, confirmButtonText: String = stringResource(R.string.confirm_clear), dismissButtonText: String = stringResource(R.string.abort) )</ID>
+    <ID>FunctionNaming:GroceryConfigScreen.kt$@Composable fun ConfigItem( title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:GroceryConfigScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun GroceryConfigScreen( onBack: () -&gt; Unit, onManageStores: () -&gt; Unit, onManageCategories: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:GroceryItemRow.kt$@Composable fun GroceryItemRow( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, isEditMode: Boolean, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onTagStores: () -&gt; Unit, onEditQuantity: () -&gt; Unit, onEditCategory: () -&gt; Unit, onUpdatePrice: (Int, Double) -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:GroceryItemRow.kt$@Composable fun GroceryItemRowContainer( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, categories: List&lt;Category&gt;, isEditMode: Boolean, index: Int, totalItems: Int, onUpdateItem: (GroceryItem) -&gt; Unit, onDeleteItem: () -&gt; Unit, onUpdateStoreInfo: (GroceryItemStoreInfo) -&gt; Unit, onMoveItem: (Int, Int) -&gt; Unit )</ID>
+    <ID>FunctionNaming:GroceryItemRow.kt$@Composable fun StoreTaggingDialog( stores: List&lt;Store&gt;, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, onDismiss: () -&gt; Unit, onToggleAvailability: (Int, Boolean) -&gt; Unit )</ID>
+    <ID>FunctionNaming:GroceryScreen.kt$@Composable fun CategoryHeader(name: String)</ID>
+    <ID>FunctionNaming:GroceryScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun GroceryScreen(userId: String, onBack: () -&gt; Unit, onManageConfig: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:HomeScreen.kt$@Composable fun HomeScreen( userName: String?, profilePic: String?, onNavigateToWeather: () -&gt; Unit, onNavigateToAuthed: () -&gt; Unit, onNavigateToTodo: () -&gt; Unit, onNavigateToGrocery: () -&gt; Unit, onLogout: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:LoginScreen.kt$@Composable fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -&gt; Unit)</ID>
+    <ID>FunctionNaming:StoreManagementScreen.kt$@Composable fun StoreItemRow( store: Store, onDelete: () -&gt; Unit, onUpdate: (Store) -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit, isFirst: Boolean, isLast: Boolean )</ID>
+    <ID>FunctionNaming:StoreManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun StoreManagementScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:TeddyButton.kt$@Composable fun TeddyButton( text: String, onClick: () -&gt; Unit, modifier: Modifier = Modifier, widthFraction: Float = 0.8f )</ID>
+    <ID>FunctionNaming:Theme.kt$@Composable fun TeddyTheme(content: @Composable () -&gt; Unit)</ID>
+    <ID>FunctionNaming:TodoDialogs.kt$@Composable fun AddSubtaskDialog( onDismiss: () -&gt; Unit, onAdd: (String) -&gt; Unit )</ID>
+    <ID>FunctionNaming:TodoDialogs.kt$@Composable fun EditTitleDialog( initialTitle: String, onDismiss: () -&gt; Unit, onConfirm: (String) -&gt; Unit )</ID>
+    <ID>FunctionNaming:TodoDialogs.kt$@Composable fun RecurrenceDialog( initialInterval: Int?, onDismiss: () -&gt; Unit, onConfirm: (Int?) -&gt; Unit )</ID>
+    <ID>FunctionNaming:TodoScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TodoItemRow( item: TodoItem, isSubtask: Boolean = false, subtaskCount: Int = 0, completedSubtaskCount: Int = 0, isExpanded: Boolean = false, onToggleExpand: () -&gt; Unit = {}, showDelete: Boolean, isPlanningMode: Boolean, index: Int, totalItems: Int, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onUpdateItem: (TodoItem) -&gt; Unit, onAddSubtask: (String) -&gt; Unit = {}, onMoveToTop: () -&gt; Unit, onMoveToBottom: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:TodoScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TodoScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:WeatherScreen.kt$@Composable fun WeatherScreen(onBack: () -&gt; Unit)</ID>
+    <ID>LongMethod:CategoryManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CategoryManagementScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>LongMethod:GroceryItemRow.kt$@Composable fun GroceryItemRow( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, isEditMode: Boolean, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onTagStores: () -&gt; Unit, onEditQuantity: () -&gt; Unit, onEditCategory: () -&gt; Unit, onUpdatePrice: (Int, Double) -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>LongMethod:GroceryItemRow.kt$@Composable fun GroceryItemRowContainer( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, categories: List&lt;Category&gt;, isEditMode: Boolean, index: Int, totalItems: Int, onUpdateItem: (GroceryItem) -&gt; Unit, onDeleteItem: () -&gt; Unit, onUpdateStoreInfo: (GroceryItemStoreInfo) -&gt; Unit, onMoveItem: (Int, Int) -&gt; Unit )</ID>
+    <ID>LongMethod:GroceryScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun GroceryScreen(userId: String, onBack: () -&gt; Unit, onManageConfig: () -&gt; Unit)</ID>
+    <ID>LongMethod:HomeScreen.kt$@Composable fun HomeScreen( userName: String?, profilePic: String?, onNavigateToWeather: () -&gt; Unit, onNavigateToAuthed: () -&gt; Unit, onNavigateToTodo: () -&gt; Unit, onNavigateToGrocery: () -&gt; Unit, onLogout: () -&gt; Unit )</ID>
+    <ID>LongMethod:LoginScreen.kt$@Composable fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -&gt; Unit)</ID>
+    <ID>LongMethod:MainActivity.kt$MainActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:StoreManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun StoreManagementScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>LongMethod:TodoScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TodoItemRow( item: TodoItem, isSubtask: Boolean = false, subtaskCount: Int = 0, completedSubtaskCount: Int = 0, isExpanded: Boolean = false, onToggleExpand: () -&gt; Unit = {}, showDelete: Boolean, isPlanningMode: Boolean, index: Int, totalItems: Int, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onUpdateItem: (TodoItem) -&gt; Unit, onAddSubtask: (String) -&gt; Unit = {}, onMoveToTop: () -&gt; Unit, onMoveToBottom: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>LongMethod:TodoScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TodoScreen(userId: String, onBack: () -&gt; Unit)</ID>
+    <ID>LongParameterList:CategoryManagementScreen.kt$( category: Category, onDelete: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit, isFirst: Boolean, isLast: Boolean )</ID>
+    <ID>LongParameterList:ConfirmationDialog.kt$( title: String, text: String, onDismiss: () -&gt; Unit, onConfirm: () -&gt; Unit, confirmButtonText: String = stringResource(R.string.confirm_clear), dismissButtonText: String = stringResource(R.string.abort) )</ID>
+    <ID>LongParameterList:GroceryItemRow.kt$( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, categories: List&lt;Category&gt;, isEditMode: Boolean, index: Int, totalItems: Int, onUpdateItem: (GroceryItem) -&gt; Unit, onDeleteItem: () -&gt; Unit, onUpdateStoreInfo: (GroceryItemStoreInfo) -&gt; Unit, onMoveItem: (Int, Int) -&gt; Unit )</ID>
+    <ID>LongParameterList:GroceryItemRow.kt$( item: GroceryItem, currentPhase: GroceryPhase, shoppingStoreId: Int?, itemStoreInfos: List&lt;GroceryItemStoreInfo&gt;, stores: List&lt;Store&gt;, isEditMode: Boolean, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onTagStores: () -&gt; Unit, onEditQuantity: () -&gt; Unit, onEditCategory: () -&gt; Unit, onUpdatePrice: (Int, Double) -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>LongParameterList:HomeScreen.kt$( userName: String?, profilePic: String?, onNavigateToWeather: () -&gt; Unit, onNavigateToAuthed: () -&gt; Unit, onNavigateToTodo: () -&gt; Unit, onNavigateToGrocery: () -&gt; Unit, onLogout: () -&gt; Unit )</ID>
+    <ID>LongParameterList:StoreManagementScreen.kt$( store: Store, onDelete: () -&gt; Unit, onUpdate: (Store) -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit, isFirst: Boolean, isLast: Boolean )</ID>
+    <ID>LongParameterList:TodoScreen.kt$( item: TodoItem, isSubtask: Boolean = false, subtaskCount: Int = 0, completedSubtaskCount: Int = 0, isExpanded: Boolean = false, onToggleExpand: () -&gt; Unit = {}, showDelete: Boolean, isPlanningMode: Boolean, index: Int, totalItems: Int, onCheckedChange: (Boolean) -&gt; Unit, onDelete: () -&gt; Unit, onUpdateItem: (TodoItem) -&gt; Unit, onAddSubtask: (String) -&gt; Unit = {}, onMoveToTop: () -&gt; Unit, onMoveToBottom: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit )</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$10</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$11</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$12</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$13</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$3</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$4</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$5</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$6</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$7</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$8</ID>
+    <ID>MagicNumber:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$9</ID>
+    <ID>MagicNumber:AuthedHelloScreen.kt$2000</ID>
+    <ID>MagicNumber:CategoryManagementScreen.kt$0xFF1A1A1A</ID>
+    <ID>MagicNumber:Color.kt$0xFF625b71</ID>
+    <ID>MagicNumber:Color.kt$0xFF6650a4</ID>
+    <ID>MagicNumber:Color.kt$0xFF7d5260</ID>
+    <ID>MagicNumber:Color.kt$0xFFCCC2DC</ID>
+    <ID>MagicNumber:Color.kt$0xFFD0BCFF</ID>
+    <ID>MagicNumber:Color.kt$0xFFEFB8C8</ID>
+    <ID>MagicNumber:GroceryConfigScreen.kt$0xFF1A1A1A</ID>
+    <ID>MagicNumber:GroceryItemRow.kt$0xFF1A1A1A</ID>
+    <ID>MagicNumber:GroceryScreen.kt$0xFF1A1A1A</ID>
+    <ID>MagicNumber:MainActivity.kt$MainActivity$10</ID>
+    <ID>MagicNumber:StoreManagementScreen.kt$0xFF1A1A1A</ID>
+    <ID>MagicNumber:TodoScreen.kt$0.3</ID>
+    <ID>MagicNumber:TodoScreen.kt$0.5</ID>
+    <ID>MagicNumber:TodoScreen.kt$0xFF1A1A1A</ID>
+    <ID>MagicNumber:TodoScreen.kt$0xb48def</ID>
+    <ID>MagicNumber:TodoScreen.kt$0xf4306d</ID>
+    <ID>MagicNumber:TodoScreen.kt$0xfce18a</ID>
+    <ID>MagicNumber:TodoScreen.kt$0xff726d</ID>
+    <ID>MagicNumber:TodoScreen.kt$100</ID>
+    <ID>MagicNumber:TodoScreen.kt$1000</ID>
+    <ID>MagicNumber:TodoScreen.kt$1000L</ID>
+    <ID>MagicNumber:TodoScreen.kt$2000</ID>
+    <ID>MagicNumber:TodoScreen.kt$24</ID>
+    <ID>MagicNumber:TodoScreen.kt$60</ID>
+    <ID>MagicNumber:TodoScreen.kt$8</ID>
+    <ID>MatchingDeclarationName:GroceryScreen.kt$GroceryPhase</ID>
+    <ID>MatchingDeclarationName:TodoScreen.kt$TodoMode</ID>
+    <ID>MaxLineLength:AppDatabase.kt$AppDatabase$@Database(entities = [TodoItem::class, GroceryItem::class, Store::class, GroceryItemStoreInfo::class, Category::class], version = 13, exportSchema = false)</ID>
+    <ID>MaxLineLength:AppDatabase.kt$AppDatabase.Companion$.</ID>
+    <ID>MaxLineLength:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$db.execSQL("CREATE TABLE IF NOT EXISTS `categories` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `position` INTEGER NOT NULL)")</ID>
+    <ID>MaxLineLength:AuthUtilsTest.kt$AuthUtilsTest$val header = Base64.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)</ID>
+    <ID>MaxLineLength:AuthUtilsTest.kt$AuthUtilsTest$val payloadEncoded = Base64.encodeToString(payloadJson.toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)</ID>
+    <ID>MaxLineLength:CategoryManagementScreen.kt$Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = if (isLast) Color.Gray else Color.White)</ID>
+    <ID>MaxLineLength:CategoryManagementScreen.kt$Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = if (isFirst) Color.Gray else Color.White)</ID>
+    <ID>MaxLineLength:EmulatorUtilsTest.kt$EmulatorUtilsTest$ReflectionHelpers.setStaticField(Build::class.java, "FINGERPRINT", "generic/vbox86p/vbox86p:6.0/MASTER/64:user/release-keys")</ID>
+    <ID>MaxLineLength:EmulatorUtilsTest.kt$EmulatorUtilsTest$ReflectionHelpers.setStaticField(Build::class.java, "FINGERPRINT", "google/pixel/pixel:12/SP1A.210812.015/7679544:user/release-keys")</ID>
+    <ID>MaxLineLength:EncryptedDataStore.kt$EncryptedDataStore$preferences[stringPreferencesKey(keyName)] = android.util.Base64.encodeToString(encryptedValue, android.util.Base64.DEFAULT)</ID>
+    <ID>MaxLineLength:GeneralFunctionalityTest.kt$GeneralFunctionalityTest$val header = Base64.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)</ID>
+    <ID>MaxLineLength:GeneralFunctionalityTest.kt$GeneralFunctionalityTest$val payloadEncoded = Base64.encodeToString(payloadJson.toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)</ID>
+    <ID>MaxLineLength:GroceryItemRow.kt$Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)</ID>
+    <ID>MaxLineLength:GroceryItemRow.kt$Text("- $storeName: $${info.price}", color = Color.Gray, style = MaterialTheme.typography.labelSmall)</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$GroceryPhase$get() = name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$Text("(${item.timesBought})", color = Color.Gray, style = MaterialTheme.typography.labelSmall)</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$else</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$repository.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = itemId.toInt(), storeId = store.id, isAvailable = false))</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$val info = storeInfos.find { it.groceryItemId == item.id &amp;&amp; it.storeId == shoppingStoreId }</ID>
+    <ID>MaxLineLength:GroceryScreen.kt$val itemId = repository.insertItem(GroceryItem(name = nameToSave, quantity = quantityToSave, categoryId = categoryToSave, userId = userId))</ID>
+    <ID>MaxLineLength:LoginScreen.kt$.</ID>
+    <ID>MaxLineLength:MainActivity.kt$MainActivity$"Session loaded: name=${session.userName}, tokenPrefix=${session.idToken?.take(10)}, picUri=${session.profilePictureUri}"</ID>
+    <ID>MaxLineLength:MainActivity.kt$MainActivity$if</ID>
+    <ID>MaxLineLength:StoreManagementScreen.kt$Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = if (isLast) Color.Gray else Color.White)</ID>
+    <ID>MaxLineLength:StoreManagementScreen.kt$Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = if (isFirst) Color.Gray else Color.White)</ID>
+    <ID>MaxLineLength:TeddyRepository.kt$TeddyRepository$val url = "https://api.open-meteo.com/v1/forecast?latitude=42.4154&amp;longitude=-71.1565&amp;current_weather=true&amp;temperature_unit=fahrenheit"</ID>
+    <ID>MaxLineLength:TodoDao.kt$TodoDao$@Query("SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt &lt;= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) AND userId = :userId ORDER BY position ASC, createdAt DESC")</ID>
+    <ID>MaxLineLength:TodoDaoExtendedTest.kt$TodoDaoExtendedTest$val task = TodoItem(id = 1, title = "Daily", isCompleted = true, isPlannedForToday = false, isDaily = true, userId = userId)</ID>
+    <ID>MaxLineLength:TodoScreen.kt$Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)</ID>
+    <ID>MaxLineLength:TodoScreen.kt$Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_all), tint = Color.Red)</ID>
+    <ID>MaxLineLength:TodoScreen.kt$Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(20.dp))</ID>
+    <ID>MaxLineLength:TodoScreen.kt$contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(R.string.show_completed)</ID>
+    <ID>MaxLineLength:TodoScreen.kt$onUpdateItem(item.copy(isDaily = !item.isDaily, isPlannedForToday = if (!item.isDaily) true else item.isPlannedForToday))</ID>
+    <ID>MaxLineLength:TodoScreen.kt$repository.updateItem(parent.copy(isCompleted = false, scheduledAt = nextTime, isPlannedForToday = false))</ID>
+    <ID>MaxLineLength:TodoScreen.kt$scope.launch { repository.updateItem(child.copy(isPlannedForToday = isChecked)) }</ID>
+    <ID>MaxLineLength:TodoScreen.kt$text = { Text("This will permanently delete all tasks in the database for your account. This action cannot be undone.") }</ID>
+    <ID>MaxLineLength:TodoScreen.kt$tint = if (showCompletedOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current</ID>
+    <ID>MaxLineLength:TodoScreen.kt$val maxPos = allItems.filter { it.parentId == null }.maxByOrNull { it.position }?.position ?: 0</ID>
+    <ID>MaxLineLength:TodoScreen.kt$val minPos = allItems.filter { it.parentId == null }.minByOrNull { it.position }?.position ?: 0</ID>
+    <ID>MaxLineLength:TodoScreen.kt$val nextTime = System.currentTimeMillis() + parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L</ID>
+    <ID>ReturnCount:AuthUtils.kt$AuthUtils$fun extractPictureFromToken(idToken: String): Uri?</ID>
+    <ID>ReturnCount:AuthUtils.kt$AuthUtils$fun extractUserIdFromToken(idToken: String): String?</ID>
+    <ID>ReturnCount:LoginScreen.kt$private fun handleSignIn(result: GetCredentialResponse): GoogleSignInResult?</ID>
+    <ID>SwallowedException:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AuthUtils.kt$AuthUtils$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AuthedHelloScreen.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TeddyRepository.kt$TeddyRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:WeatherScreen.kt$e: Exception</ID>
+    <ID>TooManyFunctions:GroceryDao.kt$GroceryDao</ID>
+    <ID>TooManyFunctions:GroceryRepository.kt$GroceryRepository</ID>
+    <ID>TooManyFunctions:TodoDao.kt$TodoDao</ID>
+    <ID>UnusedParameter:GroceryScreen.kt$onBack: () -&gt; Unit</ID>
+    <ID>UnusedParameter:TodoScreen.kt$onBack: () -&gt; Unit</ID>
+    <ID>WildcardImport:AuthUtilsTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:AuthedHelloScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:AuthedHelloScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:AuthedHelloScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:CategoryManagementScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CategoryManagementScreen.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:CategoryManagementScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:CategoryManagementScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:ConfirmationDialog.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:EmulatorUtilsTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:GroceryConfigScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:GroceryConfigScreen.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:GroceryConfigScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:GroceryConfigScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:GroceryDao.kt$import androidx.room.*</ID>
+    <ID>WildcardImport:GroceryDaoExtendedTest.kt$import fyi.teddy.android.grocery.data.*</ID>
+    <ID>WildcardImport:GroceryDaoExtendedTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:GroceryDaoTest.kt$import fyi.teddy.android.grocery.data.*</ID>
+    <ID>WildcardImport:GroceryDaoTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:GroceryItemRow.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:GroceryItemRow.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:GroceryItemRow.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:GroceryItemRow.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:GroceryRepository.kt$import fyi.teddy.android.grocery.data.*</ID>
+    <ID>WildcardImport:GroceryScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:GroceryScreen.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:GroceryScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:GroceryScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:HomeScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:LoginScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LoginScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:LoginScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:StoreManagementScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:StoreManagementScreen.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:StoreManagementScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:StoreManagementScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:TeddyRepository.kt$import io.ktor.client.request.*</ID>
+    <ID>WildcardImport:TeddyRepository.kt$import io.ktor.client.statement.*</ID>
+    <ID>WildcardImport:TeddyRepository.kt$import io.ktor.http.*</ID>
+    <ID>WildcardImport:TodoDao.kt$import androidx.room.*</ID>
+    <ID>WildcardImport:TodoDaoExtendedTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:TodoDaoTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:TodoDialogs.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:TodoDialogs.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:TodoDialogs.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:TodoScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:TodoScreen.kt$import androidx.compose.material.icons.filled.*</ID>
+    <ID>WildcardImport:TodoScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:TodoScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:UserSessionTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:WeatherScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:WeatherScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:WeatherScreen.kt$import androidx.compose.runtime.*</ID>
+  </CurrentIssues>
+</SmellBaseline>
