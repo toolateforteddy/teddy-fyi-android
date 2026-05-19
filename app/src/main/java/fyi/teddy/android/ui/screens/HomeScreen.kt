@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material3.*
@@ -15,12 +16,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import coil.compose.AsyncImage
+import fyi.teddy.android.R
 import fyi.teddy.android.repository.TeddyRepository
+import fyi.teddy.android.ui.components.TeddyButton
 import kotlinx.coroutines.launch
 
 @Composable
@@ -87,21 +91,15 @@ fun HomeScreen(
                     fontSize = 24.sp
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = onNavigateToWeather, modifier = Modifier.fillMaxWidth(0.8f)) {
-                    Text("Check Weather in Arlington, MA")
-                }
+                
+                TeddyButton(text = "Check Weather in Arlington, MA", onClick = onNavigateToWeather)
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onNavigateToAuthed, modifier = Modifier.fillMaxWidth(0.8f)) {
-                    Text("Call Authed Endpoint")
-                }
+                TeddyButton(text = "Call Authed Endpoint", onClick = onNavigateToAuthed)
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { onNavigateToTodo() }, modifier = Modifier.fillMaxWidth(0.8f)) {
-                    Text("Manage Todo List")
-                }
+                TeddyButton(text = "Manage Todo List", onClick = onNavigateToTodo)
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { onNavigateToGrocery() }, modifier = Modifier.fillMaxWidth(0.8f)) {
-                    Text("Manage Grocery List")
-                }
+                TeddyButton(text = "Manage Grocery List", onClick = onNavigateToGrocery)
+                
                 Spacer(modifier = Modifier.height(40.dp))
                 TextButton(onClick = {
                     scope.launch {
@@ -110,7 +108,7 @@ fun HomeScreen(
                         onLogout()
                     }
                 }) {
-                    Text("Logout", color = Color.Gray)
+                    Text(stringResource(R.string.logout), color = Color.Gray)
                 }
             }
         }

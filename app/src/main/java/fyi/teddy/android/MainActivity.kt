@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -18,6 +17,7 @@ import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
 import fyi.teddy.android.todo.ui.TodoScreen
+import fyi.teddy.android.ui.navigation.Screen
 import fyi.teddy.android.ui.screens.AuthedHelloScreen
 import fyi.teddy.android.ui.screens.HomeScreen
 import fyi.teddy.android.ui.screens.WeatherScreen
@@ -36,90 +36,79 @@ class MainActivity : ComponentActivity() {
                     session.load(context)
                     if (session.idToken != null) {
                         if (session.userId == null) {
-                            session.userId = if (session.idToken == "fake_emulator_token") {
-                                "emulator_guest_id"
-                            } else {
-                                AuthUtils.extractUserIdFromToken(session.idToken!!)
-                            }
+                            session.userId = AuthUtils.extractUserIdFromToken(session.idToken!!)
                         }
-                        // If we have a known-bad fallback URL, or it's null, try re-extracting with current logic
                         if (session.profilePictureUri == null || session.profilePictureUri!!.contains("s2/photos/profile")) {
-                            Log.d("MainActivity", "Pic URI is missing or bad, attempting re-extraction...")
                             session.profilePictureUri = AuthUtils.extractPictureFromToken(session.idToken!!)?.toString()
                         }
                         session.save(context)
                     }
                     Log.d("MainActivity", "Session loaded: name=${session.userName}, tokenPrefix=${session.idToken?.take(10)}, picUri=${session.profilePictureUri}")
                     if (session.idToken != null) {
-                        navController.navigate("hello") {
-                            popUpTo("login") { inclusive = true }
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
                         }
                     }
                 }
 
-                NavHost(navController = navController, startDestination = "login") {
-                    composable("login") {
+                NavHost(navController = navController, startDestination = Screen.Login.route) {
+                    composable(Screen.Login.route) {
                         LoginScreen(onLoginSuccess = { result ->
-                            Log.d("MainActivity", "Login success callback: name=${result.displayName}, pic=${result.profilePictureUri}")
                             session.userName = result.displayName
                             session.idToken = result.idToken
-                            session.userId = if (result.idToken == "fake_emulator_token") {
-                                "emulator_guest_id"
-                            } else {
-                                AuthUtils.extractUserIdFromToken(result.idToken)
-                            }
+                            session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
                             session.profilePictureUri = result.profilePictureUri?.toString()
                             session.save(context)
-                            navController.navigate("hello") {
-                                popUpTo("login") { inclusive = true }
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
                             }
                         })
                     }
-                    composable("hello") {
+                    composable(Screen.Home.route) {
                         HomeScreen(
                             userName = session.userName,
                             profilePic = session.profilePictureUri,
-                            onNavigateToWeather = { navController.navigate("weather") },
-                            onNavigateToAuthed = { navController.navigate("authed") },
-                            onNavigateToTodo = { navController.navigate("todo") },
-                            onNavigateToGrocery = { navController.navigate("grocery") },
+                            onNavigateToWeather = { navController.navigate(Screen.Weather.route) },
+                            onNavigateToAuthed = { navController.navigate(Screen.Authed.route) },
+                            onNavigateToTodo = { navController.navigate(Screen.Todo.route) },
+                            onNavigateToGrocery = { navController.navigate(Screen.Grocery.route) },
                             onLogout = {
                                 session.clear(context)
-                                navController.navigate("login") {
-                                    popUpTo("hello") { inclusive = true }
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(Screen.Home.route) { inclusive = true }
                                 }
                             }
                         )
                     }
-                    composable("weather") {
+                    composable(Screen.Weather.route) {
                         WeatherScreen(onBack = { navController.popBackStack() })
                     }
-                    composable("authed") {
+                    composable(Screen.Authed.route) {
                         AuthedHelloScreen(idToken = session.idToken, onBack = { navController.popBackStack() })
                     }
-                    composable("todo") {
+                    composable(Screen.Todo.route) {
                         TodoScreen(
                             userId = session.userId ?: "unauthed",
                             onBack = { navController.popBackStack() }
                         )
                     }
-                    composable("grocery") {
+                    composable(Screen.Grocery.route) {
                         GroceryScreen(
                             onBack = { navController.popBackStack() },
-                            onManageConfig = { navController.navigate("grocery_config") }
+                            onManageConfig = { navController.navigate(Screen.GroceryConfig.route) }
                         )
                     }
-                    composable("grocery_config") {
+                    composable(Screen.GroceryConfig.route) {
                         GroceryConfigScreen(
                             onBack = { navController.popBackStack() },
-                            onManageStores = { navController.navigate("stores") },
-                            onManageCategories = { navController.navigate("categories") }
+                            onManageStores = { navController.navigate(Screen.Stores.route) },
+                            onManageCategories = { navController.navigate(Screen.Categories.route) }
                         )
                     }
-                    composable("stores") {
+                    composable(Screen.Stores.route) {
                         StoreManagementScreen(onBack = { navController.popBackStack() })
                     }
-                    composable("categories") {
+                    composable(Screen.Categories.route) {
                         CategoryManagementScreen(onBack = { navController.popBackStack() })
                     }
                 }

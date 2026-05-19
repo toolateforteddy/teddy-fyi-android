@@ -5,10 +5,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TodoDao {
-    @Query("SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= :now OR isCompleted = 1) AND userId = :userId ORDER BY position ASC, createdAt DESC")
+    @Query("SELECT * FROM todo_items WHERE (isDaily = 1 OR scheduledAt <= :now OR isCompleted = 1) AND userId = :userId ORDER BY position ASC, createdAt DESC")
     fun getAllItems(userId: String, now: Long = System.currentTimeMillis()): Flow<List<TodoItem>>
 
-    @Query("SELECT * FROM todo_items WHERE (isPlannedForToday = 1 OR (dueDate IS NOT NULL AND dueDate <= :twoDaysFromNow)) AND (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= :now OR isCompleted = 1) AND userId = :userId ORDER BY (CASE WHEN isPlannedForToday = 1 THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC")
+    @Query("SELECT * FROM todo_items WHERE (isPlannedForToday = 1 OR (dueDate IS NOT NULL AND dueDate <= :twoDaysFromNow)) AND (isDaily = 1 OR scheduledAt <= :now OR isCompleted = 1) AND userId = :userId ORDER BY (CASE WHEN isPlannedForToday = 1 THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC")
     fun getTodayItems(userId: String, now: Long = System.currentTimeMillis(), twoDaysFromNow: Long = System.currentTimeMillis() + 2 * 24 * 60 * 60 * 1000L): Flow<List<TodoItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

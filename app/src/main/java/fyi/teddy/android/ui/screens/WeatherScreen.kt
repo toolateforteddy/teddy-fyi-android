@@ -6,9 +6,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fyi.teddy.android.R
 import fyi.teddy.android.repository.TeddyRepository
+import fyi.teddy.android.ui.components.TeddyButton
 
 @Composable
 fun WeatherScreen(onBack: () -> Unit) {
@@ -42,9 +45,7 @@ fun WeatherScreen(onBack: () -> Unit) {
                 fontSize = 48.sp
             )
             Spacer(modifier = Modifier.height(40.dp))
-            Button(onClick = onBack) {
-                Text("Back")
-            }
+            TeddyButton(text = stringResource(R.string.back), onClick = onBack)
         }
     }
 }

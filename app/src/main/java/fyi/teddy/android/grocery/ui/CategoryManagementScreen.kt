@@ -13,11 +13,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import fyi.teddy.android.R
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.Category
+import fyi.teddy.android.grocery.repository.GroceryRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,18 +29,19 @@ fun CategoryManagementScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
-    val dao = database.groceryDao()
+    val repository = remember { GroceryRepository(database.groceryDao()) }
     
-    val categories by dao.getAllCategories().collectAsState(initial = emptyList())
+    val categories by repository.getAllCategories().collectAsState(initial = emptyList())
     var newCategoryName by remember { mutableStateOf("") }
 
     val onAddCategory = {
         if (newCategoryName.isNotBlank()) {
+            val nameToSave = newCategoryName
             scope.launch {
                 val maxPos = categories.maxByOrNull { it.position }?.position ?: -1
-                dao.insertCategory(Category(name = newCategoryName, position = maxPos + 1))
-                newCategoryName = ""
+                repository.insertCategory(Category(name = nameToSave, position = maxPos + 1))
             }
+            newCategoryName = ""
         }
     }
 
@@ -45,9 +49,15 @@ fun CategoryManagementScreen(onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Manage Categories") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,
-                    titleContentColor = Color.White
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
             )
         }
@@ -81,58 +91,72 @@ fun CategoryManagementScreen(onBack: () -> Unit) {
                         keyboardActions = KeyboardActions(onDone = { onAddCategory() })
                     )
                     IconButton(onClick = { onAddCategory() }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)
                     }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    itemsIndexed(categories) { index, category ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(category.name, color = Color.White, modifier = Modifier.weight(1f))
-                            
-                            IconButton(
-                                onClick = {
-                                    if (index > 0) {
-                                        val prevCat = categories[index - 1]
-                                        scope.launch {
-                                            dao.updateCategory(category.copy(position = prevCat.position))
-                                            dao.updateCategory(prevCat.copy(position = category.position))
-                                        }
-                                    }
-                                },
-                                enabled = index > 0
-                            ) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = Color.White)
-                            }
-                            
-                            IconButton(
-                                onClick = {
-                                    if (index < categories.size - 1) {
-                                        val nextCat = categories[index + 1]
-                                        scope.launch {
-                                            dao.updateCategory(category.copy(position = nextCat.position))
-                                            dao.updateCategory(nextCat.copy(position = category.position))
-                                        }
-                                    }
-                                },
-                                enabled = index < categories.size - 1
-                            ) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = Color.White)
-                            }
-
-                            IconButton(onClick = {
-                                scope.launch { dao.deleteCategory(category) }
-                            }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                            }
-                        }
+                    itemsIndexed(categories, key = { _, category -> category.id }) { index, category ->
+                        CategoryItemRow(
+                            category = category,
+                            onDelete = {
+                                scope.launch { repository.deleteCategory(category) }
+                            },
+                            onMoveUp = {
+                                val targetCategory = categories[index - 1]
+                                scope.launch {
+                                    val oldPos = category.position
+                                    repository.updateCategory(category.copy(position = targetCategory.position))
+                                    repository.updateCategory(targetCategory.copy(position = oldPos))
+                                }
+                            },
+                            onMoveDown = {
+                                val targetCategory = categories[index + 1]
+                                scope.launch {
+                                    val oldPos = category.position
+                                    repository.updateCategory(category.copy(position = targetCategory.position))
+                                    repository.updateCategory(targetCategory.copy(position = oldPos))
+                                }
+                            },
+                            isFirst = index == 0,
+                            isLast = index == categories.size - 1
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryItemRow(
+    category: Category,
+    onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    isFirst: Boolean,
+    isLast: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(category.name, color = Color.White, modifier = Modifier.weight(1f))
+            
+            IconButton(onClick = onMoveUp, enabled = !isFirst) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = if (isFirst) Color.Gray else Color.White)
+            }
+            IconButton(onClick = onMoveDown, enabled = !isLast) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = if (isLast) Color.Gray else Color.White)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)
             }
         }
     }

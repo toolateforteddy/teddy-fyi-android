@@ -1,6 +1,5 @@
 package fyi.teddy.android.todo.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -12,27 +11,30 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fyi.teddy.android.R
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.repository.TodoRepository
+import fyi.teddy.android.todo.ui.components.AddSubtaskDialog
+import fyi.teddy.android.todo.ui.components.EditTitleDialog
+import fyi.teddy.android.todo.ui.components.RecurrenceDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
-import java.util.concurrent.TimeUnit
-import java.util.*
 import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 enum class TodoMode {
     NORMAL, TODAY_PLANNING, TODAY
@@ -44,12 +46,10 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
-    val dao = database.todoDao()
+    val repository = remember { TodoRepository(database.todoDao()) }
     
     var currentMode by remember { mutableStateOf(TodoMode.NORMAL) }
-    
-    val allItems by dao.getAllItems(userId).collectAsState(initial = emptyList())
-    val todayItems by dao.getTodayItems(userId).collectAsState(initial = emptyList())
+    val allItems by repository.getAllItems(userId).collectAsState(initial = emptyList())
     
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
@@ -60,7 +60,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
     
     LaunchedEffect(userId) {
-        dao.claimUnownedItems(userId)
+        repository.claimUnownedItems(userId)
         val sharedPref = context.getSharedPreferences("todo_prefs", android.content.Context.MODE_PRIVATE)
         val lastReset = sharedPref.getLong("last_reset_time", 0)
         val calendar = Calendar.getInstance()
@@ -72,22 +72,43 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         calendar.set(Calendar.MILLISECOND, 0)
         val midnight = calendar.timeInMillis
         if (now >= midnight && lastReset < midnight) {
-            dao.resetPlannedItems(userId)
+            repository.resetPlannedItems(userId)
         }
         
         calendar.set(Calendar.HOUR_OF_DAY, 8)
         val eightAm = calendar.timeInMillis
         if (now >= eightAm && lastReset < eightAm) {
-            dao.resetDailyItems(userId)
+            repository.resetDailyItems(userId)
         }
         sharedPref.edit().putLong("last_reset_time", now).apply()
     }
     
-    val baseItems = if (currentMode == TodoMode.TODAY) todayItems else allItems
-    val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
-        baseItems.filter { item ->
+    val filteredItems = remember(allItems, showCompletedOnly, recentlyCompletedIds.toList(), currentMode) {
+        val base = allItems.filter { item ->
             if (showCompletedOnly) item.isCompleted
             else !item.isCompleted || recentlyCompletedIds.contains(item.id)
+        }
+
+        if (currentMode == TodoMode.TODAY) {
+            val planned = base.filter { it.isPlannedForToday }
+            val plannedIds = planned.map { it.id }.toSet()
+            
+            val result = mutableSetOf<TodoItem>()
+            base.forEach { item ->
+                if (item.isPlannedForToday) {
+                    result.add(item)
+                } else if (item.parentId != null && plannedIds.contains(item.parentId)) {
+                    result.add(item)
+                } else if (item.parentId == null) {
+                    val anyChildPlanned = base.any { it.parentId == item.id && it.isPlannedForToday }
+                    if (anyChildPlanned) {
+                        result.add(item)
+                    }
+                }
+            }
+            result.toList()
+        } else {
+            base
         }
     }
 
@@ -103,7 +124,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         if (title.isNotBlank()) {
             scope.launch {
                 val maxPos = allItems.filter { it.parentId == parentId }.maxByOrNull { it.position }?.position ?: -1
-                dao.insertItem(TodoItem(
+                repository.insertItem(TodoItem(
                     title = title, 
                     position = maxPos + 1, 
                     userId = userId,
@@ -116,23 +137,23 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     if (showClearAllConfirmation) {
         AlertDialog(
             onDismissRequest = { showClearAllConfirmation = false },
-            title = { Text("Clear All Tasks?") },
+            title = { Text(stringResource(R.string.clear_all) + "?") },
             text = { Text("This will permanently delete all tasks in the database for your account. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         scope.launch {
-                            dao.deleteAll(userId)
+                            repository.deleteAll(userId)
                             showClearAllConfirmation = false
                         }
                     }
                 ) {
-                    Text("Confirm Clear", color = Color.Red)
+                    Text(stringResource(R.string.confirm_clear), color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllConfirmation = false }) {
-                    Text("Abort")
+                    Text(stringResource(R.string.abort))
                 }
             }
         )
@@ -147,8 +168,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                             text = when {
                                 currentMode == TodoMode.TODAY_PLANNING -> "Planning Today"
                                 currentMode == TodoMode.TODAY -> "Today's Tasks"
-                                showCompletedOnly -> "Completed Tasks"
-                                else -> "Todo List"
+                                showCompletedOnly -> stringResource(R.string.show_completed)
+                                else -> stringResource(R.string.app_name) + " List"
                             }
                         ) 
                     },
@@ -156,7 +177,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                         IconButton(onClick = { showCompletedOnly = !showCompletedOnly }) {
                             Icon(
                                 if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle, 
-                                contentDescription = if (showCompletedOnly) "Show Active" else "Show Completed",
+                                contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(R.string.show_completed),
                                 tint = if (showCompletedOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current
                             )
                         }
@@ -164,14 +185,14 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                         IconButton(onClick = { isEditMode = !isEditMode }) {
                             Icon(
                                 Icons.Default.Edit, 
-                                contentDescription = "Edit Mode",
+                                contentDescription = stringResource(R.string.edit_mode),
                                 tint = if (isEditMode) MaterialTheme.colorScheme.primary else LocalContentColor.current
                             )
                         }
                         
                         if (isEditMode) {
                             IconButton(onClick = { showClearAllConfirmation = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Clear All", tint = Color.Red)
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_all), tint = Color.Red)
                             }
                         }
                     },
@@ -245,7 +266,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                 onAddNewItem(newItemTitle, null)
                                 newItemTitle = ""
                             }) {
-                                Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -274,10 +295,10 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     onCheckedChange = { isChecked ->
                                         if (currentMode == TodoMode.TODAY_PLANNING) {
                                             scope.launch { 
-                                                dao.updateItem(parent.copy(isPlannedForToday = isChecked))
+                                                repository.updateItem(parent.copy(isPlannedForToday = isChecked))
                                                 if (isChecked) {
                                                     children.forEach { 
-                                                        dao.updateItem(it.copy(isPlannedForToday = true))
+                                                        repository.updateItem(it.copy(isPlannedForToday = true))
                                                     }
                                                 }
                                             }
@@ -302,7 +323,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                                 recentlyCompletedIds.remove(parent.id)
                                                 if (parent.recurrenceIntervalDays != null) {
                                                     val nextTime = System.currentTimeMillis() + parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
-                                                    dao.updateItem(parent.copy(isCompleted = false, scheduledAt = nextTime, isPlannedForToday = false))
+                                                    repository.updateItem(parent.copy(isCompleted = false, scheduledAt = nextTime, isPlannedForToday = false))
                                                 }
                                                 delay(1000) 
                                                 parties.remove(party)
@@ -310,21 +331,21 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         } else if (!isChecked) {
                                             recentlyCompletedIds.remove(parent.id)
                                         }
-                                        scope.launch { dao.updateItem(parent.copy(isCompleted = isChecked)) }
+                                        scope.launch { repository.updateItem(parent.copy(isCompleted = isChecked)) }
                                     },
-                                    onDelete = { scope.launch { dao.deleteItem(parent) } },
-                                    onUpdateItem = { scope.launch { dao.updateItem(it) } },
+                                    onDelete = { scope.launch { repository.deleteItem(parent) } },
+                                    onUpdateItem = { scope.launch { repository.updateItem(it) } },
                                     onAddSubtask = { title -> onAddNewItem(title, parent.id) },
                                     onMoveToTop = {
                                         scope.launch {
                                             val minPos = allItems.filter { it.parentId == null }.minByOrNull { it.position }?.position ?: 0
-                                            dao.updateItem(parent.copy(position = minPos - 1))
+                                            repository.updateItem(parent.copy(position = minPos - 1))
                                         }
                                     },
                                     onMoveToBottom = {
                                         scope.launch {
                                             val maxPos = allItems.filter { it.parentId == null }.maxByOrNull { it.position }?.position ?: 0
-                                            dao.updateItem(parent.copy(position = maxPos + 1))
+                                            repository.updateItem(parent.copy(position = maxPos + 1))
                                         }
                                     },
                                     onMoveUp = {
@@ -332,8 +353,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             val prevParent = groupedItems[parentIndex - 1].first
                                             scope.launch {
                                                 val oldPos = parent.position
-                                                dao.updateItem(parent.copy(position = prevParent.position))
-                                                dao.updateItem(prevParent.copy(position = oldPos))
+                                                repository.updateItem(parent.copy(position = prevParent.position))
+                                                repository.updateItem(prevParent.copy(position = oldPos))
                                             }
                                         }
                                     },
@@ -342,8 +363,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             val nextParent = groupedItems[parentIndex + 1].first
                                             scope.launch {
                                                 val oldPos = parent.position
-                                                dao.updateItem(parent.copy(position = nextParent.position))
-                                                dao.updateItem(nextParent.copy(position = oldPos))
+                                                repository.updateItem(parent.copy(position = nextParent.position))
+                                                repository.updateItem(nextParent.copy(position = oldPos))
                                             }
                                         }
                                     }
@@ -361,7 +382,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         totalItems = children.size,
                                         onCheckedChange = { isChecked ->
                                             if (currentMode == TodoMode.TODAY_PLANNING) {
-                                                scope.launch { dao.updateItem(child.copy(isPlannedForToday = isChecked)) }
+                                                scope.launch { repository.updateItem(child.copy(isPlannedForToday = isChecked)) }
                                                 return@TodoItemRow
                                             }
                                             if (isChecked && !showCompletedOnly) {
@@ -373,20 +394,20 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             } else if (!isChecked) {
                                                 recentlyCompletedIds.remove(child.id)
                                             }
-                                            scope.launch { dao.updateItem(child.copy(isCompleted = isChecked)) }
+                                            scope.launch { repository.updateItem(child.copy(isCompleted = isChecked)) }
                                         },
-                                        onDelete = { scope.launch { dao.deleteItem(child) } },
-                                        onUpdateItem = { scope.launch { dao.updateItem(it) } },
+                                        onDelete = { scope.launch { repository.deleteItem(child) } },
+                                        onUpdateItem = { scope.launch { repository.updateItem(it) } },
                                         onMoveToTop = {
                                             scope.launch {
                                                 val minPos = children.minByOrNull { it.position }?.position ?: 0
-                                                dao.updateItem(child.copy(position = minPos - 1))
+                                                repository.updateItem(child.copy(position = minPos - 1))
                                             }
                                         },
                                         onMoveToBottom = {
                                             scope.launch {
                                                 val maxPos = children.maxByOrNull { it.position }?.position ?: 0
-                                                dao.updateItem(child.copy(position = maxPos + 1))
+                                                repository.updateItem(child.copy(position = maxPos + 1))
                                             }
                                         },
                                         onMoveUp = {
@@ -394,8 +415,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                                 val prevChild = children[childIndex - 1]
                                                 scope.launch {
                                                     val oldPos = child.position
-                                                    dao.updateItem(child.copy(position = prevChild.position))
-                                                    dao.updateItem(prevChild.copy(position = oldPos))
+                                                    repository.updateItem(child.copy(position = prevChild.position))
+                                                    repository.updateItem(prevChild.copy(position = oldPos))
                                                 }
                                             }
                                         },
@@ -404,8 +425,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                                 val nextChild = children[childIndex + 1]
                                                 scope.launch {
                                                     val oldPos = child.position
-                                                    dao.updateItem(child.copy(position = nextChild.position))
-                                                    dao.updateItem(nextChild.copy(position = oldPos))
+                                                    repository.updateItem(child.copy(position = nextChild.position))
+                                                    repository.updateItem(nextChild.copy(position = oldPos))
                                                 }
                                             }
                                         }
@@ -454,8 +475,6 @@ fun TodoItemRow(
     var showEditTitleDialog by remember { mutableStateOf(false) }
     var showAddSubtaskDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
-    
-    val focusRequester = remember { FocusRequester() }
 
     Row(
         modifier = Modifier
@@ -619,7 +638,7 @@ fun TodoItemRow(
                     }
                     Divider()
                     DropdownMenuItem(
-                        text = { Text("Delete", color = Color.Red) },
+                        text = { Text(stringResource(R.string.delete), color = Color.Red) },
                         onClick = {
                             onDelete()
                             showMenu = false
@@ -640,7 +659,7 @@ fun TodoItemRow(
                 TextButton(onClick = {
                     onUpdateItem(item.copy(dueDate = datePickerState.selectedDateMillis))
                     showDatePicker = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -654,119 +673,31 @@ fun TodoItemRow(
     }
 
     if (showRecurrenceDialog) {
-        var daysText by remember { mutableStateOf(item.recurrenceIntervalDays?.toString() ?: "") }
-        AlertDialog(
-            onDismissRequest = { showRecurrenceDialog = false },
-            title = { Text("Set Recurrence") },
-            text = {
-                Column {
-                    Text("Re-schedule this task X days after completion.")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextField(
-                        value = daysText,
-                        onValueChange = { daysText = it },
-                        label = { Text("Days") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val days = daysText.toIntOrNull()
-                    onUpdateItem(item.copy(recurrenceIntervalDays = days))
-                    showRecurrenceDialog = false
-                }) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    onUpdateItem(item.copy(recurrenceIntervalDays = null))
-                    showRecurrenceDialog = false
-                }) {
-                    Text("Clear")
-                }
+        RecurrenceDialog(
+            initialInterval = item.recurrenceIntervalDays,
+            onDismiss = { showRecurrenceDialog = false },
+            onConfirm = { days ->
+                onUpdateItem(item.copy(recurrenceIntervalDays = days))
+                showRecurrenceDialog = false
             }
         )
     }
 
     if (showEditTitleDialog) {
-        var editedTitle by remember { mutableStateOf(item.title) }
-        AlertDialog(
-            onDismissRequest = { showEditTitleDialog = false },
-            title = { Text("Edit Task Title") },
-            text = {
-                TextField(
-                    value = editedTitle,
-                    onValueChange = { editedTitle = it },
-                    label = { Text("Title") },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (editedTitle.isNotBlank()) {
-                        onUpdateItem(item.copy(title = editedTitle))
-                        showEditTitleDialog = false
-                    }
-                }) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditTitleDialog = false }) {
-                    Text("Cancel")
-                }
+        EditTitleDialog(
+            initialTitle = item.title,
+            onDismiss = { showEditTitleDialog = false },
+            onConfirm = { title ->
+                onUpdateItem(item.copy(title = title))
+                showEditTitleDialog = false
             }
         )
     }
 
     if (showAddSubtaskDialog) {
-        var subtaskTitle by remember { mutableStateOf("") }
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
-        }
-        AlertDialog(
-            onDismissRequest = { showAddSubtaskDialog = false },
-            title = { Text("Add Subtask") },
-            text = {
-                TextField(
-                    value = subtaskTitle,
-                    onValueChange = { subtaskTitle = it },
-                    label = { Text("Subtask Title") },
-                    modifier = Modifier.focusRequester(focusRequester),
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (subtaskTitle.isNotBlank()) {
-                                onAddSubtask(subtaskTitle)
-                                subtaskTitle = ""
-                            }
-                        }
-                    ),
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (subtaskTitle.isNotBlank()) {
-                        onAddSubtask(subtaskTitle)
-                        subtaskTitle = ""
-                    }
-                }) {
-                    Text("Add")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddSubtaskDialog = false }) {
-                    Text("Finish")
-                }
-            }
+        AddSubtaskDialog(
+            onDismiss = { showAddSubtaskDialog = false },
+            onAdd = onAddSubtask
         )
     }
 }

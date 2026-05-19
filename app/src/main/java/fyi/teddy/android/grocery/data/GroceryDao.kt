@@ -4,55 +4,64 @@ import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface GroceryDao {
+abstract class GroceryDao {
     @Query("SELECT * FROM grocery_items ORDER BY position ASC, createdAt DESC")
-    fun getAllItems(): Flow<List<GroceryItem>>
+    abstract fun getAllItems(): Flow<List<GroceryItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertItem(item: GroceryItem): Long
+    abstract suspend fun insertItem(item: GroceryItem): Long
 
     @Update
-    suspend fun updateItem(item: GroceryItem)
+    abstract suspend fun updateItem(item: GroceryItem)
 
     @Delete
-    suspend fun deleteItem(item: GroceryItem)
+    abstract suspend fun deleteItem(item: GroceryItem)
 
     @Query("DELETE FROM grocery_items")
-    suspend fun deleteAll()
+    abstract suspend fun deleteAll()
 
     @Query("SELECT * FROM grocery_items WHERE timesBought > 0 ORDER BY timesBought DESC")
-    fun getRecommendedItems(): Flow<List<GroceryItem>>
+    abstract fun getRecommendedItems(): Flow<List<GroceryItem>>
 
     @Query("SELECT * FROM stores ORDER BY position ASC, name ASC")
-    fun getAllStores(): Flow<List<Store>>
+    abstract fun getAllStores(): Flow<List<Store>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertStore(store: Store)
+    abstract suspend fun insertStore(store: Store)
 
     @Update
-    suspend fun updateStore(store: Store)
+    abstract suspend fun updateStore(store: Store)
 
     @Delete
-    suspend fun deleteStore(store: Store)
+    abstract suspend fun deleteStore(store: Store)
 
     @Query("SELECT * FROM grocery_item_store_info")
-    fun getAllStoreInfo(): Flow<List<GroceryItemStoreInfo>>
+    abstract fun getAllStoreInfo(): Flow<List<GroceryItemStoreInfo>>
 
     @Query("SELECT * FROM grocery_item_store_info WHERE groceryItemId = :itemId")
-    fun getStoreInfoForItem(itemId: Int): Flow<List<GroceryItemStoreInfo>>
+    abstract fun getStoreInfoForItem(itemId: Int): Flow<List<GroceryItemStoreInfo>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertStoreInfo(info: GroceryItemStoreInfo)
+    abstract suspend fun insertStoreInfo(info: GroceryItemStoreInfo)
 
     @Query("SELECT * FROM categories ORDER BY position ASC, name ASC")
-    fun getAllCategories(): Flow<List<Category>>
+    abstract fun getAllCategories(): Flow<List<Category>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCategory(category: Category)
+    abstract suspend fun insertCategory(category: Category)
 
     @Update
-    suspend fun updateCategory(category: Category)
+    abstract suspend fun updateCategory(category: Category)
+
+    @Transaction
+    open suspend fun deleteCategoryAndCleanup(category: Category) {
+        clearItemCategories(category.id)
+        deleteCategory(category)
+    }
 
     @Delete
-    suspend fun deleteCategory(category: Category)
+    protected abstract suspend fun deleteCategory(category: Category)
+
+    @Query("UPDATE grocery_items SET categoryId = NULL WHERE categoryId = :categoryId")
+    protected abstract suspend fun clearItemCategories(categoryId: Int)
 }
