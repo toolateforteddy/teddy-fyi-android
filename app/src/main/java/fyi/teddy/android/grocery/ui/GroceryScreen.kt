@@ -43,17 +43,17 @@ enum class GroceryPhase {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
+fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { GroceryRepository(database.groceryDao()) }
     
-    val items by repository.getAllItems().collectAsState(initial = emptyList())
-    val stores by repository.getAllStores().collectAsState(initial = emptyList())
-    val categories by repository.getAllCategories().collectAsState(initial = emptyList())
+    val items by repository.getAllItems(userId).collectAsState(initial = emptyList())
+    val stores by repository.getAllStores(userId).collectAsState(initial = emptyList())
+    val categories by repository.getAllCategories(userId).collectAsState(initial = emptyList())
     val storeInfos by repository.getAllStoreInfo().collectAsState(initial = emptyList())
-    val recommendedItems by repository.getRecommendedItems().collectAsState(initial = emptyList())
+    val recommendedItems by repository.getRecommendedItems(userId).collectAsState(initial = emptyList())
     
     var currentPhase by remember { mutableStateOf(GroceryPhase.NEED) }
     var selectedStoreIds by remember { mutableStateOf(setOf<Int>()) }
@@ -66,6 +66,10 @@ fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     
     val nameFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(userId) {
+        repository.claimEverything(userId)
+    }
 
     val uniqueNames = remember(items) {
         items.map { it.name }.distinct().sorted()
@@ -82,7 +86,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
             val quantityToSave = newItemQuantity
             val categoryToSave = selectedCategoryId
             scope.launch {
-                val itemId = repository.insertItem(GroceryItem(name = nameToSave, quantity = quantityToSave, categoryId = categoryToSave))
+                val itemId = repository.insertItem(GroceryItem(name = nameToSave, quantity = quantityToSave, categoryId = categoryToSave, userId = userId))
                 
                 stores.forEach { store ->
                     if (!store.isDefaultSupported) {
@@ -202,7 +206,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
                             }
                         }
                         if (shoppingStoreId == null) {
-                            shoppingStoreId = stores.first().id
+                            shoppingStoreId = stores.firstOrNull()?.id
                         }
                     } else {
                         Text("No stores defined. Please add stores in settings.", color = Color.Red)

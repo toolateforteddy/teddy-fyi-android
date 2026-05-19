@@ -25,20 +25,20 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StoreManagementScreen(onBack: () -> Unit) {
+fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { GroceryRepository(database.groceryDao()) }
     
-    val stores by repository.getAllStores().collectAsState(initial = emptyList())
+    val stores by repository.getAllStores(userId).collectAsState(initial = emptyList())
     var newStoreName by remember { mutableStateOf("") }
 
     val onAddStore = {
         if (newStoreName.isNotBlank()) {
             val nameToSave = newStoreName
             scope.launch {
-                repository.insertStore(Store(name = nameToSave))
+                repository.insertStore(Store(name = nameToSave, userId = userId))
             }
             newStoreName = ""
         }

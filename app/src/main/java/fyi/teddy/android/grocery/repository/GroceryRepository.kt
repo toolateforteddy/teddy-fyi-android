@@ -4,11 +4,11 @@ import fyi.teddy.android.grocery.data.*
 import kotlinx.coroutines.flow.Flow
 
 class GroceryRepository(private val groceryDao: GroceryDao) {
-    fun getAllItems(): Flow<List<GroceryItem>> = groceryDao.getAllItems()
-    fun getAllStores(): Flow<List<Store>> = groceryDao.getAllStores()
-    fun getAllCategories(): Flow<List<Category>> = groceryDao.getAllCategories()
+    fun getAllItems(userId: String): Flow<List<GroceryItem>> = groceryDao.getAllItems(userId)
+    fun getAllStores(userId: String): Flow<List<Store>> = groceryDao.getAllStores(userId)
+    fun getAllCategories(userId: String): Flow<List<Category>> = groceryDao.getAllCategories(userId)
     fun getAllStoreInfo(): Flow<List<GroceryItemStoreInfo>> = groceryDao.getAllStoreInfo()
-    fun getRecommendedItems(): Flow<List<GroceryItem>> = groceryDao.getRecommendedItems()
+    fun getRecommendedItems(userId: String): Flow<List<GroceryItem>> = groceryDao.getRecommendedItems(userId)
     
     suspend fun insertItem(item: GroceryItem) = groceryDao.insertItemWithNextPosition(item)
     suspend fun updateItem(item: GroceryItem) = groceryDao.updateItem(item)
@@ -26,4 +26,6 @@ class GroceryRepository(private val groceryDao: GroceryDao) {
     suspend fun swapCategoryPositions(cat1: Category, cat2: Category) = groceryDao.swapCategoryPositions(cat1, cat2)
     
     suspend fun insertStoreInfo(info: GroceryItemStoreInfo) = groceryDao.insertStoreInfo(info)
+    
+    suspend fun claimEverything(userId: String) = groceryDao.claimEverything(userId)
 }

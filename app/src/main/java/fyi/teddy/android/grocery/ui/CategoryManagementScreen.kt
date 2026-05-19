@@ -25,20 +25,20 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryManagementScreen(onBack: () -> Unit) {
+fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { GroceryRepository(database.groceryDao()) }
     
-    val categories by repository.getAllCategories().collectAsState(initial = emptyList())
+    val categories by repository.getAllCategories(userId).collectAsState(initial = emptyList())
     var newCategoryName by remember { mutableStateOf("") }
 
     val onAddCategory = {
         if (newCategoryName.isNotBlank()) {
             val nameToSave = newCategoryName
             scope.launch {
-                repository.insertCategory(Category(name = nameToSave))
+                repository.insertCategory(Category(name = nameToSave, userId = userId))
             }
             newCategoryName = ""
         }

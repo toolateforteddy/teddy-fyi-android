@@ -8,5 +8,6 @@ data class Store(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val position: Int = 0,
-    val isDefaultSupported: Boolean = true
+    val isDefaultSupported: Boolean = true,
+    val userId: String? = null
 )

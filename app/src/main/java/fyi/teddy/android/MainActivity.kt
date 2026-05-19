@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(Screen.Grocery.route) {
                         GroceryScreen(
+                            userId = session.userId ?: "unauthed",
                             onBack = { navController.popBackStack() },
                             onManageConfig = { navController.navigate(Screen.GroceryConfig.route) }
                         )
@@ -106,10 +107,16 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.Stores.route) {
-                        StoreManagementScreen(onBack = { navController.popBackStack() })
+                        StoreManagementScreen(
+                            userId = session.userId ?: "unauthed",
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable(Screen.Categories.route) {
-                        CategoryManagementScreen(onBack = { navController.popBackStack() })
+                        CategoryManagementScreen(
+                            userId = session.userId ?: "unauthed",
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                 }
             }

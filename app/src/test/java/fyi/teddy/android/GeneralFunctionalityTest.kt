@@ -75,11 +75,12 @@ class GeneralFunctionalityTest {
     fun groceryRepository_delegatesToDao() = runTest {
         val dao = mockk<GroceryDao>(relaxed = true)
         val repo = GroceryRepository(dao)
+        val userId = "user"
         
-        repo.getAllStores()
-        verify { dao.getAllStores() }
+        repo.getAllStores(userId)
+        verify { dao.getAllStores(userId) }
         
-        repo.getAllCategories()
-        verify { dao.getAllCategories() }
+        repo.getAllCategories(userId)
+        verify { dao.getAllCategories(userId) }
     }
 }

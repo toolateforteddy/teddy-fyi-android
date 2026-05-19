@@ -31,9 +31,9 @@ Current Features List.
 - [x] **Recurring Groceries**: Added a "Recommended" button in planning mode to quickly re-add frequently bought items.
 
 ## Requested Features
+- [ ] **Auth Integration**: Associate grocery lists with a user account.
 
 ## Planned Features
-- [ ] **Auth Integration**: Associate grocery lists with a user account.
 - [ ] **Cloud Sync**: Sync grocery data with the backend.
 - [ ] **Clear Bought Items**: Quickly remove all items marked as bought.
 - [ ] **Receipt Mode**: Submit pictures or screenshots of a receipt to populate the list with known items and prices.
