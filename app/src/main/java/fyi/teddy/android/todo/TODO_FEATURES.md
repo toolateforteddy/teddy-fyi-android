@@ -28,9 +28,9 @@ Current Features List.
 - [x] **Edit Task Name**: In the overflow menu in edit mode, add an option to edit the title of the task.
 - [x] **Nested Tasks**: I should be able to create subtasks inside a single task. When viewing the task list, I should be able to toggle between showing nested tasks and not, by tapping on an arrow expand icon. When collapsed, the task should display X/Y, X being the number of completed subtasks, and Y being the total number of subtasks. If a subtask is added to the today list, then when viewing the today list, the main task should be shown, but only the one selected nested task underneath it. If a task with subtasks is added to the today list, then all subtasks should be added to the today list.
 - [x] **Daily Tasks**: I want to be able to mark some tasks as recurring daily. It doesn't matter that I completed the task the previous day, it should still be on my todo list for today, auto added at 8am local time. For example, I should empty the dishwasher every day.
+- [x] **Due Dates**: Set reminders and deadlines. Automatically add it to the today list whenever due date is within 2 days. But put it at the bottom, and add the due date in red text.
 
 ## Requested Features
-- [ ] **Due Dates**: Set reminders and deadlines. Automatically add it to the today list whenever due date is within 2 days. But put it at the bottom, and add the due date in red text.
 
 ## Planned Features
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
@@ -43,6 +43,6 @@ Current Features List.
 - [x] **Move to Top/Bottom**: The topmost item shouldn't have the option to move to top. The bottommost item shouldn't have the option to move to bottom.
 - [x] **Reorder items once only**: Fixed logic that failed when two items had the same position (common after migration).
 - [x] **New Items Hidden**: Fixed a race condition in the DAO query where items added after the initial screen load were filtered out until a manual refresh.
-- [ ] **Nested Task Indentation**: Fixed indentation for top-level tasks and subtasks. Reduced expanding arrow size and margins. The indentation for subtasks is too subtle. Add a dash before each checkbox on subtasks.
+- [x] **Nested Task Indentation**: Fixed indentation for top-level tasks and subtasks. Reduced expanding arrow size and margins. The indentation for subtasks is too subtle. Add a dash before each checkbox on subtasks.
 - [x] **Adding Subtasks**: Subtask title input is now auto-focused with the keyboard open. The dialog remains open after adding an item to allow for multiple subtasks to be added in sequence.
-- [ ] **Right Caret instead of up caret**: For parent tasks, instead of an ^ for the collapsed state, use a >.
+- [x] **Right Caret instead of up caret**: For parent tasks, instead of an ^ for the collapsed state, use a >.

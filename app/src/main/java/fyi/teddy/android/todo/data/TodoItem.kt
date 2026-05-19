@@ -15,5 +15,6 @@ data class TodoItem(
     val scheduledAt: Long = System.currentTimeMillis(),
     val userId: String? = null,
     val parentId: Int? = null,
-    val isDaily: Boolean = false
+    val isDaily: Boolean = false,
+    val dueDate: Long? = null
 )

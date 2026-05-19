@@ -3,7 +3,6 @@ package fyi.teddy.android.todo.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,6 +16,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +32,7 @@ import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.util.concurrent.TimeUnit
 import java.util.*
+import java.text.SimpleDateFormat
 
 enum class TodoMode {
     NORMAL, TODAY_PLANNING, TODAY
@@ -47,82 +48,46 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     
     var currentMode by remember { mutableStateOf(TodoMode.NORMAL) }
     
-    // We fetch ALL items for the user to handle nesting logic in memory
     val allItems by dao.getAllItems(userId).collectAsState(initial = emptyList())
+    val todayItems by dao.getTodayItems(userId).collectAsState(initial = emptyList())
     
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
     var showClearAllConfirmation by remember { mutableStateOf(false) }
 
-    // Expansion state
     val expandedParentIds = remember { mutableStateOf(setOf<Int>()) }
-
-    // Confetti state
     val parties = remember { mutableStateListOf<Party>() }
-
-    // Track recently completed items to hide them after 2 seconds
     val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
     
-    // Check for resets on load and claim unowned items
     LaunchedEffect(userId) {
         dao.claimUnownedItems(userId)
-        
         val sharedPref = context.getSharedPreferences("todo_prefs", android.content.Context.MODE_PRIVATE)
         val lastReset = sharedPref.getLong("last_reset_time", 0)
-        
         val calendar = Calendar.getInstance()
         val now = calendar.timeInMillis
         
-        // Midnight reset for planned items
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         val midnight = calendar.timeInMillis
-        
         if (now >= midnight && lastReset < midnight) {
             dao.resetPlannedItems(userId)
         }
         
-        // 8 AM reset for daily tasks
         calendar.set(Calendar.HOUR_OF_DAY, 8)
         val eightAm = calendar.timeInMillis
-        
         if (now >= eightAm && lastReset < eightAm) {
             dao.resetDailyItems(userId)
         }
-        
         sharedPref.edit().putLong("last_reset_time", now).apply()
     }
     
-    val filteredItems = remember(allItems, showCompletedOnly, recentlyCompletedIds.toList(), currentMode) {
-        val base = allItems.filter { item ->
+    val baseItems = if (currentMode == TodoMode.TODAY) todayItems else allItems
+    val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
+        baseItems.filter { item ->
             if (showCompletedOnly) item.isCompleted
             else !item.isCompleted || recentlyCompletedIds.contains(item.id)
-        }
-
-        if (currentMode == TodoMode.TODAY) {
-            val planned = base.filter { it.isPlannedForToday }
-            val plannedIds = planned.map { it.id }.toSet()
-            
-            val result = mutableSetOf<TodoItem>()
-            base.forEach { item ->
-                if (item.isPlannedForToday) {
-                    result.add(item)
-                } else if (item.parentId != null && plannedIds.contains(item.parentId)) {
-                    // Child of planned parent
-                    result.add(item)
-                } else if (item.parentId == null) {
-                    // Parent - check if any child is planned
-                    val anyChildPlanned = base.any { it.parentId == item.id && it.isPlannedForToday }
-                    if (anyChildPlanned) {
-                        result.add(item)
-                    }
-                }
-            }
-            result.toList()
-        } else {
-            base
         }
     }
 
@@ -188,7 +153,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                         ) 
                     },
                     actions = {
-                        // Show Completed Toggle
                         IconButton(onClick = { showCompletedOnly = !showCompletedOnly }) {
                             Icon(
                                 if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle, 
@@ -197,7 +161,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                             )
                         }
 
-                        // Edit Mode Toggle
                         IconButton(onClick = { isEditMode = !isEditMode }) {
                             Icon(
                                 Icons.Default.Edit, 
@@ -206,7 +169,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                             )
                         }
                         
-                        // Clear All (Only in Edit Mode)
                         if (isEditMode) {
                             IconButton(onClick = { showClearAllConfirmation = true }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Clear All", tint = Color.Red)
@@ -361,7 +323,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     },
                                     onMoveToBottom = {
                                         scope.launch {
-                                            val maxPos = allItems.filter { it.parentId == null }.minByOrNull { it.position }?.position ?: 0
+                                            val maxPos = allItems.filter { it.parentId == null }.maxByOrNull { it.position }?.position ?: 0
                                             dao.updateItem(parent.copy(position = maxPos + 1))
                                         }
                                     },
@@ -389,8 +351,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                             }
                             
                             if (expandedParentIds.value.contains(parent.id) || currentMode == TodoMode.TODAY) {
-                                items(children, key = { it.id }) { child ->
-                                    val childIndex = children.indexOf(child)
+                                itemsIndexed(children, key = { _, it -> it.id }) { childIndex, child ->
                                     TodoItemRow(
                                         item = child,
                                         isSubtask = true,
@@ -457,7 +418,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
             }
         }
         
-        // Confetti layer
         if (parties.isNotEmpty()) {
             KonfettiView(
                 modifier = Modifier.fillMaxSize(),
@@ -467,6 +427,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoItemRow(
     item: TodoItem,
@@ -492,30 +453,32 @@ fun TodoItemRow(
     var showRecurrenceDialog by remember { mutableStateOf(false) }
     var showEditTitleDialog by remember { mutableStateOf(false) }
     var showAddSubtaskDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     
     val focusRequester = remember { FocusRequester() }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isSubtask) {
-            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                 if (subtaskCount > 0) {
                     IconButton(onClick = onToggleExpand) {
                         Icon(
-                            if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
                             contentDescription = if (isExpanded) "Collapse" else "Expand",
                             tint = Color.Gray,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
         } else {
-            Spacer(modifier = Modifier.width(48.dp))
+            Spacer(modifier = Modifier.width(32.dp))
+            Text("-", color = Color.Gray, modifier = Modifier.padding(end = 8.dp))
         }
 
         Checkbox(
@@ -552,34 +515,47 @@ fun TodoItemRow(
                     )
                 }
             }
-            if (item.recurrenceIntervalDays != null) {
-                Text(
-                    text = "Every ${item.recurrenceIntervalDays} days",
-                    color = Color.Gray,
-                    style = MaterialTheme.typography.labelSmall
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (item.recurrenceIntervalDays != null) {
+                    Text(
+                        text = "Every ${item.recurrenceIntervalDays} days",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+                if (item.dueDate != null) {
+                    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                    Text(
+                        text = "Due: ${sdf.format(Date(item.dueDate))}",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
         }
         
         if (showDelete) {
-            IconButton(onClick = onMoveUp, enabled = index > 0) {
+            IconButton(onClick = onMoveUp, enabled = index > 0, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.KeyboardArrowUp, 
                     contentDescription = "Move Up", 
-                    tint = if (index > 0) Color.White else Color.Transparent
+                    tint = if (index > 0) Color.White else Color.Transparent,
+                    modifier = Modifier.size(20.dp)
                 )
             }
-            IconButton(onClick = onMoveDown, enabled = index < totalItems - 1) {
+            IconButton(onClick = onMoveDown, enabled = index < totalItems - 1, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.KeyboardArrowDown, 
                     contentDescription = "Move Down", 
-                    tint = if (index < totalItems - 1) Color.White else Color.Transparent
+                    tint = if (index < totalItems - 1) Color.White else Color.Transparent,
+                    modifier = Modifier.size(20.dp)
                 )
             }
             
             Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(
                     expanded = showMenu,
@@ -605,6 +581,13 @@ fun TodoItemRow(
                         text = { Text(if (item.isDaily) "Make Non-Daily" else "Make Daily") },
                         onClick = {
                             onUpdateItem(item.copy(isDaily = !item.isDaily, isPlannedForToday = if (!item.isDaily) true else item.isPlannedForToday))
+                            showMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Set Due Date") },
+                        onClick = {
+                            showDatePicker = true
                             showMenu = false
                         }
                     )
@@ -644,6 +627,29 @@ fun TodoItemRow(
                     )
                 }
             }
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = item.dueDate ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onUpdateItem(item.copy(dueDate = datePickerState.selectedDateMillis))
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    onUpdateItem(item.copy(dueDate = null))
+                    showDatePicker = false
+                }) { Text("Clear") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -719,11 +725,9 @@ fun TodoItemRow(
 
     if (showAddSubtaskDialog) {
         var subtaskTitle by remember { mutableStateOf("") }
-        
         LaunchedEffect(Unit) {
             focusRequester.requestFocus()
         }
-
         AlertDialog(
             onDismissRequest = { showAddSubtaskDialog = false },
             title = { Text("Add Subtask") },
@@ -741,7 +745,7 @@ fun TodoItemRow(
                         onDone = {
                             if (subtaskTitle.isNotBlank()) {
                                 onAddSubtask(subtaskTitle)
-                                subtaskTitle = "" // Clear for next subtask in sequence
+                                subtaskTitle = ""
                             }
                         }
                     ),
@@ -752,7 +756,7 @@ fun TodoItemRow(
                 TextButton(onClick = {
                     if (subtaskTitle.isNotBlank()) {
                         onAddSubtask(subtaskTitle)
-                        subtaskTitle = "" // Open for next one
+                        subtaskTitle = ""
                     }
                 }) {
                     Text("Add")
