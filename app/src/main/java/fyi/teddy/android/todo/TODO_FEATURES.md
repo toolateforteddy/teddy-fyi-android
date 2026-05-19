@@ -36,6 +36,11 @@ Current Features List.
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
 - [ ] **Offline Support**: Gracefully handle data sync when connectivity returns.
 - [ ] **Categories/Tags**: Organize tasks by type.
+- [ ] **Prioritization**: Mark tasks as high priority with a star, forcing them to the top of all views.
+- [ ] **Search & Global History**: A search bar to find tasks by title across active and completed lists.
+- [ ] **Push Notifications**: Reminders for approaching due dates and a morning summary of "Today's Tasks".
+- [ ] **Productivity Insights**: A stats dashboard showing total tasks completed, streaks for daily items, and weekly progress charts.
+- [ ] **Rich Task Details**: Add multi-line notes and clickable URLs to individual tasks.
 
 ## Bugs
 - [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
