@@ -14,16 +14,16 @@ Current Features List.
 - [x] **Unauthed Mode**: Added a "Skip Auth" option visible only when running on an emulator, allowing development without a Google account.
 - [x] **Health Checks for teddy.fyi**: The home screen makes an async request to https://teddy.fyi/ on load and displays a green (success) or red (failure) cloud icon in the bottom right corner.
 - [x] **Encrypted Storage**: Ensure sensitive session and authentication tokens are fully migrated to `EncryptedSharedPreferences` for enhanced security.
+- [x] **Networking Library Migration**: Migrate from `HttpURLConnection` to Retrofit or Ktor for improved maintainability and cleaner network code.
 
 ## Requested Features
-- [ ] **Networking Library Migration**: Migrate from `HttpURLConnection` to Retrofit or Ktor for improved maintainability and cleaner network code.
 
 ## Planned Features
 - [ ] **Deeper Health Checks**: There should be another screen to tap into that can show some version of health checks for all api services at teddy.fyi, and not just the nginx static proxy.
 - [ ] **DataStore Migration**: Migrate remaining app-wide settings from `SharedPreferences` to `Jetpack DataStore`.
 - [ ] **Modularization**: Transition to a feature-based multi-module Gradle project structure.
 - [ ] **Static Analysis Integration**: Integrate Detekt or Ktlint to enforce coding standards.
-- - [ ] **Dependency Injection**: Refactor the singleton repository into an injectable class (using Hilt or similar) to improve modularity and testability.
+- [ ] **Dependency Injection**: Refactor the singleton repository into an injectable class (using Hilt or similar) to improve modularity and testability.
 
 ## Bugs
 - [x] **Token display**: Removed the Token display from the home screen.
