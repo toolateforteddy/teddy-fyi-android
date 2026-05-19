@@ -96,10 +96,20 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         }
     }
 
-    val groupedItems = remember(filteredItems) {
-        val parents = filteredItems.filter { it.parentId == null }
-        val children = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
-        parents.map { it to (children[it.id] ?: emptyList()) }
+    val groupedItems = remember(filteredItems, currentMode) {
+        val allParents = filteredItems.filter { it.parentId == null }
+        val allChildren = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
+        
+        if (currentMode == TodoMode.TODAY) {
+            // Include parents that have subtasks scheduled for today OR are themselves scheduled for today.
+            allParents.filter { parent ->
+                parent.isPlannedForToday || allChildren[parent.id]?.any { it.isPlannedForToday } == true
+            }.map { parent ->
+                parent to (allChildren[parent.id] ?: emptyList())
+            }
+        } else {
+            allParents.map { it to (allChildren[it.id] ?: emptyList()) }
+        }
     }
     
     var newItemTitle by remember { mutableStateOf("") }
@@ -110,7 +120,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                 repository.insertItem(TodoItem(
                     title = title, 
                     userId = userId,
-                    parentId = parentId
+                    parentId = parentId,
+                    isPlannedForToday = currentMode == TodoMode.TODAY_PLANNING
                 ))
             }
         }
@@ -274,52 +285,52 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
                                     index = parentIndex,
                                     totalItems = groupedItems.size,
-                        onCheckedChange = { isChecked ->
-                            if (currentMode == TodoMode.TODAY_PLANNING) {
-                                scope.launch { 
-                                    repository.updateItem(parent.copy(isPlannedForToday = isChecked))
-                                    if (isChecked) {
-                                        children.forEach { 
-                                            repository.updateItem(it.copy(isPlannedForToday = true))
+                                    onCheckedChange = { isChecked ->
+                                        if (currentMode == TodoMode.TODAY_PLANNING) {
+                                            scope.launch { 
+                                                repository.updateItem(parent.copy(isPlannedForToday = isChecked))
+                                                if (isChecked) {
+                                                    children.forEach { 
+                                                        repository.updateItem(it.copy(isPlannedForToday = true))
+                                                    }
+                                                }
+                                            }
+                                            return@TodoItemRow
                                         }
-                                    }
-                                }
-                                return@TodoItemRow
-                            }
 
-                            if (isChecked && !showCompletedOnly) {
-                                recentlyCompletedIds.add(parent.id)
-                                val party = Party(
-                                    speed = 0f,
-                                    maxSpeed = 30f,
-                                    damping = 0.9f,
-                                    spread = 360,
-                                    colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
-                                    emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
-                                    position = Position.Relative(0.5, 0.3)
-                                )
-                                parties.add(party)
-                                
-                                scope.launch {
-                                    delay(2000)
-                                    recentlyCompletedIds.remove(parent.id)
-                                    if (parent.recurrenceIntervalDays != null) {
-                                        val interval = parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
-                                        val nextTime = System.currentTimeMillis() + interval
-                                        repository.updateItem(parent.copy(
-                                            isCompleted = false, 
-                                            scheduledAt = nextTime, 
-                                            isPlannedForToday = false
-                                        ))
-                                    }
-                                    delay(1000) 
-                                    parties.remove(party)
-                                }
-                            } else if (!isChecked) {
-                                recentlyCompletedIds.remove(parent.id)
-                            }
-                            scope.launch { repository.updateItem(parent.copy(isCompleted = isChecked)) }
-                        },
+                                        if (isChecked && !showCompletedOnly) {
+                                            recentlyCompletedIds.add(parent.id)
+                                            val party = Party(
+                                                speed = 0f,
+                                                maxSpeed = 30f,
+                                                damping = 0.9f,
+                                                spread = 360,
+                                                colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+                                                emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                                                position = Position.Relative(0.5, 0.3)
+                                            )
+                                            parties.add(party)
+                                            
+                                            scope.launch {
+                                                delay(2000)
+                                                recentlyCompletedIds.remove(parent.id)
+                                                if (parent.recurrenceIntervalDays != null) {
+                                                    val interval = parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
+                                                    val nextTime = System.currentTimeMillis() + interval
+                                                    repository.updateItem(parent.copy(
+                                                        isCompleted = false, 
+                                                        scheduledAt = nextTime, 
+                                                        isPlannedForToday = false
+                                                    ))
+                                                }
+                                                delay(1000) 
+                                                parties.remove(party)
+                                            }
+                                        } else if (!isChecked) {
+                                            recentlyCompletedIds.remove(parent.id)
+                                        }
+                                        scope.launch { repository.updateItem(parent.copy(isCompleted = isChecked)) }
+                                    },
                                     onDelete = { scope.launch { repository.deleteItem(parent) } },
                                     onUpdateItem = { scope.launch { repository.updateItem(it) } },
                                     onAddSubtask = { title -> onAddNewItem(title, parent.id) },
@@ -354,8 +365,15 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                 )
                             }
                             
-                            if (expandedParentIds.value.contains(parent.id) || currentMode == TodoMode.TODAY) {
-                                itemsIndexed(children, key = { _, it -> it.id }) { childIndex, child ->
+                            val isExpanded = expandedParentIds.value.contains(parent.id)
+                            val isCollapsedInToday = currentMode == TodoMode.TODAY && !isExpanded
+                            if (isExpanded || isCollapsedInToday) {
+                                val childrenToShow = if (currentMode == TodoMode.TODAY) {
+                                    children.filter { it.isPlannedForToday || it.isCompleted }
+                                } else {
+                                    children
+                                }
+                                itemsIndexed(childrenToShow, key = { _, it -> it.id }) { childIndex, child ->
                                     TodoItemRow(
                                         item = child,
                                         isSubtask = true,

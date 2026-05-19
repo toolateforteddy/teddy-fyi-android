@@ -31,6 +31,7 @@ Current Features List.
 - [x] **Due Dates**: Set reminders and deadlines. Automatically add it to the today list whenever due date is within 2 days. But put it at the bottom, and add the due date in red text.
 
 ## Requested Features
+- [x] **Planning Mode Added Tasks**: When adding a task and in Planning Mode the task should already be checked as being planned for today. Just to save a second of time from adding and then having to check the button.
 
 ## Planned Features
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
@@ -55,3 +56,5 @@ Current Features List.
 - [x] **Subtasks in Today Mode**: If a subtask has been selected to be done today, it should show up on the today screen. And on that screen, it should show up nested under its parent task, even if the parent task hasn't been selected to be done today. The subtasks that have not been selected for today, should not show up.
 - [x] **Planned Tasks in Backlog**: If a task has been selected to be done today, let's hide it from the "Backlog" tab to reduce the clutter.
 - [x] **Rename Normal to Backlog**: Normal is a terrible name for anything. Let's call it the backlog.
+- [x] **Subtasks in Today**: Right now, it is showing all tasks that have subtasks inside of Today, even if none of those subtasks have tasks scheduled to be tackled today. Only parent tasks that have scheduled subtasks should be rendered in Today view. Also, collapsing subtasks in Today view doesn't work at all. Nothing happens.
+- [x] **Subtasks in Today Cont.**: Now, all parent tasks are being displayed in Today view, even if none of their subtasks have been scheduled for today. Also, tasks scheduled for today that are NOT parents or subtasks are missing from the page.
