@@ -105,10 +105,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val onAddNewItem = { title: String, parentId: Int? ->
         if (title.isNotBlank()) {
             scope.launch {
-                val maxPos = allItems.filter { it.parentId == parentId }.maxByOrNull { it.position }?.position ?: -1
                 repository.insertItem(TodoItem(
                     title = title, 
-                    position = maxPos + 1, 
                     userId = userId,
                     parentId = parentId
                 ))
@@ -334,9 +332,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         if (parentIndex > 0) {
                                             val prevParent = groupedItems[parentIndex - 1].first
                                             scope.launch {
-                                                val oldPos = parent.position
-                                                repository.updateItem(parent.copy(position = prevParent.position))
-                                                repository.updateItem(prevParent.copy(position = oldPos))
+                                                repository.swapPositions(parent, prevParent)
                                             }
                                         }
                                     },
@@ -344,9 +340,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         if (parentIndex < groupedItems.size - 1) {
                                             val nextParent = groupedItems[parentIndex + 1].first
                                             scope.launch {
-                                                val oldPos = parent.position
-                                                repository.updateItem(parent.copy(position = nextParent.position))
-                                                repository.updateItem(nextParent.copy(position = oldPos))
+                                                repository.swapPositions(parent, nextParent)
                                             }
                                         }
                                     }
@@ -396,9 +390,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             if (childIndex > 0) {
                                                 val prevChild = children[childIndex - 1]
                                                 scope.launch {
-                                                    val oldPos = child.position
-                                                    repository.updateItem(child.copy(position = prevChild.position))
-                                                    repository.updateItem(prevChild.copy(position = oldPos))
+                                                    repository.swapPositions(child, prevChild)
                                                 }
                                             }
                                         },
@@ -406,9 +398,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             if (childIndex < children.size - 1) {
                                                 val nextChild = children[childIndex + 1]
                                                 scope.launch {
-                                                    val oldPos = child.position
-                                                    repository.updateItem(child.copy(position = nextChild.position))
-                                                    repository.updateItem(nextChild.copy(position = oldPos))
+                                                    repository.swapPositions(child, nextChild)
                                                 }
                                             }
                                         }

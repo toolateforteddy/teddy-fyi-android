@@ -38,8 +38,7 @@ fun StoreManagementScreen(onBack: () -> Unit) {
         if (newStoreName.isNotBlank()) {
             val nameToSave = newStoreName
             scope.launch {
-                val maxPos = stores.maxByOrNull { it.position }?.position ?: -1
-                repository.insertStore(Store(name = nameToSave, position = maxPos + 1))
+                repository.insertStore(Store(name = nameToSave))
             }
             newStoreName = ""
         }
@@ -110,17 +109,13 @@ fun StoreManagementScreen(onBack: () -> Unit) {
                             onMoveUp = {
                                 val targetStore = stores[index - 1]
                                 scope.launch {
-                                    val oldPos = store.position
-                                    repository.updateStore(store.copy(position = targetStore.position))
-                                    repository.updateStore(targetStore.copy(position = oldPos))
+                                    repository.swapStorePositions(store, targetStore)
                                 }
                             },
                             onMoveDown = {
                                 val targetStore = stores[index + 1]
                                 scope.launch {
-                                    val oldPos = store.position
-                                    repository.updateStore(store.copy(position = targetStore.position))
-                                    repository.updateStore(targetStore.copy(position = oldPos))
+                                    repository.swapStorePositions(store, targetStore)
                                 }
                             },
                             isFirst = index == 0,

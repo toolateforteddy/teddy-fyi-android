@@ -38,8 +38,7 @@ fun CategoryManagementScreen(onBack: () -> Unit) {
         if (newCategoryName.isNotBlank()) {
             val nameToSave = newCategoryName
             scope.launch {
-                val maxPos = categories.maxByOrNull { it.position }?.position ?: -1
-                repository.insertCategory(Category(name = nameToSave, position = maxPos + 1))
+                repository.insertCategory(Category(name = nameToSave))
             }
             newCategoryName = ""
         }
@@ -107,17 +106,13 @@ fun CategoryManagementScreen(onBack: () -> Unit) {
                             onMoveUp = {
                                 val targetCategory = categories[index - 1]
                                 scope.launch {
-                                    val oldPos = category.position
-                                    repository.updateCategory(category.copy(position = targetCategory.position))
-                                    repository.updateCategory(targetCategory.copy(position = oldPos))
+                                    repository.swapCategoryPositions(category, targetCategory)
                                 }
                             },
                             onMoveDown = {
                                 val targetCategory = categories[index + 1]
                                 scope.launch {
-                                    val oldPos = category.position
-                                    repository.updateCategory(category.copy(position = targetCategory.position))
-                                    repository.updateCategory(targetCategory.copy(position = oldPos))
+                                    repository.swapCategoryPositions(category, targetCategory)
                                 }
                             },
                             isFirst = index == 0,

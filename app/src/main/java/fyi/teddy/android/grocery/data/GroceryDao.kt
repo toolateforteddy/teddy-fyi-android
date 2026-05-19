@@ -64,4 +64,55 @@ abstract class GroceryDao {
 
     @Query("UPDATE grocery_items SET categoryId = NULL WHERE categoryId = :categoryId")
     protected abstract suspend fun clearItemCategories(categoryId: Int)
+
+    @Transaction
+    open suspend fun insertItemWithNextPosition(item: GroceryItem): Long {
+        val maxPos = getMaxItemPosition() ?: -1
+        return insertItem(item.copy(position = maxPos + 1))
+    }
+
+    @Query("SELECT MAX(position) FROM grocery_items")
+    protected abstract suspend fun getMaxItemPosition(): Int?
+
+    @Transaction
+    open suspend fun insertStoreWithNextPosition(store: Store) {
+        val maxPos = getMaxStorePosition() ?: -1
+        insertStore(store.copy(position = maxPos + 1))
+    }
+
+    @Query("SELECT MAX(position) FROM stores")
+    protected abstract suspend fun getMaxStorePosition(): Int?
+
+    @Transaction
+    open suspend fun insertCategoryWithNextPosition(category: Category) {
+        val maxPos = getMaxCategoryPosition() ?: -1
+        insertCategory(category.copy(position = maxPos + 1))
+    }
+
+    @Query("SELECT MAX(position) FROM categories")
+    protected abstract suspend fun getMaxCategoryPosition(): Int?
+
+    @Transaction
+    open suspend fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) {
+        val pos1 = item1.position
+        val pos2 = item2.position
+        updateItem(item1.copy(position = pos2))
+        updateItem(item2.copy(position = pos1))
+    }
+
+    @Transaction
+    open suspend fun swapStorePositions(store1: Store, store2: Store) {
+        val pos1 = store1.position
+        val pos2 = store2.position
+        updateStore(store1.copy(position = pos2))
+        updateStore(store2.copy(position = pos1))
+    }
+
+    @Transaction
+    open suspend fun swapCategoryPositions(cat1: Category, cat2: Category) {
+        val pos1 = cat1.position
+        val pos2 = cat2.position
+        updateCategory(cat1.copy(position = pos2))
+        updateCategory(cat2.copy(position = pos1))
+    }
 }

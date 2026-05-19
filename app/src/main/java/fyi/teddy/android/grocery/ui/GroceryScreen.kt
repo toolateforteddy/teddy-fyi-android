@@ -82,8 +82,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
             val quantityToSave = newItemQuantity
             val categoryToSave = selectedCategoryId
             scope.launch {
-                val maxPos = items.maxByOrNull { it.position }?.position ?: -1
-                val itemId = repository.insertItem(GroceryItem(name = nameToSave, quantity = quantityToSave, position = maxPos + 1, categoryId = categoryToSave))
+                val itemId = repository.insertItem(GroceryItem(name = nameToSave, quantity = quantityToSave, categoryId = categoryToSave))
                 
                 stores.forEach { store ->
                     if (!store.isDefaultSupported) {
@@ -355,9 +354,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
                                     onMoveItem = { _, toIndex ->
                                         val targetItem = categoryItems[toIndex]
                                         scope.launch {
-                                            val oldPos = item.position
-                                            repository.updateItem(item.copy(position = targetItem.position))
-                                            repository.updateItem(targetItem.copy(position = oldPos))
+                                            repository.swapItemPositions(item, targetItem)
                                         }
                                     }
                                 )
@@ -393,9 +390,7 @@ fun GroceryScreen(onBack: () -> Unit, onManageConfig: () -> Unit) {
                                 onMoveItem = { _, toIndex ->
                                     val targetItem = uncategorizedItems[toIndex]
                                     scope.launch {
-                                        val oldPos = item.position
-                                        repository.updateItem(item.copy(position = targetItem.position))
-                                        repository.updateItem(targetItem.copy(position = oldPos))
+                                        repository.swapItemPositions(item, targetItem)
                                     }
                                 }
                             )
