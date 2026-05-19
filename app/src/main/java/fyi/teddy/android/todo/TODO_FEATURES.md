@@ -51,4 +51,7 @@ Current Features List.
 - [x] **Nested Task Indentation**: Fixed indentation for top-level tasks and subtasks. Reduced expanding arrow size and margins. The indentation for subtasks is too subtle. Add a dash before each checkbox on subtasks.
 - [x] **Adding Subtasks**: Subtask title input is now auto-focused with the keyboard open. The dialog remains open after adding an item to allow for multiple subtasks to be added in sequence.
 - [x] **Right Caret instead of up caret**: For parent tasks, instead of an ^ for the collapsed state, use a >.
-- [x] **Caret Nav**: Move the caret over to the right, so that the check boxes can be closer to the left side without having to leave space for the caret.
+- [x] **Caret Nav**: Move the caret over to the right, so that the checkboxes can be closer to the left side without having to leave space for the caret.
+- [x] **Subtasks in Today Mode**: If a subtask has been selected to be done today, it should show up on the today screen. And on that screen, it should show up nested under its parent task, even if the parent task hasn't been selected to be done today. The subtasks that have not been selected for today, should not show up.
+- [x] **Planned Tasks in Backlog**: If a task has been selected to be done today, let's hide it from the "Backlog" tab to reduce the clutter.
+- [x] **Rename Normal to Backlog**: Normal is a terrible name for anything. Let's call it the backlog.

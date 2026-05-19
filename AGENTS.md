@@ -36,7 +36,10 @@ The application is a modular Android client built with Kotlin, Jetpack Compose, 
 *   **Kotlin Coroutines**: All asynchronous operations (network calls, database access) are performed using Coroutines.
 *   **Flows**: Used for reactive data streaming from the database to the UI.
 
-## Development Workflow
-1.  **Feature Definition**: New requirements are tracked in module-specific `*_FEATURES.md` files.
-2.  **Implementation**: Features are implemented following the Repository-ViewModel-UI flow.
-3.  **Sync**: Local-only features are implemented first, with Remote API integration added as a secondary "Sync" step.
+## Future Architectural Evolution
+To ensure the app scales effectively, the following architectural goals are prioritized:
+*   **DI Transition**: Migrate to Hilt for automatic dependency management to improve testability and decouple components.
+*   **ViewModel Refactor**: Enforce Unidirectional Data Flow (UDF) where all UI state is managed within ViewModels.
+*   **Networking Modernization**: Migrate from legacy `HttpURLConnection` to Ktor for efficient, type-safe API communication.
+*   **Modularization**: Transition to a feature-based multi-module Gradle project structure to improve build times and maintainability.
+*   **Static Analysis**: Integrate Detekt or Ktlint to maintain high code quality standards.

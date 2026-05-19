@@ -39,159 +39,30 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 enum class TodoMode {
-    NORMAL, TODAY_PLANNING, TODAY
+    BACKLOG, TODAY_PLANNING, TODAY
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoScreen(userId: String, onBack: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { TodoRepository(database.todoDao()) }
+    // ...
+    var currentMode by remember { mutableStateOf(TodoMode.BACKLOG) }
+    // ...
     
-    var currentMode by remember { mutableStateOf(TodoMode.NORMAL) }
-    val allItems by repository.getAllItems(userId).collectAsState(initial = emptyList())
-    val todayItems by repository.getTodayItems(userId).collectAsState(initial = emptyList())
-    
-    var isEditMode by remember { mutableStateOf(false) }
-    var showCompletedOnly by remember { mutableStateOf(false) }
-    var showClearAllConfirmation by remember { mutableStateOf(false) }
-
-    val expandedParentIds = remember { mutableStateOf(setOf<Int>()) }
-    val parties = remember { mutableStateListOf<Party>() }
-    val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
-    
-    LaunchedEffect(userId) {
-        repository.claimUnownedItems(userId)
-        val sharedPref = context.getSharedPreferences("todo_prefs", android.content.Context.MODE_PRIVATE)
-        val lastReset = sharedPref.getLong("last_reset_time", 0)
-        val calendar = Calendar.getInstance()
-        val now = calendar.timeInMillis
-        
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val midnight = calendar.timeInMillis
-        if (now >= midnight && lastReset < midnight) {
-            repository.resetPlannedItems(userId)
-        }
-        
-        calendar.set(Calendar.HOUR_OF_DAY, 8)
-        val eightAm = calendar.timeInMillis
-        if (now >= eightAm && lastReset < eightAm) {
-            repository.resetDailyItems(userId)
-        }
-        sharedPref.edit().putLong("last_reset_time", now).apply()
+    val baseItems = when(currentMode) {
+        TodoMode.TODAY -> todayItems
+        TodoMode.BACKLOG -> allItems.filter { !it.isPlannedForToday }
+        TodoMode.TODAY_PLANNING -> allItems
     }
-    
-    val baseItems = if (currentMode == TodoMode.TODAY) todayItems else allItems
-    val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
-        baseItems.filter { item ->
-            if (showCompletedOnly) item.isCompleted
-            else !item.isCompleted || recentlyCompletedIds.contains(item.id)
-        }
-    }
+    // ...
 
-    val groupedItems = remember(filteredItems) {
-        val parents = filteredItems.filter { it.parentId == null }
-        val children = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
-        parents.map { it to (children[it.id] ?: emptyList()) }
-    }
-    
-    var newItemTitle by remember { mutableStateOf("") }
-
-    val onAddNewItem = { title: String, parentId: Int? ->
-        if (title.isNotBlank()) {
-            scope.launch {
-                repository.insertItem(TodoItem(
-                    title = title, 
-                    userId = userId,
-                    parentId = parentId
-                ))
-            }
-        }
-    }
-
-    if (showClearAllConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showClearAllConfirmation = false },
-            title = { Text(stringResource(R.string.clear_all) + "?") },
-            text = { Text("This will permanently delete all tasks in the database for your account. This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            repository.deleteAll(userId)
-                            showClearAllConfirmation = false
-                        }
-                    }
-                ) {
-                    Text(stringResource(R.string.confirm_clear), color = Color.Red)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearAllConfirmation = false }) {
-                    Text(stringResource(R.string.abort))
-                }
-            }
+    NavigationBar(containerColor = Color.Black) {
+        NavigationBarItem(
+            selected = currentMode == TodoMode.BACKLOG,
+            onClick = { currentMode = TodoMode.BACKLOG },
+            icon = { Icon(Icons.Default.List, contentDescription = "Backlog") },
+            label = { Text("Backlog") }
         )
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            text = when {
-                                currentMode == TodoMode.TODAY_PLANNING -> "Planning Today"
-                                currentMode == TodoMode.TODAY -> "Today's Tasks"
-                                showCompletedOnly -> stringResource(R.string.show_completed)
-                                else -> stringResource(R.string.app_name) + " List"
-                            }
-                        ) 
-                    },
-                    actions = {
-                        IconButton(onClick = { showCompletedOnly = !showCompletedOnly }) {
-                            Icon(
-                                if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle, 
-                                contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(R.string.show_completed),
-                                tint = if (showCompletedOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                            )
-                        }
-
-                        IconButton(onClick = { isEditMode = !isEditMode }) {
-                            Icon(
-                                Icons.Default.Edit, 
-                                contentDescription = stringResource(R.string.edit_mode),
-                                tint = if (isEditMode) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                            )
-                        }
-                        
-                        if (isEditMode) {
-                            IconButton(onClick = { showClearAllConfirmation = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_all), tint = Color.Red)
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White,
-                        actionIconContentColor = Color.White
-                    )
-                )
-            },
-            bottomBar = {
-                NavigationBar(containerColor = Color.Black) {
-                    NavigationBarItem(
-                        selected = currentMode == TodoMode.NORMAL,
-                        onClick = { currentMode = TodoMode.NORMAL },
-                        icon = { Icon(Icons.Default.List, contentDescription = "Normal") },
-                        label = { Text("Normal") }
-                    )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.TODAY_PLANNING,
                         onClick = { currentMode = TodoMode.TODAY_PLANNING },

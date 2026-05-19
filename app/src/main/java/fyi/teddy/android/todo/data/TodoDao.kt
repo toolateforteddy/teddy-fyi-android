@@ -8,7 +8,15 @@ abstract class TodoDao {
     @Query("SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) AND userId = :userId ORDER BY position ASC, createdAt DESC")
     abstract fun getAllItems(userId: String): Flow<List<TodoItem>>
 
-    @Query("SELECT * FROM todo_items WHERE (isPlannedForToday = 1 OR (dueDate IS NOT NULL AND dueDate <= (strftime('%s','now') * 1000 + 172800000))) AND (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) AND userId = :userId ORDER BY (CASE WHEN isPlannedForToday = 1 THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC")
+    @Query("""
+        SELECT * FROM todo_items WHERE userId = :userId AND (
+            isPlannedForToday = 1 
+            OR (dueDate IS NOT NULL AND dueDate <= (strftime('%s','now') * 1000 + 172800000))
+            OR (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
+            OR id IN (SELECT parentId FROM todo_items WHERE isPlannedForToday = 1 AND parentId IS NOT NULL)
+        )
+        ORDER BY (CASE WHEN isPlannedForToday = 1 THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC
+    """)
     abstract fun getTodayItems(userId: String): Flow<List<TodoItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
