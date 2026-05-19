@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -50,6 +52,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     
     var currentMode by remember { mutableStateOf(TodoMode.NORMAL) }
     val allItems by repository.getAllItems(userId).collectAsState(initial = emptyList())
+    val todayItems by repository.getTodayItems(userId).collectAsState(initial = emptyList())
     
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
@@ -83,32 +86,11 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         sharedPref.edit().putLong("last_reset_time", now).apply()
     }
     
-    val filteredItems = remember(allItems, showCompletedOnly, recentlyCompletedIds.toList(), currentMode) {
-        val base = allItems.filter { item ->
+    val baseItems = if (currentMode == TodoMode.TODAY) todayItems else allItems
+    val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
+        baseItems.filter { item ->
             if (showCompletedOnly) item.isCompleted
             else !item.isCompleted || recentlyCompletedIds.contains(item.id)
-        }
-
-        if (currentMode == TodoMode.TODAY) {
-            val planned = base.filter { it.isPlannedForToday }
-            val plannedIds = planned.map { it.id }.toSet()
-            
-            val result = mutableSetOf<TodoItem>()
-            base.forEach { item ->
-                if (item.isPlannedForToday) {
-                    result.add(item)
-                } else if (item.parentId != null && plannedIds.contains(item.parentId)) {
-                    result.add(item)
-                } else if (item.parentId == null) {
-                    val anyChildPlanned = base.any { it.parentId == item.id && it.isPlannedForToday }
-                    if (anyChildPlanned) {
-                        result.add(item)
-                    }
-                }
-            }
-            result.toList()
-        } else {
-            base
         }
     }
 
@@ -482,21 +464,8 @@ fun TodoItemRow(
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (!isSubtask) {
-            Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                if (subtaskCount > 0) {
-                    IconButton(onClick = onToggleExpand) {
-                        Icon(
-                            if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
-                            contentDescription = if (isExpanded) "Collapse" else "Expand",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        } else {
-            Spacer(modifier = Modifier.width(32.dp))
+        if (isSubtask) {
+            Spacer(modifier = Modifier.width(16.dp))
             Text("-", color = Color.Gray, modifier = Modifier.padding(end = 8.dp))
         }
 
@@ -554,6 +523,18 @@ fun TodoItemRow(
             }
         }
         
+        // Caret moved to the right
+        if (!isSubtask && subtaskCount > 0) {
+            IconButton(onClick = onToggleExpand) {
+                Icon(
+                    if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
         if (showDelete) {
             IconButton(onClick = onMoveUp, enabled = index > 0, modifier = Modifier.size(32.dp)) {
                 Icon(

@@ -65,7 +65,7 @@ class GeneralFunctionalityTest {
         val userId = "user"
         
         repo.getAllItems(userId)
-        verify { dao.getAllItems(userId, any()) }
+        verify { dao.getAllItems(userId) }
         
         repo.deleteAll(userId)
         coVerify { dao.deleteAll(userId) }

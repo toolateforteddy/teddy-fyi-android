@@ -47,7 +47,8 @@ Current Features List.
 - [x] **Empty Title on Real Mode**: Fixed a race condition where the task title was being reset to empty before the async database save operation could read it.
 - [x] **Move to Top/Bottom**: The topmost item shouldn't have the option to move to top. The bottommost item shouldn't have the option to move to bottom.
 - [x] **Reorder items once only**: Fixed logic that failed when two items had the same position (common after migration).
-- [x] **New Items Hidden**: Fixed a race condition in the DAO query where items added after the initial screen load were filtered out until a manual refresh.
+- [x] **New Items Hidden**: Fixed a race condition in the DAO query where items added after the initial screen load were filtered out until a manual refresh. This bug came back.
 - [x] **Nested Task Indentation**: Fixed indentation for top-level tasks and subtasks. Reduced expanding arrow size and margins. The indentation for subtasks is too subtle. Add a dash before each checkbox on subtasks.
 - [x] **Adding Subtasks**: Subtask title input is now auto-focused with the keyboard open. The dialog remains open after adding an item to allow for multiple subtasks to be added in sequence.
 - [x] **Right Caret instead of up caret**: For parent tasks, instead of an ^ for the collapsed state, use a >.
+- [x] **Caret Nav**: Move the caret over to the right, so that the check boxes can be closer to the left side without having to leave space for the caret.
