@@ -47,17 +47,16 @@ class TodoDaoExtendedTest {
 
     @Test
     fun getTodayItems_includesPlanned() = runTest {
-        val planned = TodoItem(title = "Planned", isPlannedForToday = true, userId = userId)
         val notPlanned = TodoItem(title = "Not Planned", isPlannedForToday = false, userId = userId)
         
-        todoDao.insertItem(planned)
+        todoDao.insertItem(TodoItem(id = 1, title = "Planned", isPlannedForToday = true, userId = userId))
         todoDao.insertItem(notPlanned)
+        todoDao.insertItem(TodoItem(id = 2, title = "Child", parentId = 1, isPlannedForToday = false, userId = userId))
         
         val items = todoDao.getTodayItems(userId).first()
-        // Note: Due soon items might also show up if their random dueDate matches the strftime buffer, 
-        // but for newly created items without due dates, only 'Planned' should show.
         assertTrue(items.any { it.title == "Planned" })
         assertFalse(items.any { it.title == "Not Planned" })
+        assertTrue(items.any { it.title == "Child" })
     }
 
     @Test

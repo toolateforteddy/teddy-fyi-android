@@ -13,7 +13,8 @@ abstract class TodoDao {
             isPlannedForToday = 1 
             OR (dueDate IS NOT NULL AND dueDate <= (strftime('%s','now') * 1000 + 172800000))
             OR (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
-            OR id IN (SELECT parentId FROM todo_items WHERE isPlannedForToday = 1 AND parentId IS NOT NULL)
+            OR id IN (SELECT parentId FROM todo_items WHERE isPlannedForToday = 1 AND parentId IS NOT NULL AND userId = :userId)
+            OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE isPlannedForToday = 1 AND parentId IS NOT NULL AND userId = :userId))
         )
         ORDER BY (CASE WHEN isPlannedForToday = 1 THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC
     """)
