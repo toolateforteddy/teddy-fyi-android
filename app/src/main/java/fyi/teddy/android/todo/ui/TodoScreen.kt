@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -61,23 +63,36 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     // Track recently completed items to hide them after 2 seconds
     val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
     
-    // Check for midnight reset on load and claim unowned items
+    // Check for resets on load and claim unowned items
     LaunchedEffect(userId) {
         dao.claimUnownedItems(userId)
         
         val sharedPref = context.getSharedPreferences("todo_prefs", android.content.Context.MODE_PRIVATE)
-        val lastReset = sharedPref.getLong("last_reset_day", 0)
-        val currentDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        val lastReset = sharedPref.getLong("last_reset_time", 0)
         
-        if (currentDay > lastReset) {
+        val calendar = Calendar.getInstance()
+        val now = calendar.timeInMillis
+        
+        // Midnight reset for planned items
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val midnight = calendar.timeInMillis
+        
+        if (now >= midnight && lastReset < midnight) {
             dao.resetPlannedItems(userId)
-            sharedPref.edit().putLong("last_reset_day", currentDay).apply()
         }
+        
+        // 8 AM reset for daily tasks
+        calendar.set(Calendar.HOUR_OF_DAY, 8)
+        val eightAm = calendar.timeInMillis
+        
+        if (now >= eightAm && lastReset < eightAm) {
+            dao.resetDailyItems(userId)
+        }
+        
+        sharedPref.edit().putLong("last_reset_time", now).apply()
     }
     
     val filteredItems = remember(allItems, showCompletedOnly, recentlyCompletedIds.toList(), currentMode) {
@@ -87,10 +102,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         }
 
         if (currentMode == TodoMode.TODAY) {
-            // Today logic:
-            // 1. Include items marked for today.
-            // 2. If parent marked for today, include all its children.
-            // 3. If child marked for today, include its parent.
             val planned = base.filter { it.isPlannedForToday }
             val plannedIds = planned.map { it.id }.toSet()
             
@@ -302,7 +313,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         if (currentMode == TodoMode.TODAY_PLANNING) {
                                             scope.launch { 
                                                 dao.updateItem(parent.copy(isPlannedForToday = isChecked))
-                                                // If parent is added to today, all subtasks should be too
                                                 if (isChecked) {
                                                     children.forEach { 
                                                         dao.updateItem(it.copy(isPlannedForToday = true))
@@ -351,7 +361,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     },
                                     onMoveToBottom = {
                                         scope.launch {
-                                            val maxPos = allItems.filter { it.parentId == null }.maxByOrNull { it.position }?.position ?: 0
+                                            val maxPos = allItems.filter { it.parentId == null }.minByOrNull { it.position }?.position ?: 0
                                             dao.updateItem(parent.copy(position = maxPos + 1))
                                         }
                                     },
@@ -482,23 +492,29 @@ fun TodoItemRow(
     var showRecurrenceDialog by remember { mutableStateOf(false) }
     var showEditTitleDialog by remember { mutableStateOf(false) }
     var showAddSubtaskDialog by remember { mutableStateOf(false) }
+    
+    val focusRequester = remember { FocusRequester() }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .padding(start = if (isSubtask) 32.dp else 0.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (!isSubtask && subtaskCount > 0) {
-            IconButton(onClick = onToggleExpand) {
-                Icon(
-                    if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = Color.Gray
-                )
+        if (!isSubtask) {
+            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                if (subtaskCount > 0) {
+                    IconButton(onClick = onToggleExpand) {
+                        Icon(
+                            if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (isExpanded) "Collapse" else "Expand",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
-        } else if (!isSubtask) {
+        } else {
             Spacer(modifier = Modifier.width(48.dp))
         }
 
@@ -519,6 +535,14 @@ fun TodoItemRow(
                         textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                     ) else MaterialTheme.typography.bodyLarge
                 )
+                if (item.isDaily) {
+                    Icon(
+                        Icons.Default.Refresh, 
+                        contentDescription = "Daily", 
+                        tint = Color.Cyan, 
+                        modifier = Modifier.padding(start = 4.dp).size(14.dp)
+                    )
+                }
                 if (!isSubtask && subtaskCount > 0 && !isExpanded) {
                     Text(
                         text = " ($completedSubtaskCount/$subtaskCount)",
@@ -574,6 +598,13 @@ fun TodoItemRow(
                         text = { Text("Edit Title") },
                         onClick = {
                             showEditTitleDialog = true
+                            showMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (item.isDaily) "Make Non-Daily" else "Make Daily") },
+                        onClick = {
+                            onUpdateItem(item.copy(isDaily = !item.isDaily, isPlannedForToday = if (!item.isDaily) true else item.isPlannedForToday))
                             showMenu = false
                         }
                     )
@@ -688,6 +719,11 @@ fun TodoItemRow(
 
     if (showAddSubtaskDialog) {
         var subtaskTitle by remember { mutableStateOf("") }
+        
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+
         AlertDialog(
             onDismissRequest = { showAddSubtaskDialog = false },
             title = { Text("Add Subtask") },
@@ -696,7 +732,19 @@ fun TodoItemRow(
                     value = subtaskTitle,
                     onValueChange = { subtaskTitle = it },
                     label = { Text("Subtask Title") },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.focusRequester(focusRequester),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (subtaskTitle.isNotBlank()) {
+                                onAddSubtask(subtaskTitle)
+                                subtaskTitle = "" // Clear for next subtask in sequence
+                            }
+                        }
+                    ),
                     singleLine = true
                 )
             },
@@ -704,7 +752,7 @@ fun TodoItemRow(
                 TextButton(onClick = {
                     if (subtaskTitle.isNotBlank()) {
                         onAddSubtask(subtaskTitle)
-                        showAddSubtaskDialog = false
+                        subtaskTitle = "" // Open for next one
                     }
                 }) {
                     Text("Add")
@@ -712,7 +760,7 @@ fun TodoItemRow(
             },
             dismissButton = {
                 TextButton(onClick = { showAddSubtaskDialog = false }) {
-                    Text("Cancel")
+                    Text("Finish")
                 }
             }
         )
