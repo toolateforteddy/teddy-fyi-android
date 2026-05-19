@@ -86,11 +86,23 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
             val quantityToSave = newItemQuantity
             val categoryToSave = selectedCategoryId
             scope.launch {
-                val itemId = repository.insertItem(GroceryItem(name = nameToSave, quantity = quantityToSave, categoryId = categoryToSave, userId = userId))
+                val item = GroceryItem(
+                    name = nameToSave,
+                    quantity = quantityToSave,
+                    categoryId = categoryToSave,
+                    userId = userId
+                )
+                val itemId = repository.insertItem(item)
                 
                 stores.forEach { store ->
                     if (!store.isDefaultSupported) {
-                        repository.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = itemId.toInt(), storeId = store.id, isAvailable = false))
+                        repository.insertStoreInfo(
+                            GroceryItemStoreInfo(
+                                groceryItemId = itemId.toInt(),
+                                storeId = store.id,
+                                isAvailable = false
+                            )
+                        )
                     }
                 }
                 
@@ -252,7 +264,9 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     capitalization = KeyboardCapitalization.Sentences,
                                     imeAction = ImeAction.Done
                                 ),
-                                keyboardActions = KeyboardActions(onDone = { onAddNewItem() })
+                                keyboardActions = KeyboardActions(
+                                    onDone = { onAddNewItem() }
+                                )
                             )
                             IconButton(onClick = { onAddNewItem() }) {
                                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)

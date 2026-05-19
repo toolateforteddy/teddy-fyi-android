@@ -50,9 +50,11 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
                     scope.launch {
                         isLoggingIn = true
                         errorMessage = null
-                        val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
+                        val googleIdOption = GetGoogleIdOption.Builder()
                             .setFilterByAuthorizedAccounts(false)
-                            .setServerClientId("34718544535-rem2k0n6tue6qmevqgp9c84gmh24a6mp.apps.googleusercontent.com")
+                            .setServerClientId(
+                                "34718544535-rem2k0n6tue6qmevqgp9c84gmh24a6mp.apps.googleusercontent.com"
+                            )
                             .setAutoSelectEnabled(true)
                             .build()
 

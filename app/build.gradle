@@ -45,6 +45,7 @@ android {
 
 detekt {
     buildUponDefaultConfig = true
+    autoCorrect = true
     config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
 }
 

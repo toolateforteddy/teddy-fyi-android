@@ -157,11 +157,25 @@ fun StoreItemRow(
                 }
             }
             
-            IconButton(onClick = onMoveUp, enabled = !isFirst) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = if (isFirst) Color.Gray else Color.White)
+            IconButton(
+                onClick = onMoveUp, 
+                enabled = !isFirst
+            ) {
+                Icon(
+                    Icons.Default.KeyboardArrowUp, 
+                    contentDescription = "Move Up", 
+                    tint = if (isFirst) Color.Gray else Color.White
+                )
             }
-            IconButton(onClick = onMoveDown, enabled = !isLast) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = if (isLast) Color.Gray else Color.White)
+            IconButton(
+                onClick = onMoveDown, 
+                enabled = !isLast
+            ) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown, 
+                    contentDescription = "Move Down", 
+                    tint = if (isLast) Color.Gray else Color.White
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)

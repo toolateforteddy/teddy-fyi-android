@@ -37,7 +37,11 @@ class EncryptedDataStore(private val context: Context) {
         }
         val encryptedValue = aead.encrypt(value.toByteArray(), null)
         context.dataStore.edit { preferences ->
-            preferences[stringPreferencesKey(keyName)] = android.util.Base64.encodeToString(encryptedValue, android.util.Base64.DEFAULT)
+            val encoded = android.util.Base64.encodeToString(
+                encryptedValue, 
+                android.util.Base64.DEFAULT
+            )
+            preferences[stringPreferencesKey(keyName)] = encoded
         }
     }
 

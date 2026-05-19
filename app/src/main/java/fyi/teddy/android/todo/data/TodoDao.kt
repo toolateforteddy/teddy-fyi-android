@@ -5,7 +5,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 abstract class TodoDao {
-    @Query("SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) AND userId = :userId ORDER BY position ASC, createdAt DESC")
+    @Query(
+        "SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceIntervalDays IS NULL OR " +
+        "scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) " +
+        "AND userId = :userId ORDER BY position ASC, createdAt DESC"
+    )
     abstract fun getAllItems(userId: String): Flow<List<TodoItem>>
 
     @Query("""

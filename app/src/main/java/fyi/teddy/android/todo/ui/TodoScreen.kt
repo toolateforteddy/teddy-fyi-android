@@ -274,47 +274,52 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
                                     index = parentIndex,
                                     totalItems = groupedItems.size,
-                                    onCheckedChange = { isChecked ->
-                                        if (currentMode == TodoMode.TODAY_PLANNING) {
-                                            scope.launch { 
-                                                repository.updateItem(parent.copy(isPlannedForToday = isChecked))
-                                                if (isChecked) {
-                                                    children.forEach { 
-                                                        repository.updateItem(it.copy(isPlannedForToday = true))
-                                                    }
-                                                }
-                                            }
-                                            return@TodoItemRow
+                        onCheckedChange = { isChecked ->
+                            if (currentMode == TodoMode.TODAY_PLANNING) {
+                                scope.launch { 
+                                    repository.updateItem(parent.copy(isPlannedForToday = isChecked))
+                                    if (isChecked) {
+                                        children.forEach { 
+                                            repository.updateItem(it.copy(isPlannedForToday = true))
                                         }
+                                    }
+                                }
+                                return@TodoItemRow
+                            }
 
-                                        if (isChecked && !showCompletedOnly) {
-                                            recentlyCompletedIds.add(parent.id)
-                                            val party = Party(
-                                                speed = 0f,
-                                                maxSpeed = 30f,
-                                                damping = 0.9f,
-                                                spread = 360,
-                                                colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
-                                                emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
-                                                position = Position.Relative(0.5, 0.3)
-                                            )
-                                            parties.add(party)
-                                            
-                                            scope.launch {
-                                                delay(2000)
-                                                recentlyCompletedIds.remove(parent.id)
-                                                if (parent.recurrenceIntervalDays != null) {
-                                                    val nextTime = System.currentTimeMillis() + parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
-                                                    repository.updateItem(parent.copy(isCompleted = false, scheduledAt = nextTime, isPlannedForToday = false))
-                                                }
-                                                delay(1000) 
-                                                parties.remove(party)
-                                            }
-                                        } else if (!isChecked) {
-                                            recentlyCompletedIds.remove(parent.id)
-                                        }
-                                        scope.launch { repository.updateItem(parent.copy(isCompleted = isChecked)) }
-                                    },
+                            if (isChecked && !showCompletedOnly) {
+                                recentlyCompletedIds.add(parent.id)
+                                val party = Party(
+                                    speed = 0f,
+                                    maxSpeed = 30f,
+                                    damping = 0.9f,
+                                    spread = 360,
+                                    colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+                                    emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                                    position = Position.Relative(0.5, 0.3)
+                                )
+                                parties.add(party)
+                                
+                                scope.launch {
+                                    delay(2000)
+                                    recentlyCompletedIds.remove(parent.id)
+                                    if (parent.recurrenceIntervalDays != null) {
+                                        val interval = parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
+                                        val nextTime = System.currentTimeMillis() + interval
+                                        repository.updateItem(parent.copy(
+                                            isCompleted = false, 
+                                            scheduledAt = nextTime, 
+                                            isPlannedForToday = false
+                                        ))
+                                    }
+                                    delay(1000) 
+                                    parties.remove(party)
+                                }
+                            } else if (!isChecked) {
+                                recentlyCompletedIds.remove(parent.id)
+                            }
+                            scope.launch { repository.updateItem(parent.copy(isCompleted = isChecked)) }
+                        },
                                     onDelete = { scope.launch { repository.deleteItem(parent) } },
                                     onUpdateItem = { scope.launch { repository.updateItem(it) } },
                                     onAddSubtask = { title -> onAddNewItem(title, parent.id) },
