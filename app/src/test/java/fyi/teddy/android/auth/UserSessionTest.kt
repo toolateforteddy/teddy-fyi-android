@@ -3,6 +3,7 @@ package fyi.teddy.android.auth
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import fyi.teddy.android.auth.UserSession
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -22,7 +23,7 @@ class UserSessionTest {
     }
 
     @Test
-    fun saveAndLoadSession() {
+    fun saveAndLoadSession() = runBlocking {
         session.userName = "Teddy"
         session.idToken = "token123"
         session.profilePictureUri = "https://example.com/pic.jpg"
@@ -38,7 +39,7 @@ class UserSessionTest {
     }
 
     @Test
-    fun clearSession() {
+    fun clearSession() = runBlocking {
         session.userName = "Teddy"
         session.save(context)
         
@@ -53,7 +54,7 @@ class UserSessionTest {
     }
 
     @Test
-    fun loadEmptySession() {
+    fun loadEmptySession() = runBlocking {
         session.load(context)
         assertNull(session.userName)
         assertNull(session.idToken)

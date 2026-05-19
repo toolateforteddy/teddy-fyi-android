@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val session = remember { UserSession() }
                 val context = LocalContext.current
+                val scope = rememberCoroutineScope()
 
                 LaunchedEffect(Unit) {
                     session.load(context)
@@ -58,7 +60,10 @@ class MainActivity : ComponentActivity() {
                             session.idToken = result.idToken
                             session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
                             session.profilePictureUri = result.profilePictureUri?.toString()
-                            session.save(context)
+                            
+                            // Wrapped in a coroutine scope because it's a suspend function
+                            scope.launch { session.save(context) }
+                            
                             navController.navigate(Screen.Home.route) {
                                 popUpTo(Screen.Login.route) { inclusive = true }
                             }
@@ -73,9 +78,11 @@ class MainActivity : ComponentActivity() {
                             onNavigateToTodo = { navController.navigate(Screen.Todo.route) },
                             onNavigateToGrocery = { navController.navigate(Screen.Grocery.route) },
                             onLogout = {
-                                session.clear(context)
-                                navController.navigate(Screen.Login.route) {
-                                    popUpTo(Screen.Home.route) { inclusive = true }
+                                scope.launch { 
+                                    session.clear(context)
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(Screen.Home.route) { inclusive = true }
+                                    }
                                 }
                             }
                         )
