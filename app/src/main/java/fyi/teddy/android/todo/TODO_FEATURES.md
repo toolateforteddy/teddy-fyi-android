@@ -29,9 +29,11 @@ Current Features List.
 - [x] **Nested Tasks**: I should be able to create subtasks inside a single task. When viewing the task list, I should be able to toggle between showing nested tasks and not, by tapping on an arrow expand icon. When collapsed, the task should display X/Y, X being the number of completed subtasks, and Y being the total number of subtasks. If a subtask is added to the today list, then when viewing the today list, the main task should be shown, but only the one selected nested task underneath it. If a task with subtasks is added to the today list, then all subtasks should be added to the today list.
 - [x] **Daily Tasks**: I want to be able to mark some tasks as recurring daily. It doesn't matter that I completed the task the previous day, it should still be on my todo list for today, auto added at 8am local time. For example, I should empty the dishwasher every day.
 - [x] **Due Dates**: Set reminders and deadlines. Automatically add it to the today list whenever due date is within 2 days. But put it at the bottom, and add the due date in red text.
+- [x] **Planning Mode Added Tasks**: When adding a task and in Planning Mode the task should already be checked as being planned for today. Just to save a second of time from adding and then having to check the button.
+
 
 ## Requested Features
-- [x] **Planning Mode Added Tasks**: When adding a task and in Planning Mode the task should already be checked as being planned for today. Just to save a second of time from adding and then having to check the button.
+
 
 ## Planned Features
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
@@ -42,6 +44,7 @@ Current Features List.
 - [ ] **Push Notifications**: Reminders for approaching due dates and a morning summary of "Today's Tasks".
 - [ ] **Productivity Insights**: A stats dashboard showing total tasks completed, streaks for daily items, and weekly progress charts.
 - [ ] **Rich Task Details**: Add multi-line notes and clickable URLs to individual tasks.
+- [ ] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule.
 
 ## Bugs
 - [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
