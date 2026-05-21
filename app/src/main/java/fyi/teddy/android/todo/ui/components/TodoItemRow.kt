@@ -1,5 +1,6 @@
 package fyi.teddy.android.todo.ui.components
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -8,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,7 +49,10 @@ fun TodoItemRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 2.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onLongPress = { showMenu = true })
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isSubtask) {
@@ -124,95 +129,100 @@ fun TodoItemRow(
         if (showDelete) {
             IconButton(onClick = onMoveUp, enabled = index > 0, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    Icons.Default.KeyboardArrowUp, 
-                    contentDescription = "Move Up", 
+                    Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Move Up",
                     tint = if (index > 0) Color.White else Color.Transparent,
                     modifier = Modifier.size(20.dp)
                 )
             }
-            IconButton(onClick = onMoveDown, enabled = index < totalItems - 1, modifier = Modifier.size(32.dp)) {
+            IconButton(
+                onClick = onMoveDown,
+                enabled = index < totalItems - 1,
+                modifier = Modifier.size(32.dp)
+            ) {
                 Icon(
-                    Icons.Default.KeyboardArrowDown, 
-                    contentDescription = "Move Down", 
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Move Down",
                     tint = if (index < totalItems - 1) Color.White else Color.Transparent,
                     modifier = Modifier.size(20.dp)
                 )
             }
-            
-            Box {
-                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    if (!isSubtask) {
-                        DropdownMenuItem(
-                            text = { Text("Add Subtask") },
-                            onClick = {
-                                showAddSubtaskDialog = true
-                                showMenu = false
-                            }
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text("Edit Title") },
-                        onClick = {
-                            showEditTitleDialog = true
-                            showMenu = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(if (item.isDaily) "Make Non-Daily" else "Make Daily") },
-                        onClick = {
-                            onUpdateItem(item.copy(isDaily = !item.isDaily, isPlannedForToday = if (!item.isDaily) true else item.isPlannedForToday))
-                            showMenu = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Set Due Date") },
-                        onClick = {
-                            showDatePicker = true
-                            showMenu = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Recurrence") },
-                        onClick = {
-                            showRecurrenceDialog = true
-                            showMenu = false
-                        }
-                    )
-                    Divider()
-                    if (index > 0) {
-                        DropdownMenuItem(
-                            text = { Text("Move to Top") },
-                            onClick = {
-                                onMoveToTop()
-                                showMenu = false
-                            }
-                        )
-                    }
-                    if (index < totalItems - 1) {
-                        DropdownMenuItem(
-                            text = { Text("Move to Bottom") },
-                            onClick = {
-                                onMoveToBottom()
-                                showMenu = false
-                            }
-                        )
-                    }
-                    Divider()
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete), color = Color.Red) },
-                        onClick = {
-                            onDelete()
-                            showMenu = false
-                        }
-                    )
-                }
+            IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(20.dp))
             }
+        }
+
+        Box {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                if (!isSubtask) {
+                    DropdownMenuItem(
+                        text = { Text("Add Subtask") },
+                        onClick = {
+                            showAddSubtaskDialog = true
+                            showMenu = false
+                        }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("Edit Title") },
+                    onClick = {
+                        showEditTitleDialog = true
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(if (item.isDaily) "Make Non-Daily" else "Make Daily") },
+                    onClick = {
+                        onUpdateItem(item.copy(isDaily = !item.isDaily, isPlannedForToday = if (!item.isDaily) true else item.isPlannedForToday))
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Set Due Date") },
+                    onClick = {
+                        showDatePicker = true
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Recurrence") },
+                    onClick = {
+                        showRecurrenceDialog = true
+                        showMenu = false
+                    }
+                )
+                Divider()
+                if (index > 0) {
+                    DropdownMenuItem(
+                        text = { Text("Move to Top") },
+                        onClick = {
+                            onMoveToTop()
+                            showMenu = false
+                        }
+                    )
+                }
+                if (index < totalItems - 1) {
+                    DropdownMenuItem(
+                        text = { Text("Move to Bottom") },
+                        onClick = {
+                            onMoveToBottom()
+                            showMenu = false
+                        }
+                    )
+                }
+                Divider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.delete), color = Color.Red) },
+                    onClick = {
+                        onDelete()
+                        showMenu = false
+                    }
+                )
+            }
+
         }
     }
 

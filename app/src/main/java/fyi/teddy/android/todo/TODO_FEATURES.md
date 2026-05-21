@@ -30,10 +30,10 @@ Current Features List.
 - [x] **Daily Tasks**: I want to be able to mark some tasks as recurring daily. It doesn't matter that I completed the task the previous day, it should still be on my todo list for today, auto added at 8am local time. For example, I should empty the dishwasher every day.
 - [x] **Due Dates**: Set reminders and deadlines. Automatically add it to the today list whenever due date is within 2 days. But put it at the bottom, and add the due date in red text.
 - [x] **Planning Mode Added Tasks**: When adding a task and in Planning Mode the task should already be checked as being planned for today. Just to save a second of time from adding and then having to check the button.
+- [x] **Long Press to Edit Item**: When on the planning or backlog screen, and not in edit mode, long pressing on an item should open the same menu as if you were in edit mode and clicked the overflow menu.
 
 
 ## Requested Features
-
 
 ## Planned Features
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
