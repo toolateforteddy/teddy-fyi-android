@@ -131,6 +131,28 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                     IconButton(onClick = onManageConfig) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
+                    if (currentPhase == GroceryPhase.SHOPPING) {
+                        var showConfirmTripDone by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showConfirmTripDone = true }) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Trip Complete")
+                        }
+                        if (showConfirmTripDone) {
+                            AlertDialog(
+                                onDismissRequest = { showConfirmTripDone = false },
+                                title = { Text("Complete Trip?") },
+                                text = { Text("Are you sure you want to mark all In Cart items as done?") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        scope.launch { repository.markDoneForTrip() }
+                                        showConfirmTripDone = false
+                                    }) { Text("Confirm") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showConfirmTripDone = false }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,

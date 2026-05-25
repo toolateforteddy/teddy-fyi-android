@@ -28,4 +28,6 @@ class GroceryRepository(private val groceryDao: GroceryDao) {
     suspend fun insertStoreInfo(info: GroceryItemStoreInfo) = groceryDao.insertStoreInfo(info)
     
     suspend fun claimEverything(userId: String) = groceryDao.claimEverything(userId)
+    
+    suspend fun markDoneForTrip() = groceryDao.markDoneForTrip()
 }

@@ -148,4 +148,7 @@ abstract class GroceryDao {
         AND groceryItemId IN (SELECT id FROM grocery_items WHERE userId = :userId)
     """)
     abstract suspend fun claimUnownedStoreInfo(userId: String)
+
+    @Query("UPDATE grocery_items SET isBought = 1 WHERE isBought = 0 AND id IN (SELECT groceryItemId FROM grocery_item_store_info WHERE isAvailable = 1)")
+    abstract suspend fun markDoneForTrip()
 }
