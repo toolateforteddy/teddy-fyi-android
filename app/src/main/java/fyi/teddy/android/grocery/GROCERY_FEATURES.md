@@ -31,9 +31,9 @@ Current Features List.
 - [x] **Recurring Groceries**: Added a "Recommended" button in planning mode to quickly re-add frequently bought items.
 - [x] **Auth Integration**: Associate grocery lists with a user account.
 - [x] **Shopping Mode Done State**: Added a new visual only category called "In Cart" on the shopping mode where checked items are moved after a 2-second delay.
+- [x] **Trip Complete Button**: On the shopping tab, add a Trip Complete button. Maybe it looks like a check icon in the top. After a confirmation modal to make sure you don't execute on purpose, all items in the "in cart" category are marked as "done". Done items do not show up in any screen until they are readded as new need items.
 
 ## Requested Features
-- [x] **Trip Complete Button**: On the shopping tab, add a Trip Complete button. Maybe it looks like a check icon in the top. After a confirmation modal to make sure you don't execute on purpose, all items in the "in cart" category are marked as "done". Done items do not show up in any screen until they are readded as new need items.
 
 ## Planned Features
 - [ ] **Cloud Sync**: Sync grocery data with the backend.
@@ -62,4 +62,5 @@ Current Features List.
 - [x] **No Checkboxes in Needs or Planning Mode**: Checkboxes are now only visible in Shopping Mode.
 - [x] **Planning page Pill Wrap**: On planning screen, the pills now wrap to a second line correctly.
 - [x] **First Letter Cap**: All text boxes in this section of the app now default to sentence capitalization.
-- [x] **In Cart at bottom**: The In Cart Category should always be at the bottom of the list of categories, not at the top, or alphabetically sorted.
+- [x] **In Cart at bottom**: The In Cart Category should always be at the bottom of the list of categories, on the shopping screen, not at the top, or alphabetically sorted.
+- [x] **Checkbox delay**: The delay on ticking an item should only be a delay on moving it to the In Cart section, not a delay on marking the item as checked. That change should happen immediately.

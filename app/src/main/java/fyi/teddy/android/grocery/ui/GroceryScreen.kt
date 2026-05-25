@@ -367,48 +367,6 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                 }
 
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    // "In Cart" category for Shopping mode
-                    if (currentPhase == GroceryPhase.SHOPPING) {
-                        val inCartItems = baseFilteredItems.filter { it.isBought }
-                        if (inCartItems.isNotEmpty()) {
-                            item {
-                                CategoryHeader("In Cart")
-                            }
-                            items(inCartItems, key = { it.id }) { item ->
-                                GroceryItemRowContainer(
-                                    item = item,
-                                    currentPhase = currentPhase,
-                                    shoppingStoreId = shoppingStoreId,
-                                    itemStoreInfos = storeInfos.filter { it.groceryItemId == item.id },
-                                    stores = stores,
-                                    categories = categories,
-                                    isEditMode = isEditMode,
-                                    index = 0,
-                                    totalItems = 1,
-                                    onUpdateItem = { updatedItem ->
-                                        // For items already in "In Cart", they update immediately.
-                                        // For new items moving to "In Cart", we delay.
-                                        if (updatedItem.isBought && currentPhase == GroceryPhase.SHOPPING && !item.isBought) {
-                                            scope.launch {
-                                                kotlinx.coroutines.delay(2000)
-                                                repository.updateItem(updatedItem.copy(timesBought = item.timesBought + 1))
-                                            }
-                                        } else {
-                                            scope.launch { repository.updateItem(updatedItem) }
-                                        }
-                                    },
-                                    onDeleteItem = {
-                                        scope.launch { repository.deleteItem(item) }
-                                    },
-                                    onUpdateStoreInfo = { info ->
-                                        scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
-                                    },
-                                    onMoveItem = { _, _ -> }
-                                )
-                            }
-                        }
-                    }
-
                     val baseItems = if (currentPhase == GroceryPhase.SHOPPING) {
                         baseFilteredItems.filter { !it.isBought }
                     } else baseFilteredItems
@@ -433,16 +391,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     index = index,
                                     totalItems = categoryItems.size,
                                     onUpdateItem = { updatedItem ->
-                                        // For items already in "In Cart", they update immediately.
-                                        // For new items moving to "In Cart", we delay.
-                                        if (updatedItem.isBought && currentPhase == GroceryPhase.SHOPPING && !item.isBought) {
-                                            scope.launch {
-                                                kotlinx.coroutines.delay(2000)
-                                                repository.updateItem(updatedItem.copy(timesBought = item.timesBought + 1))
-                                            }
-                                        } else {
-                                            scope.launch { repository.updateItem(updatedItem) }
-                                        }
+                                        scope.launch { repository.updateItem(updatedItem) }
                                     },
                                     onDeleteItem = {
                                         scope.launch { repository.deleteItem(item) }
@@ -493,6 +442,39 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     }
                                 }
                             )
+                        }
+                    }
+
+                    // "In Cart" category for Shopping mode - ALWAYS AT BOTTOM
+                    if (currentPhase == GroceryPhase.SHOPPING) {
+                        val inCartItems = baseFilteredItems.filter { it.isBought }
+                        if (inCartItems.isNotEmpty()) {
+                            item {
+                                CategoryHeader("In Cart")
+                            }
+                            items(inCartItems, key = { it.id }) { item ->
+                                GroceryItemRowContainer(
+                                    item = item,
+                                    currentPhase = currentPhase,
+                                    shoppingStoreId = shoppingStoreId,
+                                    itemStoreInfos = storeInfos.filter { it.groceryItemId == item.id },
+                                    stores = stores,
+                                    categories = categories,
+                                    isEditMode = isEditMode,
+                                    index = 0,
+                                    totalItems = 1,
+                                    onUpdateItem = { updatedItem ->
+                                        scope.launch { repository.updateItem(updatedItem) }
+                                    },
+                                    onDeleteItem = {
+                                        scope.launch { repository.deleteItem(item) }
+                                    },
+                                    onUpdateStoreInfo = { info ->
+                                        scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
+                                    },
+                                    onMoveItem = { _, _ -> }
+                                )
+                            }
                         }
                     }
                 }
