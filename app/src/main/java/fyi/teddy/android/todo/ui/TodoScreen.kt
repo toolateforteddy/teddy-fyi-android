@@ -25,6 +25,7 @@ import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 enum class TodoMode {
@@ -59,9 +60,14 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     }
     
     val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
-        baseItems.filter { item ->
+        val filtered = baseItems.filter { item ->
             if (showCompletedOnly) item.isCompleted
             else !item.isCompleted || recentlyCompletedIds.contains(item.id)
+        }
+        if (showCompletedOnly) {
+            filtered.sortedByDescending { it.scheduledAt }
+        } else {
+            filtered
         }
     }
 
@@ -82,8 +88,12 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     
     val onAddNewItem = { title: String, parentId: Int? ->
         if (title.isNotBlank()) {
+            val words = title.split(" ")
+            val capitalizedTitle = words.joinToString(" ") { word ->
+                word.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            }
             viewModel.insertItem(TodoItem(
-                title = title, 
+                title = capitalizedTitle,
                 userId = userId,
                 parentId = parentId,
                 isPlannedForToday = currentMode == TodoMode.TODAY_PLANNING
@@ -308,7 +318,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             viewModel.updateItem(child.copy(position = minPos - 1))
                                         },
                                         onMoveToBottom = {
-                                            val maxPos = children.maxByOrNull { it.position }?.position ?: 0
+                                            val maxPos = children.minByOrNull { it.position }?.position ?: 0
                                             viewModel.updateItem(child.copy(position = maxPos + 1))
                                         },
                                         onMoveUp = {

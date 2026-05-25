@@ -31,6 +31,8 @@ Current Features List.
 - [x] **Due Dates**: Set reminders and deadlines. Automatically add it to the today list whenever due date is within 2 days. But put it at the bottom, and add the due date in red text.
 - [x] **Planning Mode Added Tasks**: When adding a task and in Planning Mode the task should already be checked as being planned for today. Just to save a second of time from adding and then having to check the button.
 - [x] **Long Press to Edit Item**: When on the planning or backlog screen, and not in edit mode, long pressing on an item should open the same menu as if you were in edit mode and clicked the overflow menu.
+- [x] **Title Case Input**: When writing a new todo item, the keyboard should be in title case mode so that every word is capitalized by default.
+- [x] **Completed On Top**: When looking at the completed items list, in any mode, the list should be sorted by most recently completed first.
 
 
 ## Requested Features
@@ -43,11 +45,8 @@ Current Features List.
 - [ ] **Search & Global History**: A search bar to find tasks by title across active and completed lists.
 - [ ] **Push Notifications**: Reminders for approaching due dates and a morning summary of "Today's Tasks".
 - [ ] **Productivity Insights**: A stats dashboard showing total tasks completed, streaks for daily items, and weekly progress charts.
-- [ ] **Rich Task Details**: Add multi-line notes and clickable URLs to individual tasks.
 - [ ] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule. Maybe this is best implemented by changing the column "scheduled for today" to actually hold a date, and then you can schedule a task for any day you want.
-- [ ] **Completed On Top**: When looking at the completed items list, in any mode, the list should be sorted by most recently completed first.
-- [ ] **Title Case Input**: When writing a new todo item, the keyboard should be in title case mode so that every word is capitalized by default.
-- [ ] **Recurrence Items On Top**: In all three modes, recurring items should be listed before non-recurring items.
+- [ ] **Recurrence Items On Top**: In all three modes, recurring items should be listed before non-recurring items. And scheduled items should come before recurring items.
 - [ ] **Add Task From Settings Drawer**: Support a shortcut in the settings drawer to add a new task without opening the app explicitly.
 - [ ] **Auto Categorize**: Once there are categories supported for tasks, add a button to automatically apply categories for each task.
 

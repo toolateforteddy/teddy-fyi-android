@@ -39,7 +39,7 @@ fun TodoInputBar(
                 cursorColor = Color.White
             ),
             keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
+                capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
