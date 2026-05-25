@@ -20,16 +20,15 @@ class EncryptedDataStore(private val context: Context) {
     init {
         AeadConfig.register()
         aead = try {
-            val keysetHandle = AndroidKeysetManager.Builder()
+            AndroidKeysetManager.Builder()
                 .withSharedPref(context, "tink_keyset", "master_key")
                 .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
                 .withMasterKeyUri("android-keystore://tink_master_key")
                 .build()
                 .keysetHandle
-            keysetHandle.getPrimitive(Aead::class.java)
-        } catch (_: Exception) {
-            // If the keystore key is invalid, we clear the keyset so it can be regenerated on next login
-            context.getSharedPreferences("tink_keyset", Context.MODE_PRIVATE).edit().clear().apply()
+                .getPrimitive(Aead::class.java)
+        } catch (e: Exception) {
+            android.util.Log.e("EncryptedDataStore", "Failed to initialize Aead, skipping recovery to protect data.", e)
             null
         }
     }
@@ -59,7 +58,8 @@ class EncryptedDataStore(private val context: Context) {
             try {
                 val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
                 String(aead.decrypt(decoded, null))
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("EncryptedDataStore", "Failed to decrypt", e)
                 null
             }
         }
