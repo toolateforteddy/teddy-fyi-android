@@ -502,7 +502,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
         }
         
         if (showRecommendedDialog) {
-            val unboughtNames = items.filter { !it.isBought }.map { it.name }.toSet()
+            val unboughtNames = items.filter { it.isActive && !it.isBought }.map { it.name }.toSet()
             val availableRecommendations = recommendedItems.filter { !unboughtNames.contains(it.name) }
             val selectedItemIds = remember { mutableStateListOf<Int>() }
 
@@ -541,7 +541,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                         TextButton(onClick = {
                             scope.launch {
                                 availableRecommendations.filter { selectedItemIds.contains(it.id) }.forEach { item ->
-                                    repository.updateItem(item.copy(isBought = false))
+                                    repository.updateItem(item.copy(isBought = false, isActive = true))
                                 }
                                 showRecommendedDialog = false
                             }
