@@ -29,9 +29,10 @@ Current Features List.
 - [x] **Categories**: Group items by grocery store section (Produce, Dairy, etc.).
 - [x] **Config Management**: Consolidated store and category management into a single Settings view.
 - [x] **Recurring Groceries**: Added a "Recommended" button in planning mode to quickly re-add frequently bought items.
+- [x] **Auth Integration**: Associate grocery lists with a user account.
 
 ## Requested Features
-- [ ] **Auth Integration**: Associate grocery lists with a user account.
+
 
 ## Planned Features
 - [ ] **Cloud Sync**: Sync grocery data with the backend.
@@ -47,6 +48,12 @@ Current Features List.
 - [ ] **Unit Support & Conversion**: Robust handling of units (oz, lbs, kg, count) with automatic conversion and price-per-unit calculations to find the best value.
 - [ ] **Store Maps**: Visual aisle mapping for supported major retailers to show exactly where an item is located on a store floor plan.
 - [ ] **Trip Budgeting**: Set a spending limit before a shopping trip and see a running total estimate as you check off items and enter prices.
+- [ ] **Auto Categorize by LLM**: Add button to send all uncategorized items to an LLM api to generate categories for them. The prompt should include all current categories and explain that for each item it should return one of the existing categories that the item best fits in.
+- [ ] **Create an Edit Menu**: The edit menu should have options for "edit name", "edit category", "edit quantity".
+- [ ] **Long Press to Edit**: When long pressing on an item, it should open the edit menu.
+- [ ] **Shopping Mode Done State**: Add a new visual only category called "In Cart" on the shopping mode where checked items are moved after a 2 second delay.
+- [ ] **Trip Complete Button**: On the shopping tab, add a Trip Complete button. Maybe it looks like a check icon in the top. After a confirmation modal to make sure you don't execute on purpose, all items in the "in cart" category are marked as "done". Done items do not show up in any screen until they are readded as new need items.
+- [ ] **Adding item skip quantity**: When adding an item, the enter button on the keyboard should be submit and not tab. The quantity will almost always be 1, so don't make the user tab through that field every time.  
 
 ## Bugs
 - [x] **Entering Shopping Mode Crash**: Entering Shopping Mode without any items crashes the app.

@@ -27,5 +27,6 @@ data class GroceryItemStoreInfo(
     val groceryItemId: Int,
     val storeId: Int,
     val price: Double? = null,
-    val isAvailable: Boolean = true
+    val isAvailable: Boolean = true,
+    val userId: String? = null
 )

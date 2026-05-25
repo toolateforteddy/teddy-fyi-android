@@ -52,7 +52,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     val items by repository.getAllItems(userId).collectAsState(initial = emptyList())
     val stores by repository.getAllStores(userId).collectAsState(initial = emptyList())
     val categories by repository.getAllCategories(userId).collectAsState(initial = emptyList())
-    val storeInfos by repository.getAllStoreInfo().collectAsState(initial = emptyList())
+    val storeInfos by repository.getAllStoreInfo(userId).collectAsState(initial = emptyList())
     val recommendedItems by repository.getRecommendedItems(userId).collectAsState(initial = emptyList())
     
     var currentPhase by remember { mutableStateOf(GroceryPhase.NEED) }
@@ -100,7 +100,8 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             GroceryItemStoreInfo(
                                 groceryItemId = itemId.toInt(),
                                 storeId = store.id,
-                                isAvailable = false
+                                isAvailable = false,
+                                userId = userId
                             )
                         )
                     }
@@ -370,7 +371,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                         scope.launch { repository.deleteItem(item) }
                                     },
                                     onUpdateStoreInfo = { info ->
-                                        scope.launch { repository.insertStoreInfo(info) }
+                                        scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
                                     },
                                     onMoveItem = { _, toIndex ->
                                         val targetItem = categoryItems[toIndex]
@@ -406,7 +407,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     scope.launch { repository.deleteItem(item) }
                                 },
                                 onUpdateStoreInfo = { info ->
-                                    scope.launch { repository.insertStoreInfo(info) }
+                                    scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
                                 },
                                 onMoveItem = { _, toIndex ->
                                     val targetItem = uncategorizedItems[toIndex]

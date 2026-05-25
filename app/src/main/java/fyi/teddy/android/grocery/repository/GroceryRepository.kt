@@ -7,7 +7,7 @@ class GroceryRepository(private val groceryDao: GroceryDao) {
     fun getAllItems(userId: String): Flow<List<GroceryItem>> = groceryDao.getAllItems(userId)
     fun getAllStores(userId: String): Flow<List<Store>> = groceryDao.getAllStores(userId)
     fun getAllCategories(userId: String): Flow<List<Category>> = groceryDao.getAllCategories(userId)
-    fun getAllStoreInfo(): Flow<List<GroceryItemStoreInfo>> = groceryDao.getAllStoreInfo()
+    fun getAllStoreInfo(userId: String): Flow<List<GroceryItemStoreInfo>> = groceryDao.getAllStoreInfo(userId)
     fun getRecommendedItems(userId: String): Flow<List<GroceryItem>> = groceryDao.getRecommendedItems(userId)
     
     suspend fun insertItem(item: GroceryItem) = groceryDao.insertItemWithNextPosition(item)

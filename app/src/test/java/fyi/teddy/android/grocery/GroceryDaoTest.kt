@@ -176,10 +176,10 @@ class GroceryDaoTest {
         groceryDao.insertItem(item)
         groceryDao.insertStore(store)
         
-        val info = GroceryItemStoreInfo(groceryItemId = 1, storeId = 1, price = 3.99, isAvailable = true)
+        val info = GroceryItemStoreInfo(groceryItemId = 1, storeId = 1, price = 3.99, isAvailable = true, userId = userId)
         groceryDao.insertStoreInfo(info)
         
-        val allInfo = groceryDao.getAllStoreInfo().first()
+        val allInfo = groceryDao.getAllStoreInfo(userId).first()
         assertEquals(1, allInfo.size)
         assertEquals(3.99, allInfo[0].price!!, 0.001)
     }
@@ -193,10 +193,10 @@ class GroceryDaoTest {
         groceryDao.insertItem(item2)
         groceryDao.insertStore(store)
         
-        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = 1, storeId = 1, price = 1.0))
-        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = 2, storeId = 1, price = 2.0))
+        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = 1, storeId = 1, price = 1.0, userId = userId))
+        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = 2, storeId = 1, price = 2.0, userId = userId))
         
-        val item1Info = groceryDao.getStoreInfoForItem(1).first()
+        val item1Info = groceryDao.getStoreInfoForItem(1, userId).first()
         assertEquals(1, item1Info.size)
         assertEquals(1.0, item1Info[0].price!!, 0.001)
     }

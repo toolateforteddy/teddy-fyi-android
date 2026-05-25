@@ -35,11 +35,19 @@ abstract class GroceryDao {
     @Delete
     abstract suspend fun deleteStore(store: Store)
 
-    @Query("SELECT * FROM grocery_item_store_info")
-    abstract fun getAllStoreInfo(): Flow<List<GroceryItemStoreInfo>>
+    @Query("""
+        SELECT i.* FROM grocery_item_store_info i
+        JOIN grocery_items g ON i.groceryItemId = g.id
+        WHERE g.userId = :userId
+    """)
+    abstract fun getAllStoreInfo(userId: String): Flow<List<GroceryItemStoreInfo>>
 
-    @Query("SELECT * FROM grocery_item_store_info WHERE groceryItemId = :itemId")
-    abstract fun getStoreInfoForItem(itemId: Int): Flow<List<GroceryItemStoreInfo>>
+    @Query("""
+        SELECT i.* FROM grocery_item_store_info i
+        JOIN grocery_items g ON i.groceryItemId = g.id
+        WHERE i.groceryItemId = :itemId AND g.userId = :userId
+    """)
+    abstract fun getStoreInfoForItem(itemId: Int, userId: String): Flow<List<GroceryItemStoreInfo>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertStoreInfo(info: GroceryItemStoreInfo)
@@ -130,5 +138,14 @@ abstract class GroceryDao {
         claimUnownedItems(userId)
         claimUnownedStores(userId)
         claimUnownedCategories(userId)
+        claimUnownedStoreInfo(userId)
     }
+
+    @Query("""
+        UPDATE grocery_item_store_info 
+        SET userId = :userId 
+        WHERE userId IS NULL 
+        AND groceryItemId IN (SELECT id FROM grocery_items WHERE userId = :userId)
+    """)
+    abstract suspend fun claimUnownedStoreInfo(userId: String)
 }
