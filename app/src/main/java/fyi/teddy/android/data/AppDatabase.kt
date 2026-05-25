@@ -23,8 +23,8 @@ import fyi.teddy.android.todo.data.TodoItem
         GroceryItemStoreInfo::class, 
         Category::class
     ], 
-    version = 13, 
-    exportSchema = false
+    version = 14, 
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
@@ -33,6 +33,14 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var Instance: AppDatabase? = null
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                try {
+                    db.execSQL("ALTER TABLE `grocery_item_store_info` ADD COLUMN `userId` TEXT")
+                } catch (e: Exception) {}
+            }
+        }
 
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -130,7 +138,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, 
                         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
-                        MIGRATION_12_13
+                        MIGRATION_12_13, MIGRATION_13_14
                     )
                     .build()
                     .also { Instance = it }
