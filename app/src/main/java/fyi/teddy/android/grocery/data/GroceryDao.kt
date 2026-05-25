@@ -20,7 +20,7 @@ abstract class GroceryDao {
     @Query("DELETE FROM grocery_items WHERE userId = :userId")
     abstract suspend fun deleteAll(userId: String)
 
-    @Query("SELECT * FROM grocery_items WHERE timesBought > 0 AND userId = :userId ORDER BY timesBought DESC")
+    @Query("SELECT * FROM grocery_items WHERE timesBought > 0 AND userId = :userId AND isActive = 1 ORDER BY timesBought DESC")
     abstract fun getRecommendedItems(userId: String): Flow<List<GroceryItem>>
 
     @Query("SELECT * FROM stores WHERE userId = :userId ORDER BY position ASC, name ASC")
@@ -149,6 +149,12 @@ abstract class GroceryDao {
     """)
     abstract suspend fun claimUnownedStoreInfo(userId: String)
 
-    @Query("UPDATE grocery_items SET isBought = 1 WHERE isBought = 0 AND id IN (SELECT groceryItemId FROM grocery_item_store_info WHERE isAvailable = 1)")
-    abstract suspend fun markDoneForTrip()
+    @Query("""
+        UPDATE grocery_items 
+        SET isBought = 0, isActive = 0, timesBought = timesBought + 1
+        WHERE isBought = 1
+        AND isActive = 1
+        AND userId = :userId
+    """)
+    abstract suspend fun markDoneForTrip(userId: String)
 }

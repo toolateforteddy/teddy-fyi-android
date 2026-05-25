@@ -49,3 +49,7 @@ To ensure the app scales effectively, the following architectural goals are prio
 *   **Networking Modernization**: Migrate from legacy `HttpURLConnection` to Ktor for efficient, type-safe API communication.
 *   **Modularization**: Transition to a feature-based multi-module Gradle project structure to improve build times and maintainability.
 *   **Static Analysis**: Integrate Detekt or Ktlint to maintain high code quality standards.
+
+## Database Integrity Protocol
+*   **Schema Changes**: Any modification to an `@Entity` (e.g., adding/modifying columns) MUST be accompanied by an immediate update to the `AppDatabase` version and the addition of an `AutoMigration` (or manual `Migration` if needed) to ensure the local database schema remains in sync with the codebase.
+*   **Verification**: Always inspect `AppDatabase.kt` and the `exportSchema` JSON files whenever an entity class is modified.

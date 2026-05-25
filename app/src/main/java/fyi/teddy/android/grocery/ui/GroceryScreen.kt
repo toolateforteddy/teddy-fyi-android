@@ -90,15 +90,22 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                     name = nameToSave,
                     quantity = quantityToSave,
                     categoryId = categoryToSave,
-                    userId = userId
+                    userId = userId,
+                    isActive = true
                 )
-                val itemId = repository.insertItem(item)
+                val existingInactive = items.find { it.name.equals(nameToSave, ignoreCase = true) && !it.isActive }
+                val itemId = if (existingInactive != null) {
+                    repository.updateItem(existingInactive.copy(isActive = true, quantity = quantityToSave, categoryId = categoryToSave))
+                    existingInactive.id
+                } else {
+                    repository.insertItem(item).toInt()
+                }
                 
                 stores.forEach { store ->
                     if (!store.isDefaultSupported) {
                         repository.insertStoreInfo(
                             GroceryItemStoreInfo(
-                                groceryItemId = itemId.toInt(),
+                                groceryItemId = itemId,
                                 storeId = store.id,
                                 isAvailable = false,
                                 userId = userId
@@ -140,10 +147,10 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             AlertDialog(
                                 onDismissRequest = { showConfirmTripDone = false },
                                 title = { Text("Complete Trip?") },
-                                text = { Text("Are you sure you want to mark all In Cart items as done?") },
+                                text = { Text("Are you sure you want to mark all In Cart items as done and move them to history?") },
                                 confirmButton = {
                                     TextButton(onClick = {
-                                        scope.launch { repository.markDoneForTrip() }
+                                        scope.launch { repository.markDoneForTrip(userId) }
                                         showConfirmTripDone = false
                                     }) { Text("Confirm") }
                                 },
@@ -329,7 +336,18 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             ) {
                                 items(suggestions) { suggestion ->
                                     SuggestionChip(
-                                        onClick = { newItemName = suggestion },
+                                        onClick = {
+                                            val inactiveItem = items.find { it.name.equals(suggestion, ignoreCase = true) && !it.isActive }
+                                            if (inactiveItem != null) {
+                                                scope.launch {
+                                                    repository.updateItem(inactiveItem.copy(isActive = true))
+                                                }
+                                            } else {
+                                                newItemName = suggestion
+                                            }
+                                            newItemName = ""
+                                            newItemQuantity = "1"
+                                        },
                                         label = { Text(suggestion) }
                                     )
                                 }
@@ -341,11 +359,12 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
 
                 val baseFilteredItems = remember(items, storeInfos, currentPhase, selectedStoreIds, shoppingStoreId) {
                     when (currentPhase) {
-                        GroceryPhase.NEED -> items
+                        GroceryPhase.NEED -> items.filter { it.isActive }
                         GroceryPhase.PLANNING -> {
-                            if (selectedStoreIds.isEmpty()) items
+                            val activeItems = items.filter { it.isActive }
+                            if (selectedStoreIds.isEmpty()) activeItems
                             else {
-                                items.filter { item ->
+                                activeItems.filter { item ->
                                     val infos = storeInfos.filter { it.groceryItemId == item.id }
                                     selectedStoreIds.any { storeId ->
                                         val info = infos.find { it.storeId == storeId }
@@ -355,9 +374,10 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             }
                         }
                         GroceryPhase.SHOPPING -> {
+                            val activeItems = items.filter { it.isActive }
                             if (shoppingStoreId == null) emptyList()
                             else {
-                                items.filter { item ->
+                                activeItems.filter { item ->
                                     val info = storeInfos.find { it.groceryItemId == item.id && it.storeId == shoppingStoreId }
                                     info?.isAvailable ?: true
                                 }
@@ -447,7 +467,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
 
                     // "In Cart" category for Shopping mode - ALWAYS AT BOTTOM
                     if (currentPhase == GroceryPhase.SHOPPING) {
-                        val inCartItems = baseFilteredItems.filter { it.isBought }
+                        val inCartItems = baseFilteredItems.filter { it.isBought && it.isActive }
                         if (inCartItems.isNotEmpty()) {
                             item {
                                 CategoryHeader("In Cart")

@@ -64,3 +64,4 @@ Current Features List.
 - [x] **First Letter Cap**: All text boxes in this section of the app now default to sentence capitalization.
 - [x] **In Cart at bottom**: The In Cart Category should always be at the bottom of the list of categories, on the shopping screen, not at the top, or alphabetically sorted.
 - [x] **Checkbox delay**: The delay on ticking an item should only be a delay on moving it to the In Cart section, not a delay on marking the item as checked. That change should happen immediately.
+- [ ] **Trip Complete Button Changes Nothing**: Nothing seems to change in the UI when the Trip is completed.
