@@ -49,6 +49,8 @@ Current Features List.
 - [ ] **Recurrence Items On Top**: In all three modes, recurring items should be listed before non-recurring items. And scheduled items should come before recurring items.
 - [ ] **Add Task From Settings Drawer**: Support a shortcut in the settings drawer to add a new task without opening the app explicitly.
 - [ ] **Auto Categorize**: Once there are categories supported for tasks, add a button to automatically apply categories for each task.
+- [ ] **Incomplete Scheduled Tasks**: At the end of the day, any incomplete tasks scheduled for today should unscheduled and appear in the backlog again.
+- [ ] **Snooze Task**: On the backlog screen, the edit overflow menu should include a snooze option. Selecting this will open a modal allowing for inputting a number of days (N). During the next N days, the task should not appear in any task list.
 
 ## Bugs
 - [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.

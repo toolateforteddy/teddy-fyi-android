@@ -18,8 +18,8 @@ class EncryptedDataStore(private val context: Context) {
     private val aead: Aead?
 
     init {
-        AeadConfig.register()
         aead = try {
+            AeadConfig.register()
             AndroidKeysetManager.Builder()
                 .withSharedPref(context, "tink_keyset", "master_key")
                 .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
@@ -28,7 +28,12 @@ class EncryptedDataStore(private val context: Context) {
                 .keysetHandle
                 .getPrimitive(Aead::class.java)
         } catch (e: Exception) {
-            android.util.Log.e("EncryptedDataStore", "Failed to initialize Aead, skipping recovery to protect data.", e)
+            android.util.Log.e("EncryptedDataStore", "Failed to initialize Aead. Resetting all.", e)
+            
+            // Hard reset: Delete keyset and the datastore entries
+            context.getSharedPreferences("tink_keyset", Context.MODE_PRIVATE).edit().clear().apply()
+            context.getSharedPreferences("master_key", Context.MODE_PRIVATE).edit().clear().apply()
+            
             null
         }
     }
@@ -59,9 +64,16 @@ class EncryptedDataStore(private val context: Context) {
                 val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
                 String(aead.decrypt(decoded, null))
             } catch (e: Exception) {
-                android.util.Log.e("EncryptedDataStore", "Failed to decrypt", e)
+                android.util.Log.e("EncryptedDataStore", "Failed to decrypt. Wiping data.", e)
+                forceReset()
                 null
             }
         }
+    }
+
+    private suspend fun forceReset() {
+        context.getSharedPreferences("tink_keyset", Context.MODE_PRIVATE).edit().clear().apply()
+        context.getSharedPreferences("master_key", Context.MODE_PRIVATE).edit().clear().apply()
+        context.dataStore.edit { it.clear() }
     }
 }
