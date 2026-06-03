@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -15,7 +14,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
-import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
 import fyi.teddy.android.todo.ui.components.TodoInputBar
 import fyi.teddy.android.todo.ui.components.TodoItemRow
@@ -26,7 +24,6 @@ import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.time.LocalDate
-import java.util.*
 import java.util.concurrent.TimeUnit
 
 enum class TodoMode {
@@ -40,69 +37,42 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val viewModel: TodoViewModel = viewModel(
         factory = TodoViewModelFactory(context.applicationContext as android.app.Application, userId)
     )
-    val scope = rememberCoroutineScope()
     
-    var currentMode by remember { mutableStateOf(TodoMode.BACKLOG) }
-    val allItems by viewModel.allItems.collectAsState()
-    val todayItems by viewModel.todayItems.collectAsState()
-    val scheduledItems by viewModel.scheduledItems.collectAsState()
+    val currentMode by viewModel.currentMode.collectAsState()
+    val isEditMode by viewModel.isEditMode.collectAsState()
+    val showCompletedOnly by viewModel.showCompletedOnly.collectAsState()
+    val groupedItems by viewModel.groupedItems.collectAsState()
     
-    var isEditMode by remember { mutableStateOf(false) }
-    var showCompletedOnly by remember { mutableStateOf(false) }
     var showClearAllConfirmation by remember { mutableStateOf(false) }
-
     val expandedParentIds = remember { mutableStateOf(setOf<Int>()) }
     val parties = remember { mutableStateListOf<Party>() }
-    val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
     
     val todayString = LocalDate.now().toString()
-    
-    val baseItems = when(currentMode) {
-        TodoMode.TODAY -> todayItems
-        TodoMode.BACKLOG -> allItems.filter { it.scheduledDate == null }
-        TodoMode.TODAY_PLANNING -> allItems
-        TodoMode.SCHEDULED -> scheduledItems
-    }
-    
-    val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
-        val filtered = baseItems.filter { item ->
-            if (showCompletedOnly) item.isCompleted
-            else !item.isCompleted || recentlyCompletedIds.contains(item.id)
-        }
-        if (showCompletedOnly) {
-            filtered.sortedByDescending { it.scheduledAt }
-        } else {
-            filtered
-        }
-    }
 
-    val groupedItems = remember(filteredItems, currentMode, todayString) {
-        val allParents = filteredItems.filter { it.parentId == null }
-        val allChildren = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
-        
-        if (currentMode == TodoMode.TODAY || currentMode == TodoMode.SCHEDULED) {
-            allParents.filter { parent ->
-                parent.scheduledDate == (if (currentMode == TodoMode.TODAY) todayString else parent.scheduledDate) || allChildren[parent.id]?.any { it.scheduledDate == (if (currentMode == TodoMode.TODAY) todayString else it.scheduledDate) } == true
-            }.map { parent ->
-                parent to (allChildren[parent.id] ?: emptyList())
+    // Collect visual confetti triggers from ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.confettiTrigger.collect {
+            val party = Party(
+                speed = 0f,
+                maxSpeed = 30f,
+                damping = 0.9f,
+                spread = 360,
+                colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+                emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                position = Position.Relative(0.5, 0.3)
+            )
+            parties.add(party)
+            launch {
+                delay(3000)
+                parties.remove(party)
             }
-        } else {
-            allParents.map { it to (allChildren[it.id] ?: emptyList()) }
         }
     }
     
     val onAddNewItem = { title: String, parentId: Int? ->
         if (title.isNotBlank()) {
-            val words = title.split(" ")
-            val capitalizedTitle = words.joinToString(" ") { word ->
-                word.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            }
-            viewModel.insertItem(TodoItem(
-                title = capitalizedTitle,
-                userId = userId,
-                parentId = parentId,
-                scheduledDate = if (currentMode == TodoMode.TODAY_PLANNING) todayString else null
-            ))
+            val scheduledDate = if (currentMode == TodoMode.TODAY_PLANNING) todayString else null
+            viewModel.insertItem(title, userId, parentId, scheduledDate)
         }
     }
 
@@ -131,7 +101,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                         ) 
                     },
                     actions = {
-                        IconButton(onClick = { showCompletedOnly = !showCompletedOnly }) {
+                        IconButton(onClick = { viewModel.setShowCompletedOnly(!showCompletedOnly) }) {
                             Icon(
                                 if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle, 
                                 contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(R.string.show_completed),
@@ -139,7 +109,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                             )
                         }
 
-                        IconButton(onClick = { isEditMode = !isEditMode }) {
+                        IconButton(onClick = { viewModel.setEditMode(!isEditMode) }) {
                             Icon(
                                 Icons.Default.Edit, 
                                 contentDescription = stringResource(R.string.edit_mode),
@@ -165,25 +135,25 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                 NavigationBar(containerColor = Color.Black) {
                     NavigationBarItem(
                         selected = currentMode == TodoMode.BACKLOG,
-                        onClick = { currentMode = TodoMode.BACKLOG },
+                        onClick = { viewModel.setMode(TodoMode.BACKLOG) },
                         icon = { Icon(Icons.Default.List, contentDescription = "Backlog") },
                         label = { Text("Backlog") }
                     )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.TODAY_PLANNING,
-                        onClick = { currentMode = TodoMode.TODAY_PLANNING },
+                        onClick = { viewModel.setMode(TodoMode.TODAY_PLANNING) },
                         icon = { Icon(Icons.Default.EditCalendar, contentDescription = "Planning") },
                         label = { Text("Planning") }
                     )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.TODAY,
-                        onClick = { currentMode = TodoMode.TODAY },
+                        onClick = { viewModel.setMode(TodoMode.TODAY) },
                         icon = { Icon(Icons.Default.Today, contentDescription = "Today") },
                         label = { Text("Today") }
                     )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.SCHEDULED,
-                        onClick = { currentMode = TodoMode.SCHEDULED },
+                        onClick = { viewModel.setMode(TodoMode.SCHEDULED) },
                         icon = { Icon(Icons.Default.DateRange, contentDescription = "Scheduled") },
                         label = { Text("Scheduled") }
                     )
@@ -219,6 +189,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     },
                                     showDelete = isEditMode,
                                     isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
+                                    showScheduledDate = currentMode != TodoMode.TODAY,
                                     index = parentIndex,
                                     totalItems = groupedItems.size,
                                     onCheckedChange = { isChecked ->
@@ -232,49 +203,16 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             return@TodoItemRow
                                         }
 
-                                        if (isChecked && !showCompletedOnly) {
-                                            recentlyCompletedIds.add(parent.id)
-                                            val party = Party(
-                                                speed = 0f,
-                                                maxSpeed = 30f,
-                                                damping = 0.9f,
-                                                spread = 360,
-                                                colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
-                                                emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
-                                                position = Position.Relative(0.5, 0.3)
-                                            )
-                                            parties.add(party)
-                                            
-                                            scope.launch {
-                                                delay(2000)
-                                                recentlyCompletedIds.remove(parent.id)
-                                                if (parent.recurrenceIntervalDays != null) {
-                                                    val interval = parent.recurrenceIntervalDays * 24 * 60 * 60 * 1000L
-                                                    val nextTime = System.currentTimeMillis() + interval
-                                                    viewModel.updateItem(parent.copy(
-                                                        isCompleted = false, 
-                                                        scheduledAt = nextTime, 
-                                                        scheduledDate = null
-                                                    ))
-                                                }
-                                                delay(1000) 
-                                                parties.remove(party)
-                                            }
-                                        } else if (!isChecked) {
-                                            recentlyCompletedIds.remove(parent.id)
-                                        }
-                                        viewModel.updateItem(parent.copy(isCompleted = isChecked))
+                                        viewModel.toggleComplete(parent, isChecked)
                                     },
                                     onDelete = { viewModel.deleteItem(parent) },
                                     onUpdateItem = { viewModel.updateItem(it) },
                                     onAddSubtask = { title -> onAddNewItem(title, parent.id) },
                                     onMoveToTop = {
-                                        val minPos = allItems.filter { it.parentId == null }.minByOrNull { it.position }?.position ?: 0
-                                        viewModel.updateItem(parent.copy(position = minPos - 1))
+                                        viewModel.moveParentToTop(parent)
                                     },
                                     onMoveToBottom = {
-                                        val maxPos = allItems.filter { it.parentId == null }.maxByOrNull { it.position }?.position ?: 0
-                                        viewModel.updateItem(parent.copy(position = maxPos + 1))
+                                        viewModel.moveParentToBottom(parent)
                                     },
                                     onMoveUp = {
                                         if (parentIndex > 0) {
@@ -304,6 +242,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         isSubtask = true,
                                         showDelete = isEditMode,
                                         isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
+                                        showScheduledDate = currentMode != TodoMode.TODAY,
                                         index = childIndex,
                                         totalItems = children.size,
                                         onCheckedChange = { isChecked ->
@@ -311,26 +250,15 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                                 viewModel.updateItem(child.copy(scheduledDate = if(isChecked) todayString else null))
                                                 return@TodoItemRow
                                             }
-                                            if (isChecked && !showCompletedOnly) {
-                                                recentlyCompletedIds.add(child.id)
-                                                scope.launch {
-                                                    delay(2000)
-                                                    recentlyCompletedIds.remove(child.id)
-                                                }
-                                            } else if (!isChecked) {
-                                                recentlyCompletedIds.remove(child.id)
-                                            }
-                                            viewModel.updateItem(child.copy(isCompleted = isChecked))
+                                            viewModel.toggleComplete(child, isChecked)
                                         },
                                         onDelete = { viewModel.deleteItem(child) },
                                         onUpdateItem = { viewModel.updateItem(it) },
                                         onMoveToTop = {
-                                            val minPos = children.minByOrNull { it.position }?.position ?: 0
-                                            viewModel.updateItem(child.copy(position = minPos - 1))
+                                            viewModel.moveChildToTop(child)
                                         },
                                         onMoveToBottom = {
-                                            val maxPos = children.minByOrNull { it.position }?.position ?: 0
-                                            viewModel.updateItem(child.copy(position = maxPos + 1))
+                                            viewModel.moveChildToBottom(child)
                                         },
                                         onMoveUp = {
                                             if (childIndex > 0) {

@@ -28,6 +28,7 @@ fun TodoItemRow(
     onToggleExpand: () -> Unit = {},
     showDelete: Boolean,
     isPlanningMode: Boolean,
+    showScheduledDate: Boolean = true,
     index: Int,
     totalItems: Int,
     onCheckedChange: (Boolean) -> Unit,
@@ -111,7 +112,7 @@ fun TodoItemRow(
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                     )
                 }
-                if (item.scheduledDate != null) {
+                if (item.scheduledDate != null && showScheduledDate) {
                     Text(
                         text = "Scheduled: ${item.scheduledDate}",
                         color = Color.Cyan,

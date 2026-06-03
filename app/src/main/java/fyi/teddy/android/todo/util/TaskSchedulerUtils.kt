@@ -23,4 +23,20 @@ object TaskSchedulerUtils {
     fun snoozeForDays(date: LocalDate, days: Int): LocalDate {
         return date.plusDays(days.toLong())
     }
+
+    /**
+     * Returns today's date formatted as a standard string ("yyyy-MM-dd").
+     */
+    fun getTodayDateString(): String {
+        return LocalDate.now().toString()
+    }
+
+    /**
+     * Safely calculates the next recurrence time in milliseconds from a base epoch time.
+     * Avoids potential integer overflow by casting intermediate values to Long.
+     */
+    fun calculateNextRecurrenceTime(baseTimeMs: Long, intervalDays: Int): Long {
+        val intervalMs = intervalDays.toLong() * 24L * 60L * 60L * 1000L
+        return baseTimeMs + intervalMs
+    }
 }

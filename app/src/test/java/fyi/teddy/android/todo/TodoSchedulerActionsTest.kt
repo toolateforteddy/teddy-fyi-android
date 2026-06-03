@@ -30,4 +30,13 @@ class TodoSchedulerActionsTest {
     @Test fun testSnoozeDays_LargeValue() = assertEquals(LocalDate.of(2025, 1, 1), TaskSchedulerUtils.snoozeForDays(LocalDate.of(2024, 1, 1), 366))
     @Test fun testSnoozeDays_AcrossMonthBoundary() = assertEquals(LocalDate.of(2024, 4, 1), TaskSchedulerUtils.snoozeForDays(LocalDate.of(2024, 3, 31), 1))
     @Test fun testSnoozeDays_MultipleMonths() = assertEquals(LocalDate.of(2024, 5, 1), TaskSchedulerUtils.snoozeForDays(LocalDate.of(2024, 3, 1), 61))
+
+    @Test
+    fun testCalculateNextRecurrenceTime_Standard() {
+        val baseTimeMs = 1000L
+        val intervalDays = 2
+        // 2 days = 2 * 24 * 60 * 60 * 1000 = 172,800,000 ms
+        val expected = baseTimeMs + 172800000L
+        assertEquals(expected, TaskSchedulerUtils.calculateNextRecurrenceTime(baseTimeMs, intervalDays))
+    }
 }

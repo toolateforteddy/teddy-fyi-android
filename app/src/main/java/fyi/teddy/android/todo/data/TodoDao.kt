@@ -25,7 +25,7 @@ abstract class TodoDao {
     abstract fun getTodayItems(userId: String, today: String): Flow<List<TodoItem>>
 
     @Query("SELECT * FROM todo_items WHERE userId = :userId AND scheduledDate > :today AND isCompleted = 0 ORDER BY scheduledDate ASC")
-    abstract fun getScheduledItems(userId: String, today: String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())): Flow<List<TodoItem>>
+    abstract fun getScheduledItems(userId: String, today: String): Flow<List<TodoItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertItem(item: TodoItem)
