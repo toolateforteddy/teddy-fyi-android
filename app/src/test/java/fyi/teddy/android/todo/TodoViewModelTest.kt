@@ -38,6 +38,23 @@ class TodoViewModelTest {
     }
 
     @Test
+    fun `test selectedPlanningDate default is today`() = runTest {
+        val viewModel = TodoViewModel(application, repository, userId)
+        val today = java.time.LocalDate.now().toString()
+        assert(viewModel.selectedPlanningDate.value == today)
+    }
+
+    @Test
+    fun `test setSelectedPlanningDate updates selectedPlanningDate flow`() = runTest {
+        val viewModel = TodoViewModel(application, repository, userId)
+        val targetDate = "2026-12-25"
+        
+        viewModel.setSelectedPlanningDate(targetDate)
+        
+        assert(viewModel.selectedPlanningDate.value == targetDate)
+    }
+
+    @Test
     fun `test insertItem with lowercase title capitalizes each word correctly`() = runTest {
         // Given
         val viewModel = TodoViewModel(application, repository, userId)

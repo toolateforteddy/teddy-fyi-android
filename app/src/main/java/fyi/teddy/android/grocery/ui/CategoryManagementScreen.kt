@@ -17,29 +17,24 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
-import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.Category
-import fyi.teddy.android.grocery.repository.GroceryRepository
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { GroceryRepository(database.groceryDao()) }
+    val viewModel: GroceryViewModel = viewModel(
+        factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
+    )
     
-    val categories by repository.getAllCategories(userId).collectAsState(initial = emptyList())
+    val categories by viewModel.categories.collectAsState()
     var newCategoryName by remember { mutableStateOf("") }
 
     val onAddCategory = {
         if (newCategoryName.isNotBlank()) {
-            val nameToSave = newCategoryName
-            scope.launch {
-                repository.insertCategory(Category(name = nameToSave, userId = userId))
-            }
+            viewModel.insertCategory(newCategoryName)
             newCategoryName = ""
         }
     }
@@ -101,19 +96,15 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
                         CategoryItemRow(
                             category = category,
                             onDelete = {
-                                scope.launch { repository.deleteCategory(category) }
+                                viewModel.deleteCategory(category)
                             },
                             onMoveUp = {
                                 val targetCategory = categories[index - 1]
-                                scope.launch {
-                                    repository.swapCategoryPositions(category, targetCategory)
-                                }
+                                viewModel.swapCategoryPositions(category, targetCategory)
                             },
                             onMoveDown = {
                                 val targetCategory = categories[index + 1]
-                                scope.launch {
-                                    repository.swapCategoryPositions(category, targetCategory)
-                                }
+                                viewModel.swapCategoryPositions(category, targetCategory)
                             },
                             isFirst = index == 0,
                             isLast = index == categories.size - 1

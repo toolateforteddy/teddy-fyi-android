@@ -30,6 +30,13 @@ class TodoViewModel(
     private val _recentlyCompletedIds = MutableStateFlow(setOf<Int>())
     val recentlyCompletedIds: StateFlow<Set<Int>> = _recentlyCompletedIds.asStateFlow()
 
+    private val _selectedPlanningDate = MutableStateFlow(LocalDate.now().toString())
+    val selectedPlanningDate: StateFlow<String> = _selectedPlanningDate.asStateFlow()
+
+    fun setSelectedPlanningDate(date: String) {
+        _selectedPlanningDate.value = date
+    }
+
     // Confetti trigger shared flow for UI effects
     private val _confettiTrigger = MutableSharedFlow<Unit>(replay = 0)
     val confettiTrigger: SharedFlow<Unit> = _confettiTrigger.asSharedFlow()
@@ -66,7 +73,7 @@ class TodoViewModel(
         val baseItems = when(mode) {
             TodoMode.TODAY -> today
             TodoMode.BACKLOG -> all.filter { it.scheduledDate == null }
-            TodoMode.TODAY_PLANNING -> all
+            TodoMode.PLANNING -> all
             TodoMode.SCHEDULED -> scheduled
         }
 

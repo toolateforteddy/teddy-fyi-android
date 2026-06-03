@@ -23,15 +23,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
-import fyi.teddy.android.data.AppDatabase
-import fyi.teddy.android.grocery.data.Category
-import fyi.teddy.android.grocery.data.GroceryItem
-import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
-import fyi.teddy.android.grocery.data.Store
-import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.components.GroceryItemRowContainer
-import kotlinx.coroutines.launch
+import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog
 import java.util.*
 
 enum class GroceryPhase {
@@ -45,31 +40,30 @@ enum class GroceryPhase {
 @Composable
 fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { GroceryRepository(database.groceryDao()) }
+    val viewModel: GroceryViewModel = viewModel(
+        factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
+    )
     
-    val items by repository.getAllItems(userId).collectAsState(initial = emptyList())
-    val stores by repository.getAllStores(userId).collectAsState(initial = emptyList())
-    val categories by repository.getAllCategories(userId).collectAsState(initial = emptyList())
-    val storeInfos by repository.getAllStoreInfo(userId).collectAsState(initial = emptyList())
-    val recommendedItems by repository.getRecommendedItems(userId).collectAsState(initial = emptyList())
+    val currentPhase by viewModel.currentPhase.collectAsState()
+    val selectedStoreIds by viewModel.selectedStoreIds.collectAsState()
+    val shoppingStoreId by viewModel.shoppingStoreId.collectAsState()
+    val isEditMode by viewModel.isEditMode.collectAsState()
+    val showRecommendedDialog by viewModel.showRecommendedDialog.collectAsState()
     
-    var currentPhase by remember { mutableStateOf(GroceryPhase.NEED) }
-    var selectedStoreIds by remember { mutableStateOf(setOf<Int>()) }
-    var shoppingStoreId by remember { mutableStateOf<Int?>(null) }
-    var isEditMode by remember { mutableStateOf(false) }
-    var showRecommendedDialog by remember { mutableStateOf(false) }
+    val newItemName by viewModel.newItemName.collectAsState()
+    val newItemQuantity by viewModel.newItemQuantity.collectAsState()
+    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
     
-    var newItemName by remember { mutableStateOf("") }
-    var newItemQuantity by remember { mutableStateOf("1") }
-    var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
+    val items by viewModel.items.collectAsState()
+    val stores by viewModel.stores.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    val storeInfos by viewModel.storeInfos.collectAsState()
+    val recommendedItems by viewModel.recommendedItems.collectAsState()
+
+    val standardCategoryItems by viewModel.standardCategoryItems.collectAsState()
+    val inCartItems by viewModel.inCartItems.collectAsState()
     
     val nameFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(userId) {
-        repository.claimEverything(userId)
-    }
 
     val uniqueNames = remember(items) {
         items.map { it.name }.distinct().sorted()
@@ -82,42 +76,10 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
 
     val onAddNewItem = {
         if (newItemName.isNotBlank()) {
-            val nameToSave = newItemName
-            val quantityToSave = newItemQuantity
-            val categoryToSave = selectedCategoryId
-            scope.launch {
-                val item = GroceryItem(
-                    name = nameToSave,
-                    quantity = quantityToSave,
-                    categoryId = categoryToSave,
-                    userId = userId,
-                    isActive = true
-                )
-                val existingInactive = items.find { it.name.equals(nameToSave, ignoreCase = true) && !it.isActive }
-                val itemId = if (existingInactive != null) {
-                    repository.updateItem(existingInactive.copy(isActive = true, quantity = quantityToSave, categoryId = categoryToSave))
-                    existingInactive.id
-                } else {
-                    repository.insertItem(item).toInt()
-                }
-                
-                stores.forEach { store ->
-                    if (!store.isDefaultSupported) {
-                        repository.insertStoreInfo(
-                            GroceryItemStoreInfo(
-                                groceryItemId = itemId,
-                                storeId = store.id,
-                                isAvailable = false,
-                                userId = userId
-                            )
-                        )
-                    }
-                }
-                
-                nameFocusRequester.requestFocus()
-            }
-            newItemName = ""
-            newItemQuantity = "1"
+            viewModel.insertItem(newItemName, newItemQuantity, selectedCategoryId)
+            viewModel.setNewItemName("")
+            viewModel.setNewItemQuantity("1")
+            nameFocusRequester.requestFocus()
         }
     }
 
@@ -127,7 +89,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                 title = { Text("Grocery: ${currentPhase.displayName}") },
                 actions = {
                     if (currentPhase != GroceryPhase.SHOPPING) {
-                        IconButton(onClick = { isEditMode = !isEditMode }) {
+                        IconButton(onClick = { viewModel.setEditMode(!isEditMode) }) {
                             Icon(
                                 Icons.Default.Edit, 
                                 contentDescription = stringResource(R.string.edit_mode),
@@ -150,7 +112,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                 text = { Text("Are you sure you want to mark all In Cart items as done and move them to history?") },
                                 confirmButton = {
                                     TextButton(onClick = {
-                                        scope.launch { repository.markDoneForTrip(userId) }
+                                        viewModel.markDoneForTrip()
                                         showConfirmTripDone = false
                                     }) { Text("Confirm") }
                                 },
@@ -172,19 +134,19 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(
                     selected = currentPhase == GroceryPhase.NEED,
-                    onClick = { currentPhase = GroceryPhase.NEED },
+                    onClick = { viewModel.setPhase(GroceryPhase.NEED) },
                     icon = { Icon(Icons.Default.List, contentDescription = "Need") },
                     label = { Text("Need") }
                 )
                 NavigationBarItem(
                     selected = currentPhase == GroceryPhase.PLANNING,
-                    onClick = { currentPhase = GroceryPhase.PLANNING },
+                    onClick = { viewModel.setPhase(GroceryPhase.PLANNING) },
                     icon = { Icon(Icons.Default.DateRange, contentDescription = "Planning") },
                     label = { Text("Planning") }
                 )
                 NavigationBarItem(
                     selected = currentPhase == GroceryPhase.SHOPPING,
-                    onClick = { currentPhase = GroceryPhase.SHOPPING },
+                    onClick = { viewModel.setPhase(GroceryPhase.SHOPPING) },
                     icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Shopping") },
                     label = { Text("Shopping") }
                 )
@@ -203,7 +165,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                         Text("Stores:", color = Color.White, style = MaterialTheme.typography.labelMedium)
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
-                            onClick = { showRecommendedDialog = true },
+                            onClick = { viewModel.setShowRecommendedDialog(true) },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp)
                         ) {
@@ -218,11 +180,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             FilterChip(
                                 selected = selectedStoreIds.contains(store.id),
                                 onClick = {
-                                    selectedStoreIds = if (selectedStoreIds.contains(store.id)) {
-                                        selectedStoreIds - store.id
-                                    } else {
-                                        selectedStoreIds + store.id
-                                    }
+                                    viewModel.toggleStoreSelection(store.id)
                                 },
                                 label = { Text(store.name) }
                             )
@@ -242,13 +200,13 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             stores.forEach { store ->
                                 Tab(
                                     selected = shoppingStoreId == store.id,
-                                    onClick = { shoppingStoreId = store.id },
+                                    onClick = { viewModel.setShoppingStoreId(store.id) },
                                     text = { Text(store.name) }
                                 )
                             }
                         }
                         if (shoppingStoreId == null) {
-                            shoppingStoreId = stores.firstOrNull()?.id
+                            viewModel.setShoppingStoreId(stores.firstOrNull()?.id)
                         }
                     } else {
                         Text("No stores defined. Please add stores in settings.", color = Color.Red)
@@ -264,7 +222,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                         ) {
                             TextField(
                                 value = newItemName,
-                                onValueChange = { newItemName = it },
+                                onValueChange = { viewModel.setNewItemName(it) },
                                 modifier = Modifier.weight(2f).focusRequester(nameFocusRequester),
                                 placeholder = { Text("Item name...", color = Color.Gray) },
                                 colors = TextFieldDefaults.colors(
@@ -281,7 +239,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             Spacer(modifier = Modifier.width(8.dp))
                             TextField(
                                 value = newItemQuantity,
-                                onValueChange = { newItemQuantity = it },
+                                onValueChange = { viewModel.setNewItemQuantity(it) },
                                 modifier = Modifier.weight(1f),
                                 placeholder = { Text("Qty", color = Color.Gray) },
                                 colors = TextFieldDefaults.colors(
@@ -315,14 +273,14 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                 item {
                                     FilterChip(
                                         selected = selectedCategoryId == null,
-                                        onClick = { selectedCategoryId = null },
+                                        onClick = { viewModel.setSelectedCategoryId(null) },
                                         label = { Text("No Category") }
                                     )
                                 }
                                 items(categories) { category ->
                                     FilterChip(
                                         selected = selectedCategoryId == category.id,
-                                        onClick = { selectedCategoryId = category.id },
+                                        onClick = { viewModel.setSelectedCategoryId(category.id) },
                                         label = { Text(category.name) }
                                     )
                                 }
@@ -339,14 +297,12 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                         onClick = {
                                             val inactiveItem = items.find { it.name.equals(suggestion, ignoreCase = true) && !it.isActive }
                                             if (inactiveItem != null) {
-                                                scope.launch {
-                                                    repository.updateItem(inactiveItem.copy(isActive = true))
-                                                }
+                                                viewModel.updateItem(inactiveItem.copy(isActive = true))
                                             } else {
-                                                newItemName = suggestion
+                                                viewModel.setNewItemName(suggestion)
                                             }
-                                            newItemName = ""
-                                            newItemQuantity = "1"
+                                            viewModel.setNewItemName("")
+                                            viewModel.setNewItemQuantity("1")
                                         },
                                         label = { Text(suggestion) }
                                     )
@@ -357,41 +313,8 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                val baseFilteredItems = remember(items, storeInfos, currentPhase, selectedStoreIds, shoppingStoreId) {
-                    when (currentPhase) {
-                        GroceryPhase.NEED -> items.filter { it.isActive }
-                        GroceryPhase.PLANNING -> {
-                            val activeItems = items.filter { it.isActive }
-                            if (selectedStoreIds.isEmpty()) activeItems
-                            else {
-                                activeItems.filter { item ->
-                                    val infos = storeInfos.filter { it.groceryItemId == item.id }
-                                    selectedStoreIds.any { storeId ->
-                                        val info = infos.find { it.storeId == storeId }
-                                        info?.isAvailable ?: true
-                                    }
-                                }
-                            }
-                        }
-                        GroceryPhase.SHOPPING -> {
-                            val activeItems = items.filter { it.isActive }
-                            if (shoppingStoreId == null) emptyList()
-                            else {
-                                activeItems.filter { item ->
-                                    val info = storeInfos.find { it.groceryItemId == item.id && it.storeId == shoppingStoreId }
-                                    info?.isAvailable ?: true
-                                }
-                            }
-                        }
-                    }
-                }
-
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    val baseItems = if (currentPhase == GroceryPhase.SHOPPING) {
-                        baseFilteredItems.filter { !it.isBought }
-                    } else baseFilteredItems
-
-                    val groupedItems = baseItems.groupBy { it.categoryId }
+                    val groupedItems = standardCategoryItems.groupBy { it.categoryId }
                     
                     categories.forEach { category ->
                         val categoryItems = groupedItems[category.id] ?: emptyList()
@@ -411,19 +334,20 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     index = index,
                                     totalItems = categoryItems.size,
                                     onUpdateItem = { updatedItem ->
-                                        scope.launch { repository.updateItem(updatedItem) }
+                                        viewModel.updateItem(updatedItem)
                                     },
                                     onDeleteItem = {
-                                        scope.launch { repository.deleteItem(item) }
+                                        viewModel.deleteItem(item)
                                     },
                                     onUpdateStoreInfo = { info ->
-                                        scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
+                                        viewModel.updateStoreInfo(info)
                                     },
                                     onMoveItem = { _, toIndex ->
                                         val targetItem = categoryItems[toIndex]
-                                        scope.launch {
-                                            repository.swapItemPositions(item, targetItem)
-                                        }
+                                        viewModel.swapItemPositions(item, targetItem)
+                                    },
+                                    onToggleBought = { groceryItem, isChecked ->
+                                        viewModel.toggleBought(groceryItem, isChecked)
                                     }
                                 )
                             }
@@ -447,19 +371,20 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                 index = index,
                                 totalItems = uncategorizedItems.size,
                                 onUpdateItem = { updatedItem ->
-                                    scope.launch { repository.updateItem(updatedItem) }
+                                    viewModel.updateItem(updatedItem)
                                 },
                                 onDeleteItem = {
-                                    scope.launch { repository.deleteItem(item) }
+                                    viewModel.deleteItem(item)
                                 },
                                 onUpdateStoreInfo = { info ->
-                                    scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
+                                    viewModel.updateStoreInfo(info)
                                 },
                                 onMoveItem = { _, toIndex ->
                                     val targetItem = uncategorizedItems[toIndex]
-                                    scope.launch {
-                                        repository.swapItemPositions(item, targetItem)
-                                    }
+                                    viewModel.swapItemPositions(item, targetItem)
+                                },
+                                onToggleBought = { groceryItem, isChecked ->
+                                    viewModel.toggleBought(groceryItem, isChecked)
                                 }
                             )
                         }
@@ -467,7 +392,6 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
 
                     // "In Cart" category for Shopping mode - ALWAYS AT BOTTOM
                     if (currentPhase == GroceryPhase.SHOPPING) {
-                        val inCartItems = baseFilteredItems.filter { it.isBought && it.isActive }
                         if (inCartItems.isNotEmpty()) {
                             item {
                                 CategoryHeader("In Cart")
@@ -484,15 +408,18 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     index = 0,
                                     totalItems = 1,
                                     onUpdateItem = { updatedItem ->
-                                        scope.launch { repository.updateItem(updatedItem) }
+                                        viewModel.updateItem(updatedItem)
                                     },
                                     onDeleteItem = {
-                                        scope.launch { repository.deleteItem(item) }
+                                        viewModel.deleteItem(item)
                                     },
                                     onUpdateStoreInfo = { info ->
-                                        scope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
+                                        viewModel.updateStoreInfo(info)
                                     },
-                                    onMoveItem = { _, _ -> }
+                                    onMoveItem = { _, _ -> },
+                                    onToggleBought = { groceryItem, isChecked ->
+                                        viewModel.toggleBought(groceryItem, isChecked)
+                                    }
                                 )
                             }
                         }
@@ -502,54 +429,12 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
         }
         
         if (showRecommendedDialog) {
-            val unboughtNames = items.filter { it.isActive && !it.isBought }.map { it.name }.toSet()
-            val availableRecommendations = recommendedItems.filter { !unboughtNames.contains(it.name) }
-            val selectedItemIds = remember { mutableStateListOf<Int>() }
-
-            AlertDialog(
-                onDismissRequest = { showRecommendedDialog = false },
-                title = { Text("Recommended Items") },
-                text = {
-                    if (availableRecommendations.isEmpty()) {
-                        Text("No recommendations yet. Buy items to see them here!")
-                    } else {
-                        LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                            items(availableRecommendations) { item ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth().clickable { 
-                                        if (selectedItemIds.contains(item.id)) selectedItemIds.remove(item.id)
-                                        else selectedItemIds.add(item.id)
-                                    }
-                                ) {
-                                    Checkbox(
-                                        checked = selectedItemIds.contains(item.id), 
-                                        onCheckedChange = { isChecked ->
-                                            if (isChecked) selectedItemIds.add(item.id)
-                                            else selectedItemIds.remove(item.id)
-                                        } 
-                                    )
-                                    Text(item.name, modifier = Modifier.weight(1f))
-                                    Text("(${item.timesBought})", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    if (availableRecommendations.isNotEmpty()) {
-                        TextButton(onClick = {
-                            scope.launch {
-                                availableRecommendations.filter { selectedItemIds.contains(it.id) }.forEach { item ->
-                                    repository.updateItem(item.copy(isBought = false, isActive = true))
-                                }
-                                showRecommendedDialog = false
-                            }
-                        }) { Text(stringResource(R.string.add)) }
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showRecommendedDialog = false }) { Text(stringResource(R.string.cancel)) }
+            RecommendedItemsDialog(
+                recommendedItems = recommendedItems,
+                activeItems = items,
+                onDismiss = { viewModel.setShowRecommendedDialog(false) },
+                onAddItems = { selectedIds ->
+                    viewModel.addRecommendedItems(selectedIds)
                 }
             )
         }

@@ -17,29 +17,24 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
-import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.Store
-import fyi.teddy.android.grocery.repository.GroceryRepository
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { GroceryRepository(database.groceryDao()) }
+    val viewModel: GroceryViewModel = viewModel(
+        factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
+    )
     
-    val stores by repository.getAllStores(userId).collectAsState(initial = emptyList())
+    val stores by viewModel.stores.collectAsState()
     var newStoreName by remember { mutableStateOf("") }
 
     val onAddStore = {
         if (newStoreName.isNotBlank()) {
-            val nameToSave = newStoreName
-            scope.launch {
-                repository.insertStore(Store(name = nameToSave, userId = userId))
-            }
+            viewModel.insertStore(newStoreName)
             newStoreName = ""
         }
     }
@@ -101,22 +96,18 @@ fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
                         StoreItemRow(
                             store = store,
                             onDelete = {
-                                scope.launch { repository.deleteStore(store) }
+                                viewModel.deleteStore(store)
                             },
                             onUpdate = { updatedStore ->
-                                scope.launch { repository.updateStore(updatedStore) }
+                                viewModel.updateStore(updatedStore)
                             },
                             onMoveUp = {
                                 val targetStore = stores[index - 1]
-                                scope.launch {
-                                    repository.swapStorePositions(store, targetStore)
-                                }
+                                viewModel.swapStorePositions(store, targetStore)
                             },
                             onMoveDown = {
                                 val targetStore = stores[index + 1]
-                                scope.launch {
-                                    repository.swapStorePositions(store, targetStore)
-                                }
+                                viewModel.swapStorePositions(store, targetStore)
                             },
                             isFirst = index == 0,
                             isLast = index == stores.size - 1

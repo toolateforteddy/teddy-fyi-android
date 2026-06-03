@@ -36,7 +36,8 @@ fun GroceryItemRowContainer(
     onUpdateItem: (GroceryItem) -> Unit,
     onDeleteItem: () -> Unit,
     onUpdateStoreInfo: (GroceryItemStoreInfo) -> Unit,
-    onMoveItem: (Int, Int) -> Unit
+    onMoveItem: (Int, Int) -> Unit,
+    onToggleBought: (GroceryItem, Boolean) -> Unit = { _, _ -> }
 ) {
     var showStoreTagging by remember { mutableStateOf(false) }
     var showEditQuantity by remember { mutableStateOf(false) }
@@ -50,16 +51,7 @@ fun GroceryItemRowContainer(
         stores = stores,
         isEditMode = isEditMode,
         onCheckedChange = { isChecked ->
-            // Use the scope already available in GroceryItemRowContainer if possible.
-            // Since onUpdateItem is a callback, it handles the DB update.
-            // We need to move the delay into the caller (GroceryScreen.kt) 
-            // or pass a scope here.
-            
-            var updatedItem = item.copy(isBought = isChecked)
-            if (isChecked && currentPhase == GroceryPhase.SHOPPING) {
-                updatedItem = updatedItem.copy(timesBought = item.timesBought + 1)
-            }
-            onUpdateItem(updatedItem)
+            onToggleBought(item, isChecked)
         },
         onDelete = onDeleteItem,
         onTagStores = { showStoreTagging = true },

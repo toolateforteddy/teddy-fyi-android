@@ -28,6 +28,7 @@ fun TodoItemRow(
     onToggleExpand: () -> Unit = {},
     showDelete: Boolean,
     isPlanningMode: Boolean,
+    planningDate: String? = null,
     showScheduledDate: Boolean = true,
     index: Int,
     totalItems: Int,
@@ -63,7 +64,9 @@ fun TodoItemRow(
         }
 
         Checkbox(
-            checked = if (isPlanningMode) item.scheduledDate != null else item.isCompleted,
+            checked = if (isPlanningMode) {
+                if (planningDate != null) item.scheduledDate == planningDate else item.scheduledDate != null
+            } else item.isCompleted,
             onCheckedChange = onCheckedChange,
             colors = CheckboxDefaults.colors(
                 uncheckedColor = if (isPlanningMode) Color.Cyan else Color.Gray,

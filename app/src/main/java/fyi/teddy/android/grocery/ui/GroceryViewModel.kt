@@ -1,0 +1,311 @@
+package fyi.teddy.android.grocery.ui
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import fyi.teddy.android.grocery.data.Category
+import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
+import fyi.teddy.android.grocery.data.Store
+import fyi.teddy.android.grocery.repository.GroceryRepository
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.util.Locale
+
+class GroceryViewModel(
+    application: Application,
+    private val repository: GroceryRepository,
+    val userId: String
+) : AndroidViewModel(application) {
+
+    // Internal mutable state flows for UDF compliance
+    private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
+    val currentPhase: StateFlow<GroceryPhase> = _currentPhase.asStateFlow()
+
+    private val _selectedStoreIds = MutableStateFlow(setOf<Int>())
+    val selectedStoreIds: StateFlow<Set<Int>> = _selectedStoreIds.asStateFlow()
+
+    private val _shoppingStoreId = MutableStateFlow<Int?>(null)
+    val shoppingStoreId: StateFlow<Int?> = _shoppingStoreId.asStateFlow()
+
+    private val _isEditMode = MutableStateFlow(false)
+    val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
+
+    private val _showRecommendedDialog = MutableStateFlow(false)
+    val showRecommendedDialog: StateFlow<Boolean> = _showRecommendedDialog.asStateFlow()
+
+    private val _newItemName = MutableStateFlow("")
+    val newItemName: StateFlow<String> = _newItemName.asStateFlow()
+
+    private val _newItemQuantity = MutableStateFlow("1")
+    val newItemQuantity: StateFlow<String> = _newItemQuantity.asStateFlow()
+
+    private val _selectedCategoryId = MutableStateFlow<Int?>(null)
+    val selectedCategoryId: StateFlow<Int?> = _selectedCategoryId.asStateFlow()
+
+    private val _recentlyCheckedIds = MutableStateFlow(setOf<Int>())
+    val recentlyCheckedIds: StateFlow<Set<Int>> = _recentlyCheckedIds.asStateFlow()
+
+    // Sources from repository
+    val items = repository.getAllItems(userId)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val stores = repository.getAllStores(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val categories = repository.getAllCategories(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val storeInfos = repository.getAllStoreInfo(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val recommendedItems = repository.getRecommendedItems(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        viewModelScope.launch {
+            repository.claimEverything(userId)
+        }
+    }
+
+    // Sanitize and format name inputs uniformly
+    fun formatName(input: String): String {
+        return input.trim().split("\\s+".toRegex())
+            .joinToString(" ") { word ->
+                word.lowercase().replaceFirstChar { 
+                    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+                }
+            }
+    }
+
+    // Setters
+    fun setPhase(phase: GroceryPhase) {
+        _currentPhase.value = phase
+        if (phase != GroceryPhase.SHOPPING) {
+            _isEditMode.value = false
+        }
+    }
+
+    fun toggleStoreSelection(storeId: Int) {
+        _selectedStoreIds.update { current ->
+            if (current.contains(storeId)) current - storeId else current + storeId
+        }
+    }
+
+    fun setShoppingStoreId(storeId: Int?) {
+        _shoppingStoreId.value = storeId
+    }
+
+    fun setEditMode(enabled: Boolean) {
+        _isEditMode.value = enabled
+    }
+
+    fun setShowRecommendedDialog(show: Boolean) {
+        _showRecommendedDialog.value = show
+    }
+
+    fun setNewItemName(name: String) {
+        _newItemName.value = name
+    }
+
+    fun setNewItemQuantity(qty: String) {
+        _newItemQuantity.value = qty
+    }
+
+    fun setSelectedCategoryId(categoryId: Int?) {
+        _selectedCategoryId.value = categoryId
+    }
+
+    // Core state flow combining all tables for categories and custom views
+    val baseFilteredItems: StateFlow<List<GroceryItem>> = combine(
+        items,
+        storeInfos,
+        _currentPhase,
+        _selectedStoreIds,
+        _shoppingStoreId
+    ) { all, infos, phase, selectedStores, shoppingStore ->
+        val activeItems = all.filter { it.isActive }
+        when (phase) {
+            GroceryPhase.NEED -> activeItems
+            GroceryPhase.PLANNING -> {
+                if (selectedStores.isEmpty()) activeItems
+                else {
+                    activeItems.filter { item ->
+                        val itemInfos = infos.filter { it.groceryItemId == item.id }
+                        selectedStores.any { storeId ->
+                            val info = itemInfos.find { it.storeId == storeId }
+                            info?.isAvailable ?: true
+                        }
+                    }
+                }
+            }
+            GroceryPhase.SHOPPING -> {
+                if (shoppingStore == null) emptyList()
+                else {
+                    activeItems.filter { item ->
+                        val info = infos.find { it.groceryItemId == item.id && it.storeId == shoppingStore }
+                        info?.isAvailable ?: true
+                    }
+                }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Filtered items that belong in the standard categories (excluding items already checked and moved)
+    val standardCategoryItems: StateFlow<List<GroceryItem>> = combine(
+        baseFilteredItems,
+        _currentPhase,
+        _recentlyCheckedIds
+    ) { baseItems, phase, recentlyChecked ->
+        if (phase == GroceryPhase.SHOPPING) {
+            baseItems.filter { !it.isBought || recentlyChecked.contains(it.id) }
+        } else {
+            baseItems
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Checked/completed items that have finished their 2-second delay and reside in "In Cart" category
+    val inCartItems: StateFlow<List<GroceryItem>> = combine(
+        baseFilteredItems,
+        _currentPhase,
+        _recentlyCheckedIds
+    ) { baseItems, phase, recentlyChecked ->
+        if (phase == GroceryPhase.SHOPPING) {
+            baseItems.filter { it.isBought && !recentlyChecked.contains(it.id) }
+        } else {
+            emptyList()
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Database mutators wrapped in view model scopes
+    fun insertItem(name: String, quantity: String, categoryId: Int?) {
+        if (name.isNotBlank()) {
+            val capitalizedName = formatName(name)
+            viewModelScope.launch {
+                val item = GroceryItem(
+                    name = capitalizedName,
+                    quantity = quantity,
+                    categoryId = categoryId,
+                    userId = userId,
+                    isActive = true
+                )
+                val existingInactive = items.value.find { 
+                    it.name.equals(capitalizedName, ignoreCase = true) && !it.isActive 
+                }
+                val itemId = if (existingInactive != null) {
+                    repository.updateItem(existingInactive.copy(
+                        isActive = true, 
+                        quantity = quantity, 
+                        categoryId = categoryId,
+                        isBought = false
+                    ))
+                    existingInactive.id
+                } else {
+                    repository.insertItem(item).toInt()
+                }
+
+                stores.value.forEach { store ->
+                    if (!store.isDefaultSupported) {
+                        repository.insertStoreInfo(
+                            GroceryItemStoreInfo(
+                                groceryItemId = itemId,
+                                storeId = store.id,
+                                isAvailable = false,
+                                userId = userId
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateItem(item: GroceryItem) {
+        viewModelScope.launch { repository.updateItem(item) }
+    }
+
+    fun deleteItem(item: GroceryItem) {
+        viewModelScope.launch { repository.deleteItem(item) }
+    }
+
+    fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) {
+        viewModelScope.launch { repository.swapItemPositions(item1, item2) }
+    }
+
+    fun updateStoreInfo(info: GroceryItemStoreInfo) {
+        viewModelScope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
+    }
+
+    fun toggleBought(item: GroceryItem, isChecked: Boolean) {
+        val updatedItem = item.copy(isBought = isChecked)
+        
+        if (isChecked && _currentPhase.value == GroceryPhase.SHOPPING) {
+            // Immediately mark as checked, and add to recentlyCheckedIds to start 2-second transition
+            _recentlyCheckedIds.update { it + item.id }
+            updateItem(updatedItem)
+            
+            viewModelScope.launch {
+                delay(2000)
+                _recentlyCheckedIds.update { it - item.id }
+            }
+        } else {
+            _recentlyCheckedIds.update { it - item.id }
+            updateItem(updatedItem)
+        }
+    }
+
+    fun markDoneForTrip() {
+        viewModelScope.launch {
+            repository.markDoneForTrip(userId)
+        }
+    }
+
+    // Store operations
+    fun insertStore(name: String) {
+        if (name.isNotBlank()) {
+            val capitalized = formatName(name)
+            viewModelScope.launch {
+                repository.insertStore(Store(name = capitalized, userId = userId))
+            }
+        }
+    }
+
+    fun deleteStore(store: Store) {
+        viewModelScope.launch { repository.deleteStore(store) }
+    }
+
+    fun updateStore(store: Store) {
+        viewModelScope.launch { repository.updateStore(store) }
+    }
+
+    fun swapStorePositions(store1: Store, store2: Store) {
+        viewModelScope.launch { repository.swapStorePositions(store1, store2) }
+    }
+
+    // Category operations
+    fun insertCategory(name: String) {
+        if (name.isNotBlank()) {
+            val capitalized = formatName(name)
+            viewModelScope.launch {
+                repository.insertCategory(Category(name = capitalized, userId = userId))
+            }
+        }
+    }
+
+    fun deleteCategory(category: Category) {
+        viewModelScope.launch { repository.deleteCategory(category) }
+    }
+
+    fun swapCategoryPositions(cat1: Category, cat2: Category) {
+        viewModelScope.launch { repository.swapCategoryPositions(cat1, cat2) }
+    }
+
+    fun addRecommendedItems(selectedItemIds: List<Int>) {
+        viewModelScope.launch {
+            recommendedItems.value.filter { selectedItemIds.contains(it.id) }.forEach { item ->
+                repository.updateItem(item.copy(isBought = false, isActive = true))
+            }
+        }
+    }
+}

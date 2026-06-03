@@ -1,5 +1,6 @@
 package fyi.teddy.android.todo.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -27,7 +28,7 @@ import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 enum class TodoMode {
-    BACKLOG, TODAY_PLANNING, TODAY, SCHEDULED
+    BACKLOG, PLANNING, TODAY, SCHEDULED
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,12 +43,14 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val isEditMode by viewModel.isEditMode.collectAsState()
     val showCompletedOnly by viewModel.showCompletedOnly.collectAsState()
     val groupedItems by viewModel.groupedItems.collectAsState()
+    val selectedPlanningDate by viewModel.selectedPlanningDate.collectAsState()
     
     var showClearAllConfirmation by remember { mutableStateOf(false) }
+    var showPlanningDatePicker by remember { mutableStateOf(false) }
     val expandedParentIds = remember { mutableStateOf(setOf<Int>()) }
     val parties = remember { mutableStateListOf<Party>() }
     
-    val todayString = LocalDate.now().toString()
+
 
     // Collect visual confetti triggers from ViewModel
     LaunchedEffect(Unit) {
@@ -71,7 +74,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     
     val onAddNewItem = { title: String, parentId: Int? ->
         if (title.isNotBlank()) {
-            val scheduledDate = if (currentMode == TodoMode.TODAY_PLANNING) todayString else null
+            val scheduledDate = if (currentMode == TodoMode.PLANNING) selectedPlanningDate else null
             viewModel.insertItem(title, userId, parentId, scheduledDate)
         }
     }
@@ -86,19 +89,58 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         )
     }
 
+    if (showPlanningDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = LocalDate.parse(selectedPlanningDate)
+                .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPlanningDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val selectedDate = datePickerState.selectedDateMillis?.let {
+                        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                    }
+                    if (selectedDate != null) {
+                        viewModel.setSelectedPlanningDate(selectedDate)
+                    }
+                    showPlanningDatePicker = false
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPlanningDatePicker = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = { 
-                        Text(
-                            text = when {
-                                currentMode == TodoMode.TODAY_PLANNING -> "Planning Today"
-                                currentMode == TodoMode.TODAY -> "Today's Tasks"
-                                showCompletedOnly -> stringResource(R.string.show_completed)
-                                else -> stringResource(R.string.app_name) + " List"
+                        val titleText = when (currentMode) {
+                            TodoMode.PLANNING -> {
+                                val today = LocalDate.now()
+                                val selected = LocalDate.parse(selectedPlanningDate)
+                                when {
+                                    selected == today -> "Planning: Today"
+                                    selected == today.plusDays(1) -> "Planning: Tomorrow"
+                                    else -> "Planning: $selectedPlanningDate"
+                                }
                             }
-                        ) 
+                            TodoMode.TODAY -> "Today's Tasks"
+                            else -> if (showCompletedOnly) stringResource(R.string.show_completed) else stringResource(R.string.app_name) + " List"
+                        }
+                        Text(
+                            text = titleText,
+                            modifier = if (currentMode == TodoMode.PLANNING) {
+                                Modifier.clickable { showPlanningDatePicker = true }
+                            } else {
+                                Modifier
+                            }
+                        )
                     },
                     actions = {
                         IconButton(onClick = { viewModel.setShowCompletedOnly(!showCompletedOnly) }) {
@@ -140,8 +182,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                         label = { Text("Backlog") }
                     )
                     NavigationBarItem(
-                        selected = currentMode == TodoMode.TODAY_PLANNING,
-                        onClick = { viewModel.setMode(TodoMode.TODAY_PLANNING) },
+                        selected = currentMode == TodoMode.PLANNING,
+                        onClick = { viewModel.setMode(TodoMode.PLANNING) },
                         icon = { Icon(Icons.Default.EditCalendar, contentDescription = "Planning") },
                         label = { Text("Planning") }
                     )
@@ -188,16 +230,17 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         }
                                     },
                                     showDelete = isEditMode,
-                                    isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
+                                    isPlanningMode = currentMode == TodoMode.PLANNING,
+                                    planningDate = selectedPlanningDate,
                                     showScheduledDate = currentMode != TodoMode.TODAY,
                                     index = parentIndex,
                                     totalItems = groupedItems.size,
                                     onCheckedChange = { isChecked ->
-                                        if (currentMode == TodoMode.TODAY_PLANNING) {
-                                            viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) todayString else null))
+                                        if (currentMode == TodoMode.PLANNING) {
+                                            viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
                                             if (isChecked) {
                                                 children.forEach { 
-                                                    viewModel.updateItem(it.copy(scheduledDate = todayString))
+                                                    viewModel.updateItem(it.copy(scheduledDate = selectedPlanningDate))
                                                 }
                                             }
                                             return@TodoItemRow
@@ -241,13 +284,14 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         item = child,
                                         isSubtask = true,
                                         showDelete = isEditMode,
-                                        isPlanningMode = currentMode == TodoMode.TODAY_PLANNING,
+                                        isPlanningMode = currentMode == TodoMode.PLANNING,
+                                        planningDate = selectedPlanningDate,
                                         showScheduledDate = currentMode != TodoMode.TODAY,
                                         index = childIndex,
                                         totalItems = children.size,
                                         onCheckedChange = { isChecked ->
-                                            if (currentMode == TodoMode.TODAY_PLANNING) {
-                                                viewModel.updateItem(child.copy(scheduledDate = if(isChecked) todayString else null))
+                                            if (currentMode == TodoMode.PLANNING) {
+                                                viewModel.updateItem(child.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
                                                 return@TodoItemRow
                                             }
                                             viewModel.toggleComplete(child, isChecked)
