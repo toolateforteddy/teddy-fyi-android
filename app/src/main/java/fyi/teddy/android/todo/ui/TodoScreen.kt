@@ -25,11 +25,12 @@ import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
 
 enum class TodoMode {
-    BACKLOG, TODAY_PLANNING, TODAY
+    BACKLOG, TODAY_PLANNING, TODAY, SCHEDULED
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     var currentMode by remember { mutableStateOf(TodoMode.BACKLOG) }
     val allItems by viewModel.allItems.collectAsState()
     val todayItems by viewModel.todayItems.collectAsState()
+    val scheduledItems by viewModel.scheduledItems.collectAsState()
     
     var isEditMode by remember { mutableStateOf(false) }
     var showCompletedOnly by remember { mutableStateOf(false) }
@@ -53,10 +55,13 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val parties = remember { mutableStateListOf<Party>() }
     val recentlyCompletedIds = remember { mutableStateListOf<Int>() }
     
+    val todayString = LocalDate.now().toString()
+    
     val baseItems = when(currentMode) {
         TodoMode.TODAY -> todayItems
-        TodoMode.BACKLOG -> allItems.filter { !it.isPlannedForToday }
+        TodoMode.BACKLOG -> allItems.filter { it.scheduledDate == null }
         TodoMode.TODAY_PLANNING -> allItems
+        TodoMode.SCHEDULED -> scheduledItems
     }
     
     val filteredItems = remember(baseItems, showCompletedOnly, recentlyCompletedIds.toList()) {
@@ -71,13 +76,13 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         }
     }
 
-    val groupedItems = remember(filteredItems, currentMode) {
+    val groupedItems = remember(filteredItems, currentMode, todayString) {
         val allParents = filteredItems.filter { it.parentId == null }
         val allChildren = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
         
-        if (currentMode == TodoMode.TODAY) {
+        if (currentMode == TodoMode.TODAY || currentMode == TodoMode.SCHEDULED) {
             allParents.filter { parent ->
-                parent.isPlannedForToday || allChildren[parent.id]?.any { it.isPlannedForToday } == true
+                parent.scheduledDate == (if (currentMode == TodoMode.TODAY) todayString else parent.scheduledDate) || allChildren[parent.id]?.any { it.scheduledDate == (if (currentMode == TodoMode.TODAY) todayString else it.scheduledDate) } == true
             }.map { parent ->
                 parent to (allChildren[parent.id] ?: emptyList())
             }
@@ -96,7 +101,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                 title = capitalizedTitle,
                 userId = userId,
                 parentId = parentId,
-                isPlannedForToday = currentMode == TodoMode.TODAY_PLANNING
+                scheduledDate = if (currentMode == TodoMode.TODAY_PLANNING) todayString else null
             ))
         }
     }
@@ -176,6 +181,12 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                         icon = { Icon(Icons.Default.Today, contentDescription = "Today") },
                         label = { Text("Today") }
                     )
+                    NavigationBarItem(
+                        selected = currentMode == TodoMode.SCHEDULED,
+                        onClick = { currentMode = TodoMode.SCHEDULED },
+                        icon = { Icon(Icons.Default.DateRange, contentDescription = "Scheduled") },
+                        label = { Text("Scheduled") }
+                    )
                 }
             }
         ) { paddingValues ->
@@ -212,10 +223,10 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     totalItems = groupedItems.size,
                                     onCheckedChange = { isChecked ->
                                         if (currentMode == TodoMode.TODAY_PLANNING) {
-                                            viewModel.updateItem(parent.copy(isPlannedForToday = isChecked))
+                                            viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) todayString else null))
                                             if (isChecked) {
                                                 children.forEach { 
-                                                    viewModel.updateItem(it.copy(isPlannedForToday = true))
+                                                    viewModel.updateItem(it.copy(scheduledDate = todayString))
                                                 }
                                             }
                                             return@TodoItemRow
@@ -243,7 +254,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                                     viewModel.updateItem(parent.copy(
                                                         isCompleted = false, 
                                                         scheduledAt = nextTime, 
-                                                        isPlannedForToday = false
+                                                        scheduledDate = null
                                                     ))
                                                 }
                                                 delay(1000) 
@@ -282,8 +293,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                             
                             val isExpanded = expandedParentIds.value.contains(parent.id)
                             if (isExpanded) {
-                                val childrenToShow = if (currentMode == TodoMode.TODAY) {
-                                    children.filter { it.isPlannedForToday || it.isCompleted }
+                                val childrenToShow = if (currentMode == TodoMode.TODAY || currentMode == TodoMode.SCHEDULED) {
+                                    children.filter { it.scheduledDate != null || it.isCompleted }
                                 } else {
                                     children
                                 }
@@ -297,7 +308,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         totalItems = children.size,
                                         onCheckedChange = { isChecked ->
                                             if (currentMode == TodoMode.TODAY_PLANNING) {
-                                                viewModel.updateItem(child.copy(isPlannedForToday = isChecked))
+                                                viewModel.updateItem(child.copy(scheduledDate = if(isChecked) todayString else null))
                                                 return@TodoItemRow
                                             }
                                             if (isChecked && !showCompletedOnly) {

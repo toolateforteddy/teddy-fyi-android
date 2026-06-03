@@ -25,13 +25,36 @@ class AppDatabaseMigrationTest {
 
     @Test
     @Throws(IOException::class)
-    fun migrate13To14() {
-        // Create database at version 13
-        val db = helper.createDatabase(TEST_DB, 13)
-        // Add initial data if needed
+    fun migrate16To17() {
+        // Create database at version 16
+        val db = helper.createDatabase(TEST_DB, 16)
+        
+        // Add a task with isPlannedForToday = 1 and one with 0
+        db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `isPlannedForToday`) VALUES (1, 'Today task', 0, 1000, 0, 1)")
+        db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `isPlannedForToday`) VALUES (2, 'Future task', 0, 1000, 0, 0)")
         db.close()
 
-        // Run migration to 14
-        helper.runMigrationsAndValidate(TEST_DB, 14, true, AppDatabase.MIGRATION_13_14)
+        // Run migration to 17
+        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 17, true, AppDatabase.MIGRATION_16_17)
+        
+        // Verify today's task has scheduledDate set and future task has null
+        val cursor = migratedDb.query("SELECT * FROM `todo_items`")
+        
+        // Check task 1
+        var todayTaskScheduledDate: String? = null
+        var futureTaskScheduledDate: String? = null
+        
+        while(cursor.moveToNext()) {
+            val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+            val scheduledDateIndex = cursor.getColumnIndex("scheduledDate")
+            if (scheduledDateIndex != -1) {
+                if (id == 1) todayTaskScheduledDate = cursor.getString(scheduledDateIndex)
+                if (id == 2) futureTaskScheduledDate = cursor.getString(scheduledDateIndex)
+            }
+        }
+        
+        assert(todayTaskScheduledDate != null)
+        assert(futureTaskScheduledDate == null)
+        cursor.close()
     }
 }

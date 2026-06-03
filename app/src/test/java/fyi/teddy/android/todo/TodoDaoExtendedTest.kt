@@ -13,6 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 class TodoDaoExtendedTest {
@@ -20,6 +21,7 @@ class TodoDaoExtendedTest {
     private lateinit var database: AppDatabase
     private lateinit var todoDao: TodoDao
     private val userId = "test_user"
+    private val today = LocalDate.now().toString()
 
     @Before
     fun setup() {
@@ -46,14 +48,14 @@ class TodoDaoExtendedTest {
     }
 
     @Test
-    fun getTodayItems_includesPlanned() = runTest {
-        val notPlanned = TodoItem(title = "Not Planned", isPlannedForToday = false, userId = userId)
+    fun getTodayItems_includesScheduled() = runTest {
+        val notPlanned = TodoItem(title = "Not Planned", scheduledDate = null, userId = userId)
         
-        todoDao.insertItem(TodoItem(id = 1, title = "Planned", isPlannedForToday = true, userId = userId))
+        todoDao.insertItem(TodoItem(id = 1, title = "Planned", scheduledDate = today, userId = userId))
         todoDao.insertItem(notPlanned)
-        todoDao.insertItem(TodoItem(id = 2, title = "Child", parentId = 1, isPlannedForToday = false, userId = userId))
+        todoDao.insertItem(TodoItem(id = 2, title = "Child", parentId = 1, scheduledDate = null, userId = userId))
         
-        val items = todoDao.getTodayItems(userId).first()
+        val items = todoDao.getTodayItems(userId, today).first()
         assertTrue(items.any { it.title == "Planned" })
         assertFalse(items.any { it.title == "Not Planned" })
         assertTrue(items.any { it.title == "Child" })
@@ -61,22 +63,20 @@ class TodoDaoExtendedTest {
 
     @Test
     fun getTodayItems_ordering_plannedFirst() = runTest {
-        val dueSoon = TodoItem(id = 1, title = "Due Soon", userId = userId, isPlannedForToday = false)
-        // We can't easily test due date logic with strftime in unit tests without clock control,
-        // so we focus on the explicit planned status.
-        val planned = TodoItem(id = 2, title = "Planned", isPlannedForToday = true, userId = userId)
+        val dueSoon = TodoItem(id = 1, title = "Due Soon", userId = userId, scheduledDate = null)
+        val planned = TodoItem(id = 2, title = "Planned", scheduledDate = today, userId = userId)
         
         todoDao.insertItem(dueSoon)
         todoDao.insertItem(planned)
         
-        val items = todoDao.getTodayItems(userId).first()
+        val items = todoDao.getTodayItems(userId, today).first()
         assertEquals("Planned", items[0].title)
     }
 
     @Test
     fun resetPlannedItems_ignoresDaily() = runTest {
-        val task1 = TodoItem(id = 1, title = "Normal", isPlannedForToday = true, isDaily = false, userId = userId)
-        val task2 = TodoItem(id = 2, title = "Daily", isPlannedForToday = true, isDaily = true, userId = userId)
+        val task1 = TodoItem(id = 1, title = "Normal", scheduledDate = today, isDaily = false, userId = userId)
+        val task2 = TodoItem(id = 2, title = "Daily", scheduledDate = today, isDaily = true, userId = userId)
         
         todoDao.insertItem(task1)
         todoDao.insertItem(task2)
@@ -87,19 +87,19 @@ class TodoDaoExtendedTest {
         val normal = items.find { it.id == 1 }!!
         val daily = items.find { it.id == 2 }!!
         
-        assertFalse(normal.isPlannedForToday)
-        assertTrue(daily.isPlannedForToday)
+        assertNull(normal.scheduledDate)
+        assertEquals(today, daily.scheduledDate)
     }
 
     @Test
-    fun resetDailyItems_setsPlannedForToday() = runTest {
-        val task = TodoItem(id = 1, title = "Daily", isCompleted = true, isPlannedForToday = false, isDaily = true, userId = userId)
+    fun resetDailyItems_setsScheduledDate() = runTest {
+        val task = TodoItem(id = 1, title = "Daily", isCompleted = true, scheduledDate = null, isDaily = true, userId = userId)
         todoDao.insertItem(task)
         
-        todoDao.resetDailyItems(userId)
+        todoDao.resetDailyItems(userId, today)
         
         val items = todoDao.getAllItems(userId).first()
-        assertTrue(items[0].isPlannedForToday)
+        assertEquals(today, items[0].scheduledDate)
         assertFalse(items[0].isCompleted)
     }
 

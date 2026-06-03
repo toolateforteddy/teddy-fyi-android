@@ -15,8 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.todo.data.TodoItem
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +44,8 @@ fun TodoItemRow(
     var showEditTitleDialog by remember { mutableStateOf(false) }
     var showAddSubtaskDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showScheduleDatePicker by remember { mutableStateOf(false) }
+    var showSnoozeForDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -61,7 +62,7 @@ fun TodoItemRow(
         }
 
         Checkbox(
-            checked = if (isPlanningMode) item.isPlannedForToday else item.isCompleted,
+            checked = if (isPlanningMode) item.scheduledDate != null else item.isCompleted,
             onCheckedChange = onCheckedChange,
             colors = CheckboxDefaults.colors(
                 uncheckedColor = if (isPlanningMode) Color.Cyan else Color.Gray,
@@ -104,17 +105,23 @@ fun TodoItemRow(
                     )
                 }
                 if (item.dueDate != null) {
-                    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
                     Text(
-                        text = "Due: ${sdf.format(Date(item.dueDate))}",
+                        text = "Due: ${LocalDate.ofEpochDay(item.dueDate / 86400000)}",
                         color = Color.Red,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                if (item.scheduledDate != null) {
+                    Text(
+                        text = "Scheduled: ${item.scheduledDate}",
+                        color = Color.Cyan,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(start = 4.dp)
                     )
                 }
             }
         }
         
-        // Caret moved to the right
         if (!isSubtask && subtaskCount > 0) {
             IconButton(onClick = onToggleExpand) {
                 Icon(
@@ -176,7 +183,7 @@ fun TodoItemRow(
                 DropdownMenuItem(
                     text = { Text(if (item.isDaily) "Make Non-Daily" else "Make Daily") },
                     onClick = {
-                        onUpdateItem(item.copy(isDaily = !item.isDaily, isPlannedForToday = if (!item.isDaily) true else item.isPlannedForToday))
+                        onUpdateItem(item.copy(isDaily = !item.isDaily, scheduledDate = if (!item.isDaily) LocalDate.now().toString() else item.scheduledDate))
                         showMenu = false
                     }
                 )
@@ -184,6 +191,28 @@ fun TodoItemRow(
                     text = { Text("Set Due Date") },
                     onClick = {
                         showDatePicker = true
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Schedule For...") },
+                    onClick = {
+                        showScheduleDatePicker = true
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Push to Tomorrow") },
+                    onClick = {
+                        val tomorrow = (if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()).plusDays(1)
+                        onUpdateItem(item.copy(scheduledDate = tomorrow.toString()))
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Snooze For...") },
+                    onClick = {
+                        showSnoozeForDialog = true
                         showMenu = false
                     }
                 )
@@ -248,6 +277,34 @@ fun TodoItemRow(
             DatePicker(state = datePickerState)
         }
     }
+    
+    if (showScheduleDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = item.scheduledDate?.let { 
+                LocalDate.parse(it).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+            } ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showScheduleDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val selectedDate = datePickerState.selectedDateMillis?.let {
+                        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                    }
+                    onUpdateItem(item.copy(scheduledDate = selectedDate))
+                    showScheduleDatePicker = false
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    onUpdateItem(item.copy(scheduledDate = null))
+                    showScheduleDatePicker = false
+                }) { Text("Clear") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     if (showRecurrenceDialog) {
         RecurrenceDialog(
@@ -267,6 +324,22 @@ fun TodoItemRow(
             onConfirm = { title ->
                 onUpdateItem(item.copy(title = title))
                 showEditTitleDialog = false
+            }
+        )
+    }
+
+    if (showSnoozeForDialog) {
+        SnoozeForDialog(
+            onDismiss = { showSnoozeForDialog = false },
+            onConfirm = { amount, isMonths ->
+                val baseDate = if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()
+                val newDate = if (isMonths) {
+                    fyi.teddy.android.todo.util.TaskSchedulerUtils.snoozeForMonths(baseDate, amount)
+                } else {
+                    fyi.teddy.android.todo.util.TaskSchedulerUtils.snoozeForDays(baseDate, amount)
+                }
+                onUpdateItem(item.copy(scheduledDate = newDate.toString()))
+                showSnoozeForDialog = false
             }
         )
     }

@@ -14,15 +14,18 @@ abstract class TodoDao {
 
     @Query("""
         SELECT * FROM todo_items WHERE userId = :userId AND (
-            isPlannedForToday = 1 
+            scheduledDate = :today 
             OR (dueDate IS NOT NULL AND dueDate <= (strftime('%s','now') * 1000 + 172800000))
             OR (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
-            OR id IN (SELECT parentId FROM todo_items WHERE isPlannedForToday = 1 AND parentId IS NOT NULL AND userId = :userId)
-            OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE isPlannedForToday = 1 AND parentId IS NOT NULL AND userId = :userId))
+            OR id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId)
+            OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId))
         )
-        ORDER BY (CASE WHEN isPlannedForToday = 1 THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC
+        ORDER BY (CASE WHEN scheduledDate = :today THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC
     """)
-    abstract fun getTodayItems(userId: String): Flow<List<TodoItem>>
+    abstract fun getTodayItems(userId: String, today: String): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE userId = :userId AND scheduledDate > :today AND isCompleted = 0 ORDER BY scheduledDate ASC")
+    abstract fun getScheduledItems(userId: String, today: String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())): Flow<List<TodoItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertItem(item: TodoItem)
@@ -36,14 +39,14 @@ abstract class TodoDao {
     @Query("DELETE FROM todo_items WHERE userId = :userId")
     abstract suspend fun deleteAll(userId: String)
 
-    @Query("UPDATE todo_items SET isPlannedForToday = 0 WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0")
+    @Query("UPDATE todo_items SET scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0")
     abstract suspend fun resetPlannedItems(userId: String)
 
     @Query("UPDATE todo_items SET userId = :userId WHERE userId IS NULL")
     abstract suspend fun claimUnownedItems(userId: String)
 
-    @Query("UPDATE todo_items SET isCompleted = 0, isPlannedForToday = 1 WHERE isDaily = 1 AND userId = :userId")
-    abstract suspend fun resetDailyItems(userId: String)
+    @Query("UPDATE todo_items SET isCompleted = 0, scheduledDate = :today WHERE isDaily = 1 AND userId = :userId")
+    abstract suspend fun resetDailyItems(userId: String, today: String)
 
     @Transaction
     open suspend fun insertWithNextPosition(item: TodoItem) {

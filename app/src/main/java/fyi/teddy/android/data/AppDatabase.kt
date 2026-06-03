@@ -23,7 +23,7 @@ import fyi.teddy.android.todo.data.TodoItem
         GroceryItemStoreInfo::class, 
         Category::class
     ], 
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -145,6 +145,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Add scheduledDate column
+                db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `scheduledDate` TEXT")
+                
+                // 2. Initialize scheduledDate for tasks planned for today
+                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+                db.execSQL("UPDATE `todo_items` SET `scheduledDate` = '$today' WHERE `isPlannedForToday` = 1")
+                
+                // 3. Drop isPlannedForToday column (requires temporary table for SQLite < 3.35)
+                db.execSQL("CREATE TABLE `todo_items_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `isCompleted` INTEGER NOT NULL DEFAULT 0, `createdAt` INTEGER NOT NULL, `position` INTEGER NOT NULL DEFAULT 0, `scheduledDate` TEXT, `recurrenceIntervalDays` INTEGER, `scheduledAt` INTEGER NOT NULL, `userId` TEXT, `parentId` INTEGER, `isDaily` INTEGER NOT NULL DEFAULT 0, `dueDate` INTEGER)")
+                db.execSQL("INSERT INTO `todo_items_new` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledDate`, `recurrenceIntervalDays`, `scheduledAt`, `userId`, `parentId`, `isDaily`, `dueDate`) SELECT `id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledDate`, `recurrenceIntervalDays`, `scheduledAt`, `userId`, `parentId`, `isDaily`, `dueDate` FROM `todo_items`")
+                db.execSQL("DROP TABLE `todo_items`")
+                db.execSQL("ALTER TABLE `todo_items_new` RENAME TO `todo_items`")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -153,7 +170,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-                        MIGRATION_15_16
+                        MIGRATION_15_16, MIGRATION_16_17
                     )
                     .build()
                     .also { Instance = it }

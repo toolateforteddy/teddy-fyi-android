@@ -22,6 +22,9 @@ class TodoViewModel(application: Application, userId: String) : AndroidViewModel
     val todayItems: StateFlow<List<TodoItem>> = repository.getTodayItems(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val scheduledItems: StateFlow<List<TodoItem>> = repository.getScheduledItems(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         viewModelScope.launch {
             repository.claimUnownedItems(userId)

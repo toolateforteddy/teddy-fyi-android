@@ -36,9 +36,9 @@ class GroceryDaoExtendedTest {
 
     @Test
     fun getRecommendedItems_sortsByBoughtFrequency() = runTest {
-        val item1 = GroceryItem(id = 1, name = "A", timesBought = 5, userId = userId, isActive = true)
-        val item2 = GroceryItem(id = 2, name = "B", timesBought = 10, userId = userId, isActive = true)
-        val item3 = GroceryItem(id = 3, name = "C", timesBought = 2, userId = userId, isActive = true)
+        val item1 = GroceryItem(id = 1, name = "A", timesBought = 5, userId = userId, isActive = false)
+        val item2 = GroceryItem(id = 2, name = "B", timesBought = 10, userId = userId, isActive = false)
+        val item3 = GroceryItem(id = 3, name = "C", timesBought = 2, userId = userId, isActive = false)
         
         groceryDao.insertItem(item1)
         groceryDao.insertItem(item2)
@@ -53,8 +53,8 @@ class GroceryDaoExtendedTest {
 
     @Test
     fun getRecommendedItems_onlyIncludesBoughtItems() = runTest {
-        val item1 = GroceryItem(id = 1, name = "Bought", timesBought = 1, userId = userId, isActive = true)
-        val item2 = GroceryItem(id = 2, name = "Never Bought", timesBought = 0, userId = userId, isActive = true)
+        val item1 = GroceryItem(id = 1, name = "Bought", timesBought = 1, userId = userId, isActive = false)
+        val item2 = GroceryItem(id = 2, name = "Never Bought", timesBought = 0, userId = userId, isActive = false)
         
         groceryDao.insertItem(item1)
         groceryDao.insertItem(item2)

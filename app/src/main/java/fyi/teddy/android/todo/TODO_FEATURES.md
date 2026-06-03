@@ -36,6 +36,8 @@ Current Features List.
 
 
 ## Requested Features
+- [ ] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule. Maybe this is best implemented by changing the column "scheduled for today" to actually hold a date, and then you can schedule a task for any day you want.
+- [ ] **Snooze Task**: On the backlog screen, the edit overflow menu should include a snooze option. Selecting this will open a modal allowing for inputting a number of days (N). During the next N days, the task should not appear in any task list.
 
 ## Planned Features
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
@@ -45,12 +47,11 @@ Current Features List.
 - [ ] **Search & Global History**: A search bar to find tasks by title across active and completed lists.
 - [ ] **Push Notifications**: Reminders for approaching due dates and a morning summary of "Today's Tasks".
 - [ ] **Productivity Insights**: A stats dashboard showing total tasks completed, streaks for daily items, and weekly progress charts.
-- [ ] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule. Maybe this is best implemented by changing the column "scheduled for today" to actually hold a date, and then you can schedule a task for any day you want.
 - [ ] **Recurrence Items On Top**: In all three modes, recurring items should be listed before non-recurring items. And scheduled items should come before recurring items.
 - [ ] **Add Task From Settings Drawer**: Support a shortcut in the settings drawer to add a new task without opening the app explicitly.
 - [ ] **Auto Categorize**: Once there are categories supported for tasks, add a button to automatically apply categories for each task.
 - [ ] **Incomplete Scheduled Tasks**: At the end of the day, any incomplete tasks scheduled for today should unscheduled and appear in the backlog again.
-- [ ] **Snooze Task**: On the backlog screen, the edit overflow menu should include a snooze option. Selecting this will open a modal allowing for inputting a number of days (N). During the next N days, the task should not appear in any task list.
+
 
 ## Bugs
 - [x] **Dark Mode**: The items are displayed in black text on a black background. And the nav bar is white.
