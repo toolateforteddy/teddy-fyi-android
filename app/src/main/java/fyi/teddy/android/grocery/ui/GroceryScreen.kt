@@ -50,6 +50,13 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     val isEditMode by viewModel.isEditMode.collectAsState()
     val showRecommendedDialog by viewModel.showRecommendedDialog.collectAsState()
     
+    val selectedListId by viewModel.selectedListId.collectAsState()
+    val lists by viewModel.lists.collectAsState()
+
+    var showListSelectorMenu by remember { mutableStateOf(false) }
+    var showAddListDialog by remember { mutableStateOf(false) }
+    var showShareListDialog by remember { mutableStateOf(false) }
+
     val newItemName by viewModel.newItemName.collectAsState()
     val newItemQuantity by viewModel.newItemQuantity.collectAsState()
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
@@ -160,6 +167,160 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp)
             ) {
+                // List / Space selector Row for Shared Lists
+                val activeList = lists.find { it.id == selectedListId }
+                val activeListName = activeList?.name ?: "Default List"
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clickable { showListSelectorMenu = true }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = "Lists", tint = Color.LightGray)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = activeListName,
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Switch List", tint = Color.White)
+                        }
+                        DropdownMenu(
+                            expanded = showListSelectorMenu,
+                            onDismissRequest = { showListSelectorMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Default List") },
+                                onClick = {
+                                    viewModel.setSelectedListId(null)
+                                    showListSelectorMenu = false
+                                }
+                            )
+                            lists.forEach { list ->
+                                DropdownMenuItem(
+                                    text = { Text(list.name) },
+                                    onClick = {
+                                        viewModel.setSelectedListId(list.id)
+                                        showListSelectorMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { showAddListDialog = true }) {
+                            Icon(Icons.Default.Create, contentDescription = "New List", tint = Color.White)
+                        }
+                        if (selectedListId != null) {
+                            IconButton(onClick = { showShareListDialog = true }) {
+                                Icon(Icons.Default.Share, contentDescription = "Share List", tint = Color.White)
+                            }
+                            IconButton(onClick = { viewModel.deleteList(activeList!!) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete List", tint = Color.Red)
+                            }
+                        }
+                    }
+                }
+
+                // Add List Dialog
+                if (showAddListDialog) {
+                    var newListName by remember { mutableStateOf("") }
+                    AlertDialog(
+                        onDismissRequest = { showAddListDialog = false },
+                        title = { Text("Create New List") },
+                        text = {
+                            OutlinedTextField(
+                                value = newListName,
+                                onValueChange = { newListName = it },
+                                label = { Text("List Name") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    if (newListName.isNotBlank()) {
+                                        viewModel.insertList(newListName)
+                                        showAddListDialog = false
+                                    }
+                                }
+                            ) { Text("Create") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showAddListDialog = false }) { Text("Cancel") }
+                        }
+                    )
+                }
+
+                // Share List Dialog
+                if (showShareListDialog && selectedListId != null) {
+                    val membersFlow = remember(selectedListId) { viewModel.getListMembers(selectedListId!!) }
+                    val members by membersFlow.collectAsState(initial = emptyList())
+                    var inviteUserId by remember { mutableStateOf("") }
+
+                    AlertDialog(
+                        onDismissRequest = { showShareListDialog = false },
+                        title = { Text("Share '${activeListName}'") },
+                        text = {
+                            Column {
+                                Text("Share this list with another user by entering their User ID:")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = inviteUserId,
+                                    onValueChange = { inviteUserId = it },
+                                    label = { Text("User ID") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Current Members:", style = MaterialTheme.typography.titleSmall)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                if (members.isEmpty()) {
+                                    Text("Only you have access to this list.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                } else {
+                                    LazyColumn(modifier = Modifier.heightIn(max = 150.dp)) {
+                                        items(members) { member ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(member.userId, modifier = Modifier.weight(1f))
+                                                IconButton(onClick = { viewModel.removeListMember(member) }) {
+                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    if (inviteUserId.isNotBlank()) {
+                                        viewModel.shareListWithUser(selectedListId!!, inviteUserId)
+                                        inviteUserId = ""
+                                    }
+                                }
+                            ) { Text("Share") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showShareListDialog = false }) { Text("Close") }
+                        }
+                    )
+                }
+
                 if (currentPhase == GroceryPhase.PLANNING) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Stores:", color = Color.White, style = MaterialTheme.typography.labelMedium)

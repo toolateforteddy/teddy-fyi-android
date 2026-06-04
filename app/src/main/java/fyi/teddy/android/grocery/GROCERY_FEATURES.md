@@ -32,6 +32,7 @@ Current Features List.
 - [x] **Auth Integration**: Associate grocery lists with a user account.
 - [x] **Shopping Mode Done State**: Added a new visual only category called "In Cart" on the shopping mode where checked items are moved after a 2-second delay.
 - [x] **Trip Complete Button**: On the shopping tab, add a Trip Complete button. Maybe it looks like a check icon in the top. After a confirmation modal to make sure you don't execute on purpose, all items in the "in cart" category are marked as "done". Done items do not show up in any screen until they are readded as new need items.
+- [x] **Shared Lists / Multi-List Collaboration**: Support creating multiple distinct grocery lists and sharing access with other users for synchronized, collaborative shopping.
 
 ## Requested Features
 

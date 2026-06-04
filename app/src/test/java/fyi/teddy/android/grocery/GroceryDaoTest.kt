@@ -200,4 +200,43 @@ class GroceryDaoTest {
         assertEquals(1, item1Info.size)
         assertEquals(1.0, item1Info[0].price!!, 0.001)
     }
+
+    @Test
+    fun insertAndGetGroceryLists() = runTest {
+        val list1 = GroceryList(id = "list-1", name = "Home Groceries", ownerId = userId)
+        val list2 = GroceryList(id = "list-2", name = "Cabin Trip", ownerId = "other_user")
+        groceryDao.insertList(list1)
+        groceryDao.insertList(list2)
+
+        // Only owned lists should appear without members
+        val userListsBeforeMember = groceryDao.getAllLists(userId).first()
+        assertEquals(1, userListsBeforeMember.size)
+        assertEquals("Home Groceries", userListsBeforeMember[0].name)
+
+        // Make user a member of other_user's list
+        groceryDao.insertListMember(GroceryListMember(id = "member-1", listId = "list-2", userId = userId))
+
+        // Both owned and shared lists should appear now
+        val userListsAfterMember = groceryDao.getAllLists(userId).first()
+        assertEquals(2, userListsAfterMember.size)
+    }
+
+    @Test
+    fun itemsByListAssociation() = runTest {
+        val list = GroceryList(id = "list-1", name = "Home Groceries", ownerId = userId)
+        groceryDao.insertList(list)
+
+        val item1 = GroceryItem(name = "Apples", listId = "list-1", userId = userId)
+        val item2 = GroceryItem(name = "Oranges", listId = null, userId = userId)
+        groceryDao.insertItem(item1)
+        groceryDao.insertItem(item2)
+
+        val itemsForList = groceryDao.getItemsForList("list-1").first()
+        assertEquals(1, itemsForList.size)
+        assertEquals("Apples", itemsForList[0].name)
+
+        val itemsWithoutList = groceryDao.getItemsWithoutList(userId).first()
+        assertEquals(1, itemsWithoutList.size)
+        assertEquals("Oranges", itemsWithoutList[0].name)
+    }
 }

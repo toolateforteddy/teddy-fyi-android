@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
+import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.repository.GroceryRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -47,9 +50,21 @@ class GroceryViewModel(
     private val _recentlyCheckedIds = MutableStateFlow(setOf<Int>())
     val recentlyCheckedIds: StateFlow<Set<Int>> = _recentlyCheckedIds.asStateFlow()
 
+    private val _selectedListId = MutableStateFlow<String?>(null)
+    val selectedListId: StateFlow<String?> = _selectedListId.asStateFlow()
+
     // Sources from repository
-    val items = repository.getAllItems(userId)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val items = _selectedListId.flatMapLatest { listId ->
+        if (listId == null) {
+            repository.getItemsWithoutList(userId)
+        } else {
+            repository.getItemsForList(listId)
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val lists = repository.getAllLists(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val stores = repository.getAllStores(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -188,7 +203,8 @@ class GroceryViewModel(
                     quantity = quantity,
                     categoryId = categoryId,
                     userId = userId,
-                    isActive = true
+                    isActive = true,
+                    listId = _selectedListId.value
                 )
                 val existingInactive = items.value.find { 
                     it.name.equals(capitalizedName, ignoreCase = true) && !it.isActive 
@@ -308,4 +324,59 @@ class GroceryViewModel(
             }
         }
     }
+
+    // List and Collaboration operations
+    fun setSelectedListId(listId: String?) {
+        _selectedListId.value = listId
+    }
+
+    fun insertList(name: String) {
+        if (name.isNotBlank()) {
+            val capitalized = formatName(name)
+            viewModelScope.launch {
+                repository.insertList(
+                    GroceryList(
+                        name = capitalized,
+                        ownerId = userId
+                    )
+                )
+            }
+        }
+    }
+
+    fun deleteList(list: GroceryList) {
+        viewModelScope.launch {
+            repository.deleteList(list)
+            if (_selectedListId.value == list.id) {
+                _selectedListId.value = null
+            }
+        }
+    }
+
+    fun updateList(list: GroceryList) {
+        viewModelScope.launch {
+            repository.updateList(list)
+        }
+    }
+
+    fun shareListWithUser(listId: String, memberUserId: String) {
+        if (memberUserId.isNotBlank()) {
+            viewModelScope.launch {
+                repository.insertListMember(
+                    GroceryListMember(
+                        listId = listId,
+                        userId = memberUserId
+                    )
+                )
+            }
+        }
+    }
+
+    fun removeListMember(member: GroceryListMember) {
+        viewModelScope.launch {
+            repository.deleteListMember(member)
+        }
+    }
+
+    fun getListMembers(listId: String) = repository.getListMembers(listId)
 }

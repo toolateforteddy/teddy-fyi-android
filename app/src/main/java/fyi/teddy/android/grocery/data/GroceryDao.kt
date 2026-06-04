@@ -157,4 +157,36 @@ abstract class GroceryDao {
         AND userId = :userId
     """)
     abstract suspend fun markDoneForTrip(userId: String)
+
+    @Query("""
+        SELECT DISTINCT l.* FROM grocery_lists l
+        LEFT JOIN grocery_list_members m ON l.id = m.listId
+        WHERE l.ownerId = :userId OR m.userId = :userId
+        ORDER BY l.createdAt ASC
+    """)
+    abstract fun getAllLists(userId: String): Flow<List<GroceryList>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertList(list: GroceryList)
+
+    @Update
+    abstract suspend fun updateList(list: GroceryList)
+
+    @Delete
+    abstract suspend fun deleteList(list: GroceryList)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertListMember(member: GroceryListMember)
+
+    @Delete
+    abstract suspend fun deleteListMember(member: GroceryListMember)
+
+    @Query("SELECT * FROM grocery_list_members WHERE listId = :listId")
+    abstract fun getListMembers(listId: String): Flow<List<GroceryListMember>>
+
+    @Query("SELECT * FROM grocery_items WHERE listId = :listId ORDER BY position ASC, createdAt DESC")
+    abstract fun getItemsForList(listId: String): Flow<List<GroceryItem>>
+
+    @Query("SELECT * FROM grocery_items WHERE listId IS NULL AND userId = :userId ORDER BY position ASC, createdAt DESC")
+    abstract fun getItemsWithoutList(userId: String): Flow<List<GroceryItem>>
 }

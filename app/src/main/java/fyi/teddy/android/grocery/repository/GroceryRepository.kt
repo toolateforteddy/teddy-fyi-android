@@ -30,4 +30,15 @@ class GroceryRepository(private val groceryDao: GroceryDao) {
     suspend fun claimEverything(userId: String) = groceryDao.claimEverything(userId)
     
     suspend fun markDoneForTrip(userId: String) = groceryDao.markDoneForTrip(userId)
+
+    // List & Collaboration operations
+    fun getAllLists(userId: String): Flow<List<GroceryList>> = groceryDao.getAllLists(userId)
+    suspend fun insertList(list: GroceryList) = groceryDao.insertList(list)
+    suspend fun updateList(list: GroceryList) = groceryDao.updateList(list)
+    suspend fun deleteList(list: GroceryList) = groceryDao.deleteList(list)
+    suspend fun insertListMember(member: GroceryListMember) = groceryDao.insertListMember(member)
+    suspend fun deleteListMember(member: GroceryListMember) = groceryDao.deleteListMember(member)
+    fun getListMembers(listId: String): Flow<List<GroceryListMember>> = groceryDao.getListMembers(listId)
+    fun getItemsForList(listId: String): Flow<List<GroceryItem>> = groceryDao.getItemsForList(listId)
+    fun getItemsWithoutList(userId: String): Flow<List<GroceryItem>> = groceryDao.getItemsWithoutList(userId)
 }

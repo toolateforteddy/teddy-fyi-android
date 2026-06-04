@@ -10,6 +10,8 @@ import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryDao
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
+import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
@@ -23,9 +25,11 @@ import fyi.teddy.android.todo.data.TodoList
         Store::class, 
         GroceryItemStoreInfo::class, 
         Category::class,
-        TodoList::class
+        TodoList::class,
+        GroceryList::class,
+        GroceryListMember::class
     ], 
-    version = 22,
+    version = 23,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -313,6 +317,40 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `grocery_lists` (
+                        `id` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `ownerId` TEXT, 
+                        `createdAt` INTEGER NOT NULL, 
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `grocery_list_members` (
+                        `id` TEXT NOT NULL, 
+                        `listId` TEXT NOT NULL, 
+                        `userId` TEXT NOT NULL, 
+                        `role` TEXT NOT NULL DEFAULT 'MEMBER', 
+                        `joinedAt` INTEGER NOT NULL, 
+                        PRIMARY KEY(`id`), 
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                    )
+                """.trimIndent())
+
+                try {
+                    db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `listId` TEXT")
+                } catch (e: Exception) {}
+
+                try {
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_items_listId` ON `grocery_items` (`listId`)")
+                } catch (e: Exception) {}
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -322,7 +360,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
-                        MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22
+                        MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23
                     )
                     .build()
                     .also { Instance = it }
