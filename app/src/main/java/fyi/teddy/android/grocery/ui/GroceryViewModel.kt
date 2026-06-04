@@ -9,6 +9,8 @@ import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
+import fyi.teddy.android.grocery.domain.MoveGroceryItemDownUseCase
+import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -55,6 +57,87 @@ class GroceryViewModel(
 
     private val _selectedListId = MutableStateFlow<String?>(null)
     val selectedListId: StateFlow<String?> = _selectedListId.asStateFlow()
+
+    // Combined state for modern UDF support
+    val state: StateFlow<GroceryUiState> = combine(
+        _currentPhase,
+        _selectedStoreIds,
+        _shoppingStoreId,
+        _isEditMode,
+        _showRecommendedDialog,
+        _newItemName,
+        _newItemQuantity,
+        _newItemUnit,
+        _selectedCategoryId,
+        _recentlyCheckedIds,
+        _selectedListId
+    ) { args ->
+        GroceryUiState(
+            currentPhase = args[0] as GroceryPhase,
+            selectedStoreIds = args[1] as Set<Int>,
+            shoppingStoreId = args[2] as Int?,
+            isEditMode = args[3] as Boolean,
+            showRecommendedDialog = args[4] as Boolean,
+            newItemName = args[5] as String,
+            newItemQuantity = args[6] as String,
+            newItemUnit = args[7] as String?,
+            selectedCategoryId = args[8] as Int?,
+            recentlyCheckedIds = args[9] as Set<Int>,
+            selectedListId = args[10] as String?
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GroceryUiState())
+
+    // Instantiate use cases
+    private val moveGroceryItemUpUseCase = MoveGroceryItemUpUseCase(repository)
+    private val moveGroceryItemDownUseCase = MoveGroceryItemDownUseCase(repository)
+
+    fun onEvent(event: GroceryUiEvent) {
+        when (event) {
+            is GroceryUiEvent.SetPhase -> setPhase(event.phase)
+            is GroceryUiEvent.ToggleStoreSelection -> toggleStoreSelection(event.storeId)
+            is GroceryUiEvent.SetShoppingStoreId -> setShoppingStoreId(event.storeId)
+            is GroceryUiEvent.SetEditMode -> setEditMode(event.enabled)
+            is GroceryUiEvent.SetShowRecommendedDialog -> setShowRecommendedDialog(event.show)
+            is GroceryUiEvent.SetNewItemName -> setNewItemName(event.name)
+            is GroceryUiEvent.SetNewItemQuantity -> setNewItemQuantity(event.qty)
+            is GroceryUiEvent.SetNewItemUnit -> setNewItemUnit(event.unit)
+            is GroceryUiEvent.SetSelectedCategoryId -> setSelectedCategoryId(event.categoryId)
+            is GroceryUiEvent.SetSelectedListId -> setSelectedListId(event.listId)
+            
+            // Item Mutators
+            is GroceryUiEvent.InsertItem -> insertItem(event.name, event.quantity, event.categoryId, event.unit)
+            is GroceryUiEvent.UpdateItem -> updateItem(event.item)
+            is GroceryUiEvent.DeleteItem -> deleteItem(event.item)
+            is GroceryUiEvent.MoveItemUp -> {
+                viewModelScope.launch { moveGroceryItemUpUseCase(event.item, event.siblings) }
+            }
+            is GroceryUiEvent.MoveItemDown -> {
+                viewModelScope.launch { moveGroceryItemDownUseCase(event.item, event.siblings) }
+            }
+            is GroceryUiEvent.UpdateStoreInfo -> updateStoreInfo(event.info)
+            is GroceryUiEvent.ToggleBought -> toggleBought(event.item, event.isChecked)
+            is GroceryUiEvent.MarkDoneForTrip -> markDoneForTrip()
+            
+            // Store Mutators
+            is GroceryUiEvent.InsertStore -> insertStore(event.name)
+            is GroceryUiEvent.DeleteStore -> deleteStore(event.store)
+            is GroceryUiEvent.UpdateStore -> updateStore(event.store)
+            is GroceryUiEvent.SwapStorePositions -> swapStorePositions(event.store1, event.store2)
+            
+            // Category Mutators
+            is GroceryUiEvent.InsertCategory -> insertCategory(event.name)
+            is GroceryUiEvent.DeleteCategory -> deleteCategory(event.category)
+            is GroceryUiEvent.SwapCategoryPositions -> swapCategoryPositions(event.cat1, event.cat2)
+            
+            // List Mutators
+            is GroceryUiEvent.InsertList -> insertList(event.name)
+            is GroceryUiEvent.DeleteList -> deleteList(event.list)
+            is GroceryUiEvent.UpdateList -> updateList(event.list)
+            is GroceryUiEvent.ShareList -> shareListWithUser(event.listId, event.userId)
+            is GroceryUiEvent.RemoveListMember -> removeListMember(event.member)
+            is GroceryUiEvent.AddRecommendedItems -> addRecommendedItems(event.selectedIds)
+        }
+    }
 
     // Sources from repository
     @OptIn(ExperimentalCoroutinesApi::class)

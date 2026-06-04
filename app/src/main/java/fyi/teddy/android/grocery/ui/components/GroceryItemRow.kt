@@ -84,85 +84,12 @@ fun GroceryItemRowContainer(
     }
 
     if (showEditQuantity) {
-        var editedQuantity by remember { mutableStateOf(item.quantity) }
-        var editedUnit by remember { mutableStateOf(item.unit ?: "") }
-        var editedNotes by remember { mutableStateOf(item.notes ?: "") }
-        val commonUnits = listOf("pcs", "lbs", "oz", "g", "kg", "ml", "L", "cans", "packs", "bottles", "bags")
-        var expandedUnitDropdown by remember { mutableStateOf(false) }
-
-        AlertDialog(
-            onDismissRequest = { showEditQuantity = false },
-            title = { Text("Edit Item Details") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = editedQuantity,
-                        onValueChange = { editedQuantity = it },
-                        label = { Text("Quantity") },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = editedUnit,
-                            onValueChange = { editedUnit = it },
-                            label = { Text("Unit (optional)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            trailingIcon = {
-                                IconButton(onClick = { expandedUnitDropdown = !expandedUnitDropdown }) {
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Units")
-                                }
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = expandedUnitDropdown,
-                            onDismissRequest = { expandedUnitDropdown = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("(No Unit)") },
-                                onClick = {
-                                    editedUnit = ""
-                                    expandedUnitDropdown = false
-                                }
-                            )
-                            commonUnits.forEach { u ->
-                                DropdownMenuItem(
-                                    text = { Text(u) },
-                                    onClick = {
-                                        editedUnit = u
-                                        expandedUnitDropdown = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = editedNotes,
-                        onValueChange = { editedNotes = it },
-                        label = { Text("Notes (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onUpdateItem(item.copy(
-                        quantity = editedQuantity,
-                        unit = if (editedUnit.isBlank()) null else editedUnit,
-                        notes = if (editedNotes.isBlank()) null else editedNotes
-                    ))
-                    showEditQuantity = false
-                }) { Text(stringResource(R.string.save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditQuantity = false }) { Text(stringResource(R.string.cancel)) }
+        EditItemDetailsDialog(
+            item = item,
+            onDismiss = { showEditQuantity = false },
+            onConfirm = { qty, unit, notes ->
+                onUpdateItem(item.copy(quantity = qty, unit = unit, notes = notes))
+                showEditQuantity = false
             }
         )
     }
@@ -247,55 +174,30 @@ fun GroceryItemRow(
                         onCheckedChange = onCheckedChange,
                         colors = CheckboxDefaults.colors(uncheckedColor = Color.Gray)
                     )
-                }
-                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                    Text(
-                        text = item.name,
-                        color = if (item.isBought) Color.Gray else Color.White,
-                        style = if (item.isBought) MaterialTheme.typography.bodyLarge.copy(
-                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                        ) else MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.clickable { if (currentPhase != GroceryPhase.SHOPPING) onEditCategory() }
+                    ShoppingItemRowContent(
+                        item = item,
+                        isMoreExpensive = isMoreExpensive,
+                        minPriceInfo = minPriceInfo,
+                        stores = stores
                     )
-                    val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
-                    Text(
-                        text = "Quantity: ${item.quantity}$displayUnit",
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.clickable { if (currentPhase != GroceryPhase.SHOPPING) onEditQuantity() }
+                } else if (isEditMode) {
+                    EditableItemRowContent(
+                        item = item,
+                        onEditCategory = onEditCategory,
+                        onEditQuantity = onEditQuantity,
+                        onMoveUp = onMoveUp,
+                        onMoveDown = onMoveDown,
+                        onDelete = onDelete
                     )
-                    
-                    if (!item.notes.isNullOrBlank()) {
-                        Text(
-                            text = item.notes,
-                            color = Color.LightGray,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                            ),
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                    
-                    if (isMoreExpensive) {
-                        val cheaperStoreName = stores.find { it.id == minPriceInfo?.storeId }?.name ?: "another store"
-                        Text(
-                            text = "Note: $cheaperStoreName is cheaper ($${minPriceInfo?.price})",
-                            color = Color.Yellow,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-                
-                if (isEditMode) {
-                    IconButton(onClick = onMoveUp) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = Color.White)
-                    }
-                    IconButton(onClick = onMoveDown) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = Color.White)
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)
-                    }
+                } else {
+                    StandardItemRowContent(
+                        item = item,
+                        onEditCategory = onEditCategory,
+                        onEditQuantity = onEditQuantity,
+                        isMoreExpensive = isMoreExpensive,
+                        minPriceInfo = minPriceInfo,
+                        stores = stores
+                    )
                 }
             }
             
@@ -336,32 +238,137 @@ fun GroceryItemRow(
 }
 
 @Composable
-fun StoreTaggingDialog(
-    stores: List<Store>,
-    itemStoreInfos: List<GroceryItemStoreInfo>,
-    onDismiss: () -> Unit,
-    onToggleAvailability: (Int, Boolean) -> Unit
+fun ShoppingItemRowContent(
+    item: GroceryItem,
+    isMoreExpensive: Boolean,
+    minPriceInfo: GroceryItemStoreInfo?,
+    stores: List<Store>
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Available at Stores") },
-        text = {
-            Column {
-                stores.forEach { store ->
-                    val info = itemStoreInfos.find { it.storeId == store.id }
-                    val isAvailable = info?.isAvailable ?: true
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = isAvailable,
-                            onCheckedChange = { onToggleAvailability(store.id, it) }
-                        )
-                        Text(store.name)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
+        Text(
+            text = item.name,
+            color = if (item.isBought) Color.Gray else Color.White,
+            style = if (item.isBought) MaterialTheme.typography.bodyLarge.copy(
+                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+            ) else MaterialTheme.typography.bodyLarge
+        )
+        val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
+        Text(
+            text = "Quantity: ${item.quantity}$displayUnit",
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodySmall
+        )
+        if (!item.notes.isNullOrBlank()) {
+            Text(
+                text = item.notes,
+                color = Color.LightGray,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                ),
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
-    )
+        if (isMoreExpensive) {
+            val cheaperStoreName = stores.find { it.id == minPriceInfo?.storeId }?.name ?: "another store"
+            Text(
+                text = "Note: $cheaperStoreName is cheaper ($${minPriceInfo?.price})",
+                color = Color.Yellow,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+@Composable
+fun StandardItemRowContent(
+    item: GroceryItem,
+    onEditCategory: () -> Unit,
+    onEditQuantity: () -> Unit,
+    isMoreExpensive: Boolean,
+    minPriceInfo: GroceryItemStoreInfo?,
+    stores: List<Store>
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
+        Text(
+            text = item.name,
+            color = Color.White,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.clickable { onEditCategory() }
+        )
+        val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
+        Text(
+            text = "Quantity: ${item.quantity}$displayUnit",
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.clickable { onEditQuantity() }
+        )
+        if (!item.notes.isNullOrBlank()) {
+            Text(
+                text = item.notes,
+                color = Color.LightGray,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                ),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        if (isMoreExpensive) {
+            val cheaperStoreName = stores.find { it.id == minPriceInfo?.storeId }?.name ?: "another store"
+            Text(
+                text = "Note: $cheaperStoreName is cheaper ($${minPriceInfo?.price})",
+                color = Color.Yellow,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+@Composable
+fun EditableItemRowContent(
+    item: GroceryItem,
+    onEditCategory: () -> Unit,
+    onEditQuantity: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+            Text(
+                text = item.name,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.clickable { onEditCategory() }
+            )
+            val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
+            Text(
+                text = "Quantity: ${item.quantity}$displayUnit",
+                color = Color.Gray,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.clickable { onEditQuantity() }
+            )
+            if (!item.notes.isNullOrBlank()) {
+                Text(
+                    text = item.notes,
+                    color = Color.LightGray,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    ),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+        IconButton(onClick = onMoveUp) {
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = Color.White)
+        }
+        IconButton(onClick = onMoveDown) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = Color.White)
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)
+        }
+    }
 }
