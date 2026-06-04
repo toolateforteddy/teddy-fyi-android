@@ -32,6 +32,7 @@ fun TodoItemRow(
     showScheduledDate: Boolean = true,
     index: Int,
     totalItems: Int,
+    isRecentlyCompleted: Boolean = false,
     onCheckedChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onUpdateItem: (TodoItem) -> Unit,
@@ -66,7 +67,7 @@ fun TodoItemRow(
         Checkbox(
             checked = if (isPlanningMode) {
                 if (planningDate != null) item.scheduledDate == planningDate else item.scheduledDate != null
-            } else item.isCompleted,
+            } else item.isCompleted || isRecentlyCompleted,
             onCheckedChange = onCheckedChange,
             colors = CheckboxDefaults.colors(
                 uncheckedColor = if (isPlanningMode) Color.Cyan else Color.Gray,
@@ -77,8 +78,8 @@ fun TodoItemRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = item.title,
-                    color = if (!isPlanningMode && item.isCompleted) Color.Gray else Color.White,
-                    style = if (!isPlanningMode && item.isCompleted) MaterialTheme.typography.bodyLarge.copy(
+                    color = if (!isPlanningMode && (item.isCompleted || isRecentlyCompleted)) Color.Gray else Color.White,
+                    style = if (!isPlanningMode && (item.isCompleted || isRecentlyCompleted)) MaterialTheme.typography.bodyLarge.copy(
                         textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                     ) else MaterialTheme.typography.bodyLarge
                 )

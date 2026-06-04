@@ -44,6 +44,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val showCompletedOnly by viewModel.showCompletedOnly.collectAsState()
     val groupedItems by viewModel.groupedItems.collectAsState()
     val selectedPlanningDate by viewModel.selectedPlanningDate.collectAsState()
+    val recentlyCompletedIds by viewModel.recentlyCompletedIds.collectAsState()
     
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     var showPlanningDatePicker by remember { mutableStateOf(false) }
@@ -235,6 +236,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     showScheduledDate = currentMode != TodoMode.TODAY,
                                     index = parentIndex,
                                     totalItems = groupedItems.size,
+                                    isRecentlyCompleted = recentlyCompletedIds.contains(parent.id),
                                     onCheckedChange = { isChecked ->
                                         if (currentMode == TodoMode.PLANNING) {
                                             viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
@@ -289,6 +291,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                         showScheduledDate = currentMode != TodoMode.TODAY,
                                         index = childIndex,
                                         totalItems = children.size,
+                                        isRecentlyCompleted = recentlyCompletedIds.contains(child.id),
                                         onCheckedChange = { isChecked ->
                                             if (currentMode == TodoMode.PLANNING) {
                                                 viewModel.updateItem(child.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))

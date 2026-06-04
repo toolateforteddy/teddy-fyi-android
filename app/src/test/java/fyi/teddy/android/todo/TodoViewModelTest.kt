@@ -29,7 +29,9 @@ class TodoViewModelTest {
         // Mock Flow streams returned by repository to avoid null pointer/errors in stateIn
         coEvery { repository.getAllItems(userId) } returns flowOf(emptyList())
         coEvery { repository.getTodayItems(userId) } returns flowOf(emptyList())
+        coEvery { repository.getTodayItems(userId, any()) } returns flowOf(emptyList())
         coEvery { repository.getScheduledItems(userId) } returns flowOf(emptyList())
+        coEvery { repository.getScheduledItems(userId, any()) } returns flowOf(emptyList())
     }
 
     @After
@@ -186,5 +188,32 @@ class TodoViewModelTest {
                 assert(it.scheduledAt > System.currentTimeMillis())
             })
         }
+    }
+
+    @Test
+    fun `test init loads TODAY tab if there are today items`() = runTest {
+        // Given today's items are not empty
+        val todayItem = TodoItem(id = 1, title = "Today's Task", userId = userId)
+        coEvery { repository.getTodayItems(userId, any()) } returns flowOf(listOf(todayItem))
+        
+        // When VM is initialized
+        val viewModel = TodoViewModel(application, repository, userId)
+        testScheduler.advanceUntilIdle()
+        
+        // Then currentMode should be TODAY
+        assert(viewModel.currentMode.value == fyi.teddy.android.todo.ui.TodoMode.TODAY)
+    }
+
+    @Test
+    fun `test init loads BACKLOG tab if there are no today items`() = runTest {
+        // Given today's items are empty
+        coEvery { repository.getTodayItems(userId, any()) } returns flowOf(emptyList())
+        
+        // When VM is initialized
+        val viewModel = TodoViewModel(application, repository, userId)
+        testScheduler.advanceUntilIdle()
+        
+        // Then currentMode should be BACKLOG
+        assert(viewModel.currentMode.value == fyi.teddy.android.todo.ui.TodoMode.BACKLOG)
     }
 }

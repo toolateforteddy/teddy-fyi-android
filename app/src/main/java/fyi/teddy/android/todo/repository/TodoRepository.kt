@@ -20,16 +20,14 @@ class TodoRepository(private val todoDao: TodoDao) {
     /**
      * Retrieves all todo items active or scheduled for today, utilizing modernized date formats.
      */
-    fun getTodayItems(userId: String): Flow<List<TodoItem>> {
-        val today = TaskSchedulerUtils.getTodayDateString()
+    fun getTodayItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()): Flow<List<TodoItem>> {
         return todoDao.getTodayItems(userId, today)
     }
 
     /**
      * Retrieves all future scheduled todo items starting after today's date.
      */
-    fun getScheduledItems(userId: String): Flow<List<TodoItem>> {
-        val today = TaskSchedulerUtils.getTodayDateString()
+    fun getScheduledItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()): Flow<List<TodoItem>> {
         return todoDao.getScheduledItems(userId, today)
     }
 
@@ -56,7 +54,7 @@ class TodoRepository(private val todoDao: TodoDao) {
     /**
      * Resets any non-daily planned items for the user.
      */
-    suspend fun resetPlannedItems(userId: String) = todoDao.resetPlannedItems(userId)
+    suspend fun resetPlannedItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()) = todoDao.resetPlannedItems(userId, today)
 
     /**
      * Automatically claims unowned items for the currently logged-in user.

@@ -39,8 +39,12 @@ abstract class TodoDao {
     @Query("DELETE FROM todo_items WHERE userId = :userId")
     abstract suspend fun deleteAll(userId: String)
 
-    @Query("UPDATE todo_items SET scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0")
-    abstract suspend fun resetPlannedItems(userId: String)
+    @Query("UPDATE todo_items SET scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0 AND (scheduledDate IS NOT NULL AND scheduledDate < :today)")
+    abstract suspend fun resetPlannedItems(userId: String, today: String)
+
+    suspend fun resetPlannedItems(userId: String) {
+        resetPlannedItems(userId, java.time.LocalDate.now().toString())
+    }
 
     @Query("UPDATE todo_items SET userId = :userId WHERE userId IS NULL")
     abstract suspend fun claimUnownedItems(userId: String)

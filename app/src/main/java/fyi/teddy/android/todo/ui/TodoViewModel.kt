@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.repository.TodoRepository
 import fyi.teddy.android.todo.util.TodoResetScheduler
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -41,13 +42,21 @@ class TodoViewModel(
     private val _confettiTrigger = MutableSharedFlow<Unit>(replay = 0)
     val confettiTrigger: SharedFlow<Unit> = _confettiTrigger.asSharedFlow()
 
+    private val todayDateFlow = MutableStateFlow(LocalDate.now().toString())
+
     // Cold/Hot source flows from repository
     val allItems = repository.getAllItems(userId)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    private val todayItems = repository.getTodayItems(userId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    private val scheduledItems = repository.getScheduledItems(userId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val todayItems = todayDateFlow.flatMapLatest { today ->
+        repository.getTodayItems(userId, today)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val scheduledItems = todayDateFlow.flatMapLatest { today ->
+        repository.getScheduledItems(userId, today)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Intermediate settings flow to combine multiple filter states
     private val settingsFlow = combine(
@@ -66,10 +75,10 @@ class TodoViewModel(
         allItems,
         todayItems,
         scheduledItems,
-        settingsFlow
-    ) { all, today, scheduled, settings ->
+        settingsFlow,
+        todayDateFlow
+    ) { all, today, scheduled, settings, todayString ->
         val (mode, showCompleted, recentlyCompleted) = settings
-        val todayString = LocalDate.now().toString()
         val baseItems = when(mode) {
             TodoMode.TODAY -> today
             TodoMode.BACKLOG -> all.filter { it.scheduledDate == null }
@@ -108,11 +117,19 @@ class TodoViewModel(
         viewModelScope.launch {
             val resetScheduler = TodoResetScheduler(application, repository)
             resetScheduler.checkAndResetDailyTasks(userId)
+            val today = LocalDate.now().toString()
+            todayDateFlow.value = today
+            
+            val todayItemsList = repository.getTodayItems(userId, today).first()
+            if (todayItemsList.isNotEmpty() && _currentMode.value == TodoMode.BACKLOG) {
+                _currentMode.value = TodoMode.TODAY
+            }
         }
     }
 
     fun setMode(mode: TodoMode) {
         _currentMode.value = mode
+        todayDateFlow.value = LocalDate.now().toString()
     }
 
     fun setEditMode(enabled: Boolean) {
