@@ -2,8 +2,11 @@ package fyi.teddy.android.grocery
 
 import android.app.Application
 import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.GroceryPhase
+import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -171,5 +174,94 @@ class GroceryViewModelTest {
                 assertEquals(userId, it.userId)
             })
         }
+    }
+
+    @Test
+    fun `test onEvent SetPhase updates stateflow`() = runTest {
+        val viewModel = GroceryViewModel(application, repository, userId)
+        viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.SHOPPING))
+        testScheduler.advanceUntilIdle()
+        assertEquals(GroceryPhase.SHOPPING, viewModel.state.value.currentPhase)
+    }
+
+    @Test
+    fun `test insertItem with units and notes and listId`() = runTest {
+        val viewModel = GroceryViewModel(application, repository, userId)
+        val nameInput = "organic bananas"
+        val qtyInput = "1.5"
+        val categoryId = 4
+        val unitInput = "lbs"
+
+        // Set listId
+        viewModel.onEvent(GroceryUiEvent.SetSelectedListId("test-list-uuid"))
+        
+        viewModel.insertItem(nameInput, qtyInput, categoryId, unitInput)
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            repository.insertItem(withArg {
+                assertEquals("Organic Bananas", it.name)
+                assertEquals("1.5", it.quantity)
+                assertEquals(categoryId, it.categoryId)
+                assertEquals(userId, it.userId)
+                assertEquals("lbs", it.unit)
+                assertEquals("test-list-uuid", it.listId)
+            })
+        }
+    }
+
+    @Test
+    fun `test MoveItemUp and MoveItemDown use cases`() = runTest {
+        val viewModel = GroceryViewModel(application, repository, userId)
+        val item1 = GroceryItem(id = 1, name = "A", position = 0, userId = userId)
+        val item2 = GroceryItem(id = 2, name = "B", position = 1, userId = userId)
+        val siblings = listOf(item1, item2)
+
+        viewModel.onEvent(GroceryUiEvent.MoveItemUp(item2, siblings))
+        testScheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { repository.swapItemPositions(item2, item1) }
+
+        viewModel.onEvent(GroceryUiEvent.MoveItemDown(item1, siblings))
+        testScheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { repository.swapItemPositions(item1, item2) }
+    }
+
+    @Test
+    fun `test list management events`() = runTest {
+        val viewModel = GroceryViewModel(application, repository, userId)
+        
+        viewModel.onEvent(GroceryUiEvent.InsertList("Costco Trip"))
+        testScheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { repository.insertList(any()) }
+
+        val list = GroceryList(id = "list-id-1", name = "Costco Trip", ownerId = userId)
+        viewModel.onEvent(GroceryUiEvent.DeleteList(list))
+        testScheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { repository.deleteList(list) }
+
+        viewModel.onEvent(GroceryUiEvent.ShareList("list-id-1", "invited-user"))
+        testScheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { repository.insertListMember(any()) }
+    }
+
+    @Test
+    fun `test state combines all individual flows correctly`() = runTest {
+        val viewModel = GroceryViewModel(application, repository, userId)
+        
+        viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.PLANNING))
+        viewModel.onEvent(GroceryUiEvent.SetEditMode(true))
+        viewModel.onEvent(GroceryUiEvent.SetNewItemName("Apples"))
+        viewModel.onEvent(GroceryUiEvent.SetNewItemQuantity("10"))
+        viewModel.onEvent(GroceryUiEvent.SetNewItemUnit("pcs"))
+
+        // Allow flows to combine
+        testScheduler.advanceUntilIdle()
+
+        val currentState = viewModel.state.value
+        assertEquals(GroceryPhase.PLANNING, currentState.currentPhase)
+        assertTrue(currentState.isEditMode)
+        assertEquals("Apples", currentState.newItemName)
+        assertEquals("10", currentState.newItemQuantity)
+        assertEquals("pcs", currentState.newItemUnit)
     }
 }

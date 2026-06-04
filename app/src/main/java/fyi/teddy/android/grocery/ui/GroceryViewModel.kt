@@ -85,7 +85,7 @@ class GroceryViewModel(
             recentlyCheckedIds = args[9] as Set<Int>,
             selectedListId = args[10] as String?
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GroceryUiState())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
     // Instantiate use cases
     private val moveGroceryItemUpUseCase = MoveGroceryItemUpUseCase(repository)
