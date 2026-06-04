@@ -86,12 +86,13 @@ fun GroceryItemRowContainer(
     if (showEditQuantity) {
         var editedQuantity by remember { mutableStateOf(item.quantity) }
         var editedUnit by remember { mutableStateOf(item.unit ?: "") }
+        var editedNotes by remember { mutableStateOf(item.notes ?: "") }
         val commonUnits = listOf("pcs", "lbs", "oz", "g", "kg", "ml", "L", "cans", "packs", "bottles", "bags")
         var expandedUnitDropdown by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = { showEditQuantity = false },
-            title = { Text("Edit Quantity & Unit") },
+            title = { Text("Edit Item Details") },
             text = {
                 Column {
                     OutlinedTextField(
@@ -138,13 +139,24 @@ fun GroceryItemRowContainer(
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = editedNotes,
+                        onValueChange = { editedNotes = it },
+                        label = { Text("Notes (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences
+                        )
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
                     onUpdateItem(item.copy(
                         quantity = editedQuantity,
-                        unit = if (editedUnit.isBlank()) null else editedUnit
+                        unit = if (editedUnit.isBlank()) null else editedUnit,
+                        notes = if (editedNotes.isBlank()) null else editedNotes
                     ))
                     showEditQuantity = false
                 }) { Text(stringResource(R.string.save)) }
@@ -252,6 +264,17 @@ fun GroceryItemRow(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.clickable { if (currentPhase != GroceryPhase.SHOPPING) onEditQuantity() }
                     )
+                    
+                    if (!item.notes.isNullOrBlank()) {
+                        Text(
+                            text = item.notes,
+                            color = Color.LightGray,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            ),
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                     
                     if (isMoreExpensive) {
                         val cheaperStoreName = stores.find { it.id == minPriceInfo?.storeId }?.name ?: "another store"

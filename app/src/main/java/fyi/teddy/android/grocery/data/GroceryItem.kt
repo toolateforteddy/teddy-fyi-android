@@ -29,5 +29,6 @@ data class GroceryItem(
     val userId: String? = null,
     val isActive: Boolean = true,
     val listId: String? = null,
-    val unit: String? = null
+    val unit: String? = null,
+    val notes: String? = null
 )

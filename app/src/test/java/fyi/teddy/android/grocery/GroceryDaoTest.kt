@@ -260,4 +260,14 @@ class GroceryDaoTest {
         assertEquals("2", bread?.quantity)
         assertNull(bread?.unit)
     }
+
+    @Test
+    fun groceryItemWithNotes() = runTest {
+        val itemWithNotes = GroceryItem(name = "Bananas", notes = "Buy organic if possible", userId = userId)
+        groceryDao.insertItem(itemWithNotes)
+
+        val allItems = groceryDao.getAllItems(userId).first()
+        assertEquals(1, allItems.size)
+        assertEquals("Buy organic if possible", allItems[0].notes)
+    }
 }
