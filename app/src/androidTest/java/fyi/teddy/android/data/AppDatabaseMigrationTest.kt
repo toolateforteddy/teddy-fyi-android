@@ -178,4 +178,39 @@ class AppDatabaseMigrationTest {
         assert(foundTask)
         cursor.close()
     }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate20To21() {
+        // Create database at version 20
+        val db = helper.createDatabase(TEST_DB, 20)
+        
+        // Insert an item in version 20
+        db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `sync_state`, `version`, `is_deleted`) VALUES ('uuid-1', 'Priority Task', 0, 1000, 0, 1000, 0, 'SYNCED', 1, 0)")
+        db.close()
+
+        // Run migration to 21
+        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 21, true, AppDatabase.MIGRATION_20_21)
+        
+        // Verify column priority exists and is 0 for legacy task
+        val cursor = migratedDb.query("SELECT * FROM `todo_items`")
+        var foundTask = false
+        while(cursor.moveToNext()) {
+            val id = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+            val title = cursor.getString(cursor.getColumnIndexOrThrow("title"))
+            val priorityIndex = cursor.getColumnIndex("priority")
+            
+            assert(priorityIndex != -1)
+            val priority = cursor.getInt(priorityIndex)
+            
+            if (id == "uuid-1") {
+                assert(title == "Priority Task")
+                assert(priority == 0)
+                foundTask = true
+            }
+        }
+        
+        assert(foundTask)
+        cursor.close()
+    }
 }

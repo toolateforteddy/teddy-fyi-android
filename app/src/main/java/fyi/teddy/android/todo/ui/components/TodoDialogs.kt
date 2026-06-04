@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -331,6 +332,49 @@ fun EditListDialog(
                         Text(stringResource(R.string.save))
                     }
                 }
+            }
+        }
+    )
+}
+
+@Composable
+fun PriorityDialog(
+    initialPriority: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val priorities = listOf(
+        0 to "Low",
+        1 to "Medium",
+        2 to "High"
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Task Priority") },
+        text = {
+            Column {
+                priorities.forEach { (value, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onConfirm(value) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = initialPriority == value,
+                            onClick = { onConfirm(value) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
             }
         }
     )

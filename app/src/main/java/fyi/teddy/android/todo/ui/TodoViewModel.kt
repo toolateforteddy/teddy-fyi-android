@@ -113,7 +113,11 @@ class TodoViewModel(
             else !item.isCompleted || recentlyCompleted.contains(item.id)
         }.let { items ->
             if (showCompleted) items.sortedByDescending { it.scheduledAt }
-            else items
+            else items.sortedWith(
+                compareByDescending<TodoItem> { it.priority }
+                    .thenBy { it.position }
+                    .thenByDescending { it.createdAt }
+            )
         }
 
         val allParents = filteredItems.filter { it.parentId == null }

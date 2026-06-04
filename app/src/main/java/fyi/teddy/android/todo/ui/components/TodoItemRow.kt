@@ -46,6 +46,7 @@ fun TodoItemRow(
     var showRecurrenceDialog by remember { mutableStateOf(false) }
     var showEditTitleDialog by remember { mutableStateOf(false) }
     var showEditDescriptionDialog by remember { mutableStateOf(false) }
+    var showPriorityDialog by remember { mutableStateOf(false) }
     var showAddSubtaskDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showScheduleDatePicker by remember { mutableStateOf(false) }
@@ -147,6 +148,23 @@ fun TodoItemRow(
             }
         }
 
+        IconButton(
+            onClick = {
+                val newPriority = if (item.priority == 2) 0 else 2
+                onUpdateItem(item.copy(priority = newPriority))
+            },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = if (item.priority > 0) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = "Toggle Priority",
+                tint = if (item.priority == 2) Color(0xFFFFD700)
+                       else if (item.priority == 1) Color(0xFFFFA500)
+                       else Color.Gray,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
         if (showDelete) {
             IconButton(onClick = onMoveUp, enabled = index > 0, modifier = Modifier.size(32.dp)) {
                 Icon(
@@ -198,6 +216,13 @@ fun TodoItemRow(
                     text = { Text("Edit Description") },
                     onClick = {
                         showEditDescriptionDialog = true
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Set Priority...") },
+                    onClick = {
+                        showPriorityDialog = true
                         showMenu = false
                     }
                 )
@@ -356,6 +381,17 @@ fun TodoItemRow(
             onConfirm = { desc ->
                 onUpdateItem(item.copy(description = desc))
                 showEditDescriptionDialog = false
+            }
+        )
+    }
+
+    if (showPriorityDialog) {
+        PriorityDialog(
+            initialPriority = item.priority,
+            onDismiss = { showPriorityDialog = false },
+            onConfirm = { priority ->
+                onUpdateItem(item.copy(priority = priority))
+                showPriorityDialog = false
             }
         )
     }

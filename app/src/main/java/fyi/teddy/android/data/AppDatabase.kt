@@ -25,7 +25,7 @@ import fyi.teddy.android.todo.data.TodoList
         Category::class,
         TodoList::class
     ], 
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -249,6 +249,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                try {
+                    db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `priority` INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {}
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -258,7 +266,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
-                        MIGRATION_19_20
+                        MIGRATION_19_20, MIGRATION_20_21
                     )
                     .build()
                     .also { Instance = it }

@@ -38,6 +38,7 @@ Current Features List.
 - [x] **Local-First Cloud Sync Pillars**: Upgraded Room database version to 18 and added `MIGRATION_17_18` to migrate existing auto-increment integer IDs to client-generated string UUIDs, safely preserving parent-child (nested tasks) relationships via `'legacy_uuid_' || id`. Added tracking columns (`sync_state`, `version`, and `is_deleted`) required for robust client-side sync state-machine mutations.
 - [x] **Rich Text Notes & Descriptions**: Store long-form contextual notes or descriptions for each task. Added a nullable `description` column to `todo_items`, complete with UI to view inline descriptions and edit/clear descriptions via an "Edit Description" dialog. Fully verified with `migrate18To19` database migration tests.
 - [x] **Multi-List / Space Segregation**: Group tasks logically by multiple custom "Lists" or "Spaces" (e.g. Work, Personal) instead of a flat list. Added a `todo_lists` table and `listId: String?` column on `todo_items`. Includes horizontal scrollable Space switcher, interactive color-picking Space creator (`AddListDialog`), and long-press editor (`EditListDialog`) which safely nullifies list associations upon space deletion. Fully verified with `migrate19To20` database migration tests.
+- [x] **Starred / Priority Levels**: Flag tasks as High, Medium, or Low priority to automatically push them to the top of all views. Added `priority` column to `todo_items`. Includes instant star toggle button (unstarred to High priority) on task rows, fine-grained selector dialog (`PriorityDialog`) in overflow menu, and custom sorted lists (Priority descending first, then list-position/creation-date). Fully verified with `migrate20To21` database migration tests.
 
 
 
@@ -59,7 +60,7 @@ Current Features List.
 
 ## Proposed Future Schema Changes
 - [x] **Multi-List / Space Segregation**: Group tasks logically by multiple custom "Lists" or "Spaces" (e.g. Work, Personal) instead of a flat list. Requires a new `todo_lists` table and `listId: String?` foreign key on `todo_items`.
-- [ ] **Starred / Priority Levels**: Flag tasks as high, medium, or low priority to push them to the top of list views. Requires adding a `priority: Int` column to `todo_items`.
+- [x] **Starred / Priority Levels**: Flag tasks as high, medium, or low priority to push them to the top of list views. Requires adding a `priority: Int` column to `todo_items`.
 - [ ] **Custom Tags / Categories**: Create cross-cutting labels (e.g. `#urgent`, `#errand`) to tag items across lists. Requires a `tags` table and a `todo_tag_cross_ref` many-to-many join table.
 - [ ] **Multi-Trigger Reminders**: Trigger multiple alerts at customizable offsets prior to the deadline. Requires a `todo_reminders` table with foreign keys referencing tasks.
 - [x] **Rich Text Notes & Descriptions**: Store long-form contextual notes or markdown strings for each task. Requires adding a `description: String?` column to `todo_items`.
