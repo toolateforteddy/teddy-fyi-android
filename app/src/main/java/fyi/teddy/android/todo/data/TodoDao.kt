@@ -63,7 +63,7 @@ abstract class TodoDao {
     }
 
     @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId = :parentId")
-    protected abstract suspend fun getMaxPosition(userId: String, parentId: Int): Int?
+    protected abstract suspend fun getMaxPosition(userId: String, parentId: String): Int?
 
     @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId IS NULL")
     protected abstract suspend fun getMaxPositionNullParent(userId: String): Int?

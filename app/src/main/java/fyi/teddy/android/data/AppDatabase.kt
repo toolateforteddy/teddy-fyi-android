@@ -23,7 +23,7 @@ import fyi.teddy.android.todo.data.TodoItem
         GroceryItemStoreInfo::class, 
         Category::class
     ], 
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -162,6 +162,54 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Create table `todo_items_new` with TEXT id and parentId, and additional sync columns
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `todo_items_new` (
+                        `id` TEXT NOT NULL, 
+                        `title` TEXT NOT NULL, 
+                        `isCompleted` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `scheduledDate` TEXT, 
+                        `recurrenceIntervalDays` INTEGER, 
+                        `scheduledAt` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `parentId` TEXT, 
+                        `isDaily` INTEGER NOT NULL, 
+                        `dueDate` INTEGER,
+                        `sync_state` TEXT NOT NULL DEFAULT 'SYNCED',
+                        `version` INTEGER NOT NULL DEFAULT 1,
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+
+                // 2. Insert existing data, converting parentId and id into TEXT keys
+                db.execSQL("""
+                    INSERT INTO `todo_items_new` (
+                        `id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledDate`, 
+                        `recurrenceIntervalDays`, `scheduledAt`, `userId`, `parentId`, `isDaily`, `dueDate`, 
+                        `sync_state`, `version`, `is_deleted`
+                    ) 
+                    SELECT 
+                        'legacy_uuid_' || `id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledDate`, 
+                        `recurrenceIntervalDays`, `scheduledAt`, `userId`, 
+                        CASE WHEN `parentId` IS NOT NULL THEN 'legacy_uuid_' || `parentId` ELSE NULL END, 
+                        `isDaily`, `dueDate`, 
+                        'SYNCED', 1, 0 
+                    FROM `todo_items`
+                """.trimIndent())
+
+                // 3. Drop old table
+                db.execSQL("DROP TABLE `todo_items`")
+
+                // 4. Rename new table to old table
+                db.execSQL("ALTER TABLE `todo_items_new` RENAME TO `todo_items`")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -170,7 +218,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-                        MIGRATION_15_16, MIGRATION_16_17
+                        MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18
                     )
                     .build()
                     .also { Instance = it }

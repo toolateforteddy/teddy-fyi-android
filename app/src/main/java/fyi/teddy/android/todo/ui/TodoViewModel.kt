@@ -28,8 +28,8 @@ class TodoViewModel(
     private val _showCompletedOnly = MutableStateFlow(false)
     val showCompletedOnly: StateFlow<Boolean> = _showCompletedOnly.asStateFlow()
 
-    private val _recentlyCompletedIds = MutableStateFlow(setOf<Int>())
-    val recentlyCompletedIds: StateFlow<Set<Int>> = _recentlyCompletedIds.asStateFlow()
+    private val _recentlyCompletedIds = MutableStateFlow(setOf<String>())
+    val recentlyCompletedIds: StateFlow<Set<String>> = _recentlyCompletedIds.asStateFlow()
 
     private val _selectedPlanningDate = MutableStateFlow(LocalDate.now().toString())
     val selectedPlanningDate: StateFlow<String> = _selectedPlanningDate.asStateFlow()
@@ -176,7 +176,7 @@ class TodoViewModel(
     /**
      * Formats, capitalizes, and inserts a new To-Do item.
      */
-    fun insertItem(title: String, userId: String, parentId: Int?, scheduledDate: String?) {
+    fun insertItem(title: String, userId: String, parentId: String?, scheduledDate: String?) {
         if (title.isNotBlank()) {
             val words = title.split(" ")
             val capitalizedTitle = words.joinToString(" ") { word ->

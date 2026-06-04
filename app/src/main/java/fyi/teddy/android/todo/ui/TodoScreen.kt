@@ -48,7 +48,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     var showPlanningDatePicker by remember { mutableStateOf(false) }
-    val expandedParentIds = remember { mutableStateOf(setOf<Int>()) }
+    val expandedParentIds = remember { mutableStateOf(setOf<String>()) }
     val parties = remember { mutableStateListOf<Party>() }
     
 
@@ -73,7 +73,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
         }
     }
     
-    val onAddNewItem = { title: String, parentId: Int? ->
+    val onAddNewItem = { title: String, parentId: String? ->
         if (title.isNotBlank()) {
             val scheduledDate = if (currentMode == TodoMode.PLANNING) selectedPlanningDate else null
             viewModel.insertItem(title, userId, parentId, scheduledDate)

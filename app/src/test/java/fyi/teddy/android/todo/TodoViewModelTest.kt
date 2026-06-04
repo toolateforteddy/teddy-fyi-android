@@ -61,7 +61,7 @@ class TodoViewModelTest {
         // Given
         val viewModel = TodoViewModel(application, repository, userId)
         val titleInput = "buy some groceries"
-        val parentId = 12
+        val parentId = "12"
         val scheduledDate = "2026-06-03"
 
         // When
@@ -110,7 +110,7 @@ class TodoViewModelTest {
     @Test
     fun `test deleteItem delegates to repository`() = runTest {
         val viewModel = TodoViewModel(application, repository, userId)
-        val item = TodoItem(id = 1, title = "Delete Me", userId = userId)
+        val item = TodoItem(id = "1", title = "Delete Me", userId = userId)
 
         viewModel.deleteItem(item)
         testScheduler.advanceUntilIdle()
@@ -123,7 +123,7 @@ class TodoViewModelTest {
     @Test
     fun `test updateItem delegates to repository`() = runTest {
         val viewModel = TodoViewModel(application, repository, userId)
-        val item = TodoItem(id = 1, title = "Update Me", userId = userId)
+        val item = TodoItem(id = "1", title = "Update Me", userId = userId)
 
         viewModel.updateItem(item)
         testScheduler.advanceUntilIdle()
@@ -136,7 +136,7 @@ class TodoViewModelTest {
     @Test
     fun `test toggleComplete unchecked updates item immediately`() = runTest {
         val viewModel = TodoViewModel(application, repository, userId)
-        val item = TodoItem(id = 1, title = "Task", isCompleted = true, userId = userId)
+        val item = TodoItem(id = "1", title = "Task", isCompleted = true, userId = userId)
 
         viewModel.toggleComplete(item, isChecked = false)
         testScheduler.advanceUntilIdle()
@@ -151,7 +151,7 @@ class TodoViewModelTest {
     @Test
     fun `test toggleComplete checked non-recurring delays 2 seconds and updates`() = runTest {
         val viewModel = TodoViewModel(application, repository, userId)
-        val item = TodoItem(id = 1, title = "Task", isCompleted = false, userId = userId)
+        val item = TodoItem(id = "1", title = "Task", isCompleted = false, userId = userId)
 
         viewModel.toggleComplete(item, isChecked = true)
 
@@ -172,7 +172,7 @@ class TodoViewModelTest {
     @Test
     fun `test toggleComplete checked recurring task reschedules interval and resets state`() = runTest {
         val viewModel = TodoViewModel(application, repository, userId)
-        val item = TodoItem(id = 1, title = "Task", isCompleted = false, recurrenceIntervalDays = 5, userId = userId)
+        val item = TodoItem(id = "1", title = "Task", isCompleted = false, recurrenceIntervalDays = 5, userId = userId)
 
         viewModel.toggleComplete(item, isChecked = true)
 
@@ -193,7 +193,7 @@ class TodoViewModelTest {
     @Test
     fun `test init loads TODAY tab if there are today items`() = runTest {
         // Given today's items are not empty
-        val todayItem = TodoItem(id = 1, title = "Today's Task", userId = userId)
+        val todayItem = TodoItem(id = "1", title = "Today's Task", userId = userId)
         coEvery { repository.getTodayItems(userId, any()) } returns flowOf(listOf(todayItem))
         
         // When VM is initialized

@@ -49,7 +49,7 @@ class TodoDaoTest {
 
     @Test
     fun updateTodoItemCompletion() = runTest {
-        val item = TodoItem(id = 1, title = "Task 1", isCompleted = false, userId = testUserId)
+        val item = TodoItem(id = "1", title = "Task 1", isCompleted = false, userId = testUserId)
         todoDao.insertItem(item)
         
         todoDao.updateItem(item.copy(isCompleted = true))
@@ -60,7 +60,7 @@ class TodoDaoTest {
 
     @Test
     fun deleteTodoItem() = runTest {
-        val item = TodoItem(id = 1, title = "Task 1", userId = testUserId)
+        val item = TodoItem(id = "1", title = "Task 1", userId = testUserId)
         todoDao.insertItem(item)
         todoDao.deleteItem(item)
         
@@ -81,15 +81,15 @@ class TodoDaoTest {
 
     @Test
     fun allTodosOrdering_descendingCreatedAt() = runTest {
-        val item1 = TodoItem(id = 1, title = "Older", createdAt = 1000, userId = testUserId)
-        val item2 = TodoItem(id = 2, title = "Newer", createdAt = 2000, userId = testUserId)
+        val item1 = TodoItem(id = "1", title = "Older", createdAt = 1000, userId = testUserId)
+        val item2 = TodoItem(id = "2", title = "Newer", createdAt = 2000, userId = testUserId)
         
         todoDao.insertItem(item1)
         todoDao.insertItem(item2)
         
         val allItems = todoDao.getAllItems(testUserId).first()
-        assertEquals(2, allItems[0].id) // Newer first
-        assertEquals(1, allItems[1].id) // Older second
+        assertEquals("2", allItems[0].id) // Newer first
+        assertEquals("1", allItems[1].id) // Older second
     }
 
     @Test

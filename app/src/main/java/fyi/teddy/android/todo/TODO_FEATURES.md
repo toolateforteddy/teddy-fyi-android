@@ -33,11 +33,13 @@ Current Features List.
 - [x] **Long Press to Edit Item**: When on the planning or backlog screen, and not in edit mode, long pressing on an item should open the same menu as if you were in edit mode and clicked the overflow menu.
 - [x] **Title Case Input**: When writing a new todo item, the keyboard should be in title case mode so that every word is capitalized by default.
 - [x] **Completed On Top**: When looking at the completed items list, in any mode, the list should be sorted by most recently completed first.
+- [x] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule. Maybe this is best implemented by changing the column "scheduled for today" to actually hold a date, and then you can schedule a task for any day you want.
+- [x] **Snooze Task**: On the backlog screen, the edit overflow menu should include a snooze option. Selecting this will open a modal allowing for inputting a number of days (N). During the next N days, the task should not appear in any task list.
+- [x] **Local-First Cloud Sync Pillars**: Upgraded Room database version to 18 and added `MIGRATION_17_18` to migrate existing auto-increment integer IDs to client-generated string UUIDs, safely preserving parent-child (nested tasks) relationships via `'legacy_uuid_' || id`. Added tracking columns (`sync_state`, `version`, and `is_deleted`) required for robust client-side sync state-machine mutations.
+
 
 
 ## Requested Features
-- [ ] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule. Maybe this is best implemented by changing the column "scheduled for today" to actually hold a date, and then you can schedule a task for any day you want.
-- [ ] **Snooze Task**: On the backlog screen, the edit overflow menu should include a snooze option. Selecting this will open a modal allowing for inputting a number of days (N). During the next N days, the task should not appear in any task list.
 
 ## Planned Features
 - [ ] **Cloud Sync**: Synchronize local Room database with the Rust backend.
