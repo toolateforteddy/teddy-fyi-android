@@ -85,22 +85,67 @@ fun GroceryItemRowContainer(
 
     if (showEditQuantity) {
         var editedQuantity by remember { mutableStateOf(item.quantity) }
+        var editedUnit by remember { mutableStateOf(item.unit ?: "") }
+        val commonUnits = listOf("pcs", "lbs", "oz", "g", "kg", "ml", "L", "cans", "packs", "bottles", "bags")
+        var expandedUnitDropdown by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { showEditQuantity = false },
-            title = { Text("Edit Quantity") },
+            title = { Text("Edit Quantity & Unit") },
             text = {
-                TextField(
-                    value = editedQuantity,
-                    onValueChange = { editedQuantity = it },
-                    label = { Text("Quantity") },
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences
+                Column {
+                    OutlinedTextField(
+                        value = editedQuantity,
+                        onValueChange = { editedQuantity = it },
+                        label = { Text("Quantity") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences
+                        )
                     )
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = editedUnit,
+                            onValueChange = { editedUnit = it },
+                            label = { Text("Unit (optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                IconButton(onClick = { expandedUnitDropdown = !expandedUnitDropdown }) {
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Units")
+                                }
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = expandedUnitDropdown,
+                            onDismissRequest = { expandedUnitDropdown = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("(No Unit)") },
+                                onClick = {
+                                    editedUnit = ""
+                                    expandedUnitDropdown = false
+                                }
+                            )
+                            commonUnits.forEach { u ->
+                                DropdownMenuItem(
+                                    text = { Text(u) },
+                                    onClick = {
+                                        editedUnit = u
+                                        expandedUnitDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onUpdateItem(item.copy(quantity = editedQuantity))
+                    onUpdateItem(item.copy(
+                        quantity = editedQuantity,
+                        unit = if (editedUnit.isBlank()) null else editedUnit
+                    ))
                     showEditQuantity = false
                 }) { Text(stringResource(R.string.save)) }
             },
@@ -200,8 +245,9 @@ fun GroceryItemRow(
                         ) else MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.clickable { if (currentPhase != GroceryPhase.SHOPPING) onEditCategory() }
                     )
+                    val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
                     Text(
-                        text = "Quantity: ${item.quantity}",
+                        text = "Quantity: ${item.quantity}$displayUnit",
                         color = Color.Gray,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.clickable { if (currentPhase != GroceryPhase.SHOPPING) onEditQuantity() }

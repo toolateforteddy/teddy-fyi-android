@@ -239,4 +239,25 @@ class GroceryDaoTest {
         assertEquals(1, itemsWithoutList.size)
         assertEquals("Oranges", itemsWithoutList[0].name)
     }
+
+    @Test
+    fun groceryItemWithUnitsAndCustomUnits() = runTest {
+        val itemWithUnit = GroceryItem(name = "Bananas", quantity = "1.5", unit = "lbs", userId = userId)
+        val itemNoUnit = GroceryItem(name = "Bread", quantity = "2", unit = null, userId = userId)
+        groceryDao.insertItem(itemWithUnit)
+        groceryDao.insertItem(itemNoUnit)
+
+        val allItems = groceryDao.getAllItems(userId).first()
+        assertEquals(2, allItems.size)
+        
+        val bananas = allItems.find { it.name == "Bananas" }
+        assertNotNull(bananas)
+        assertEquals("1.5", bananas?.quantity)
+        assertEquals("lbs", bananas?.unit)
+
+        val bread = allItems.find { it.name == "Bread" }
+        assertNotNull(bread)
+        assertEquals("2", bread?.quantity)
+        assertNull(bread?.unit)
+    }
 }

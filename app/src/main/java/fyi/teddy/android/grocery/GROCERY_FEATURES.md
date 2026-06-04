@@ -33,6 +33,7 @@ Current Features List.
 - [x] **Shopping Mode Done State**: Added a new visual only category called "In Cart" on the shopping mode where checked items are moved after a 2-second delay.
 - [x] **Trip Complete Button**: On the shopping tab, add a Trip Complete button. Maybe it looks like a check icon in the top. After a confirmation modal to make sure you don't execute on purpose, all items in the "in cart" category are marked as "done". Done items do not show up in any screen until they are readded as new need items.
 - [x] **Shared Lists / Multi-List Collaboration**: Support creating multiple distinct grocery lists and sharing access with other users for synchronized, collaborative shopping.
+- [x] **Robust Unit Support & Custom Units**: Support standard and custom unit types with flexible inline entry and editing.
 
 ## Requested Features
 
@@ -40,14 +41,14 @@ Current Features List.
 - [ ] **Cloud Sync**: Sync grocery data with the backend.
 - [ ] **Clear Bought Items**: Quickly remove all items marked as bought.
 - [ ] **Receipt Mode**: Submit pictures or screenshots of a receipt to populate the list with known items and prices.
-- [ ] **Shared Lists**: Allow real-time collaboration so multiple users (e.g., family members) can edit and check off items on the same list simultaneously.
+- [x] **Shared Lists**: Allow real-time collaboration so multiple users (e.g., family members) can edit and check off items on the same list simultaneously.
 - [ ] **Price Analytics & History**: A stats dashboard showing spending trends over time, price comparisons for the same item across different stores, and monthly grocery spend by category.
 - [ ] **Smart Sorting by Aisle**: Automatically reorder the shopping list based on the typical layout of a selected store to minimize walking back and forth.
 - [ ] **Voice Entry**: A hands-free way to add items to the "Need" list using speech-to-text.
 - [ ] **Barcode Scanner**: Use the phone's camera to scan product barcodes for instant addition to the list with accurate brand and unit info.
 - [ ] **Inventory / Pantry Tracker**: A mode to track what you currently have in stock at home, with "low stock" alerts that automatically move items to the shopping list.
 - [ ] **Recipe Ingredient Import**: Integration to parse ingredient lists from URLs or photos and add all required items to the grocery list in one tap.
-- [ ] **Unit Support & Conversion**: Robust handling of units (oz, lbs, kg, count) with automatic conversion and price-per-unit calculations to find the best value.
+- [x] **Unit Support & Conversion**: Robust handling of units (oz, lbs, kg, count) with automatic conversion and price-per-unit calculations to find the best value.
 - [ ] **Store Maps**: Visual aisle mapping for supported major retailers to show exactly where an item is located on a store floor plan.
 - [ ] **Trip Budgeting**: Set a spending limit before a shopping trip and see a running total estimate as you check off items and enter prices.
 - [ ] **Auto Categorize by LLM**: Add button to send all uncategorized items to an LLM api to generate categories for them. The prompt should include all current categories and explain that for each item it should return one of the existing categories that the item best fits in.

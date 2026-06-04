@@ -59,6 +59,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
 
     val newItemName by viewModel.newItemName.collectAsState()
     val newItemQuantity by viewModel.newItemQuantity.collectAsState()
+    val newItemUnit by viewModel.newItemUnit.collectAsState()
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
     
     val items by viewModel.items.collectAsState()
@@ -83,9 +84,10 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
 
     val onAddNewItem = {
         if (newItemName.isNotBlank()) {
-            viewModel.insertItem(newItemName, newItemQuantity, selectedCategoryId)
+            viewModel.insertItem(newItemName, newItemQuantity, selectedCategoryId, newItemUnit)
             viewModel.setNewItemName("")
             viewModel.setNewItemQuantity("1")
+            viewModel.setNewItemUnit(null)
             nameFocusRequester.requestFocus()
         }
     }
@@ -401,7 +403,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             TextField(
                                 value = newItemQuantity,
                                 onValueChange = { viewModel.setNewItemQuantity(it) },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(0.9f),
                                 placeholder = { Text("Qty", color = Color.Gray) },
                                 colors = TextFieldDefaults.colors(
                                     focusedTextColor = Color.White,
@@ -417,6 +419,57 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                     onDone = { onAddNewItem() }
                                 )
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            // Inline Unit selector
+                            var expandedAddUnitDropdown by remember { mutableStateOf(false) }
+                            val commonUnits = listOf("pcs", "lbs", "oz", "g", "kg", "ml", "L", "cans", "packs", "bottles", "bags")
+
+                            Box(modifier = Modifier.weight(1.1f)) {
+                                OutlinedButton(
+                                    onClick = { expandedAddUnitDropdown = true },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color.White,
+                                        containerColor = Color(0xFF1A1A1A)
+                                    )
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = newItemUnit ?: "Unit",
+                                            color = if (newItemUnit == null) Color.Gray else Color.White,
+                                            fontSize = 12.sp,
+                                            maxLines = 1
+                                        )
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Unit", tint = Color.Gray)
+                                    }
+                                }
+                                DropdownMenu(
+                                    expanded = expandedAddUnitDropdown,
+                                    onDismissRequest = { expandedAddUnitDropdown = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("No Unit") },
+                                        onClick = {
+                                            viewModel.setNewItemUnit(null)
+                                            expandedAddUnitDropdown = false
+                                        }
+                                    )
+                                    commonUnits.forEach { u ->
+                                        DropdownMenuItem(
+                                            text = { Text(u) },
+                                            onClick = {
+                                                viewModel.setNewItemUnit(u)
+                                                expandedAddUnitDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                             IconButton(onClick = { onAddNewItem() }) {
                                 Icon(
                                     Icons.Default.Add,

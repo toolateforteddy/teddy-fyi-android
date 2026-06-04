@@ -44,6 +44,9 @@ class GroceryViewModel(
     private val _newItemQuantity = MutableStateFlow("1")
     val newItemQuantity: StateFlow<String> = _newItemQuantity.asStateFlow()
 
+    private val _newItemUnit = MutableStateFlow<String?>(null)
+    val newItemUnit: StateFlow<String?> = _newItemUnit.asStateFlow()
+
     private val _selectedCategoryId = MutableStateFlow<Int?>(null)
     val selectedCategoryId: StateFlow<Int?> = _selectedCategoryId.asStateFlow()
 
@@ -128,6 +131,10 @@ class GroceryViewModel(
         _newItemQuantity.value = qty
     }
 
+    fun setNewItemUnit(unit: String?) {
+        _newItemUnit.value = unit
+    }
+
     fun setSelectedCategoryId(categoryId: Int?) {
         _selectedCategoryId.value = categoryId
     }
@@ -194,7 +201,7 @@ class GroceryViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Database mutators wrapped in view model scopes
-    fun insertItem(name: String, quantity: String, categoryId: Int?) {
+    fun insertItem(name: String, quantity: String, categoryId: Int?, unit: String? = null) {
         if (name.isNotBlank()) {
             val capitalizedName = formatName(name)
             viewModelScope.launch {
@@ -204,7 +211,8 @@ class GroceryViewModel(
                     categoryId = categoryId,
                     userId = userId,
                     isActive = true,
-                    listId = _selectedListId.value
+                    listId = _selectedListId.value,
+                    unit = unit
                 )
                 val existingInactive = items.value.find { 
                     it.name.equals(capitalizedName, ignoreCase = true) && !it.isActive 
@@ -214,7 +222,8 @@ class GroceryViewModel(
                         isActive = true, 
                         quantity = quantity, 
                         categoryId = categoryId,
-                        isBought = false
+                        isBought = false,
+                        unit = unit
                     ))
                     existingInactive.id
                 } else {
