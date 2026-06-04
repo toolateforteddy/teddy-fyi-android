@@ -1,5 +1,6 @@
 package fyi.teddy.android.todo.ui.components
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,27 @@ import fyi.teddy.android.R
 import fyi.teddy.android.todo.data.TodoItem
 import java.time.LocalDate
 
+sealed interface TodoItemIntent {
+    data class Delete(val item: TodoItem) : TodoItemIntent
+    data class Update(val item: TodoItem) : TodoItemIntent
+    data class AddSubtask(val parentId: String, val title: String) : TodoItemIntent
+    data class MoveToTop(val item: TodoItem) : TodoItemIntent
+    data class MoveToBottom(val item: TodoItem) : TodoItemIntent
+    data class MoveUp(val item: TodoItem) : TodoItemIntent
+    data class MoveDown(val item: TodoItem) : TodoItemIntent
+}
+
+sealed interface ActiveRowOverlay {
+    object Recurrence : ActiveRowOverlay
+    object EditTitle : ActiveRowOverlay
+    object EditDescription : ActiveRowOverlay
+    object Priority : ActiveRowOverlay
+    object Snooze : ActiveRowOverlay
+    object AddSubtask : ActiveRowOverlay
+    object DueDatePicker : ActiveRowOverlay
+    object ScheduleDatePicker : ActiveRowOverlay
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoItemRow(
@@ -26,7 +48,7 @@ fun TodoItemRow(
     completedSubtaskCount: Int = 0,
     isExpanded: Boolean = false,
     onToggleExpand: () -> Unit = {},
-    showDelete: Boolean,
+    isEditing: Boolean,
     isPlanningMode: Boolean,
     planningDate: String? = null,
     showScheduledDate: Boolean = true,
@@ -34,31 +56,43 @@ fun TodoItemRow(
     totalItems: Int,
     isRecentlyCompleted: Boolean = false,
     onCheckedChange: (Boolean) -> Unit,
-    onDelete: () -> Unit,
-    onUpdateItem: (TodoItem) -> Unit,
-    onAddSubtask: (String) -> Unit = {},
-    onMoveToTop: () -> Unit,
-    onMoveToBottom: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onIntent: (TodoItemIntent) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    var showRecurrenceDialog by remember { mutableStateOf(false) }
-    var showEditTitleDialog by remember { mutableStateOf(false) }
-    var showEditDescriptionDialog by remember { mutableStateOf(false) }
-    var showPriorityDialog by remember { mutableStateOf(false) }
-    var showAddSubtaskDialog by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showScheduleDatePicker by remember { mutableStateOf(false) }
-    var showSnoozeForDialog by remember { mutableStateOf(false) }
+    var activeOverlay by remember { mutableStateOf<ActiveRowOverlay?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onLongPress = { showMenu = true })
-            },
+            .then(
+                if (isEditing) {
+                    Modifier.pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { dragOffsetY = 0f },
+                            onDragEnd = { dragOffsetY = 0f },
+                            onDragCancel = { dragOffsetY = 0f },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragOffsetY += dragAmount.y
+                                val threshold = 120f
+                                if (dragOffsetY < -threshold) {
+                                    onIntent(TodoItemIntent.MoveUp(item))
+                                    dragOffsetY = 0f
+                                } else if (dragOffsetY > threshold) {
+                                    onIntent(TodoItemIntent.MoveDown(item))
+                                    dragOffsetY = 0f
+                                }
+                            }
+                        )
+                    }
+                } else {
+                    Modifier.pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { showMenu = true })
+                    }
+                }
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isSubtask) {
@@ -148,11 +182,11 @@ fun TodoItemRow(
             }
         }
 
-        if (item.priority > 0 || showDelete) {
+        if (item.priority > 0 || isEditing) {
             IconButton(
                 onClick = {
                     val newPriority = if (item.priority == 2) 0 else 2
-                    onUpdateItem(item.copy(priority = newPriority))
+                    onIntent(TodoItemIntent.Update(item.copy(priority = newPriority)))
                 },
                 modifier = Modifier.size(32.dp)
             ) {
@@ -167,8 +201,8 @@ fun TodoItemRow(
             }
         }
 
-        if (showDelete) {
-            IconButton(onClick = onMoveUp, enabled = index > 0, modifier = Modifier.size(32.dp)) {
+        if (isEditing) {
+            IconButton(onClick = { onIntent(TodoItemIntent.MoveUp(item)) }, enabled = index > 0, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.KeyboardArrowUp,
                     contentDescription = "Move Up",
@@ -177,7 +211,7 @@ fun TodoItemRow(
                 )
             }
             IconButton(
-                onClick = onMoveDown,
+                onClick = { onIntent(TodoItemIntent.MoveDown(item)) },
                 enabled = index < totalItems - 1,
                 modifier = Modifier.size(32.dp)
             ) {
@@ -202,7 +236,7 @@ fun TodoItemRow(
                     DropdownMenuItem(
                         text = { Text("Add Subtask") },
                         onClick = {
-                            showAddSubtaskDialog = true
+                            activeOverlay = ActiveRowOverlay.AddSubtask
                             showMenu = false
                         }
                     )
@@ -210,42 +244,42 @@ fun TodoItemRow(
                 DropdownMenuItem(
                     text = { Text("Edit Title") },
                     onClick = {
-                        showEditTitleDialog = true
+                        activeOverlay = ActiveRowOverlay.EditTitle
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Edit Description") },
                     onClick = {
-                        showEditDescriptionDialog = true
+                        activeOverlay = ActiveRowOverlay.EditDescription
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Set Priority...") },
                     onClick = {
-                        showPriorityDialog = true
+                        activeOverlay = ActiveRowOverlay.Priority
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text(if (item.isDaily) "Make Non-Daily" else "Make Daily") },
                     onClick = {
-                        onUpdateItem(item.copy(isDaily = !item.isDaily, scheduledDate = if (!item.isDaily) LocalDate.now().toString() else item.scheduledDate))
+                        onIntent(TodoItemIntent.Update(item.copy(isDaily = !item.isDaily, scheduledDate = if (!item.isDaily) LocalDate.now().toString() else item.scheduledDate)))
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Set Due Date") },
                     onClick = {
-                        showDatePicker = true
+                        activeOverlay = ActiveRowOverlay.DueDatePicker
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Schedule For...") },
                     onClick = {
-                        showScheduleDatePicker = true
+                        activeOverlay = ActiveRowOverlay.ScheduleDatePicker
                         showMenu = false
                     }
                 )
@@ -253,21 +287,21 @@ fun TodoItemRow(
                     text = { Text("Push to Tomorrow") },
                     onClick = {
                         val tomorrow = (if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()).plusDays(1)
-                        onUpdateItem(item.copy(scheduledDate = tomorrow.toString()))
+                        onIntent(TodoItemIntent.Update(item.copy(scheduledDate = tomorrow.toString())))
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Snooze For...") },
                     onClick = {
-                        showSnoozeForDialog = true
+                        activeOverlay = ActiveRowOverlay.Snooze
                         showMenu = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Recurrence") },
                     onClick = {
-                        showRecurrenceDialog = true
+                        activeOverlay = ActiveRowOverlay.Recurrence
                         showMenu = false
                     }
                 )
@@ -276,7 +310,7 @@ fun TodoItemRow(
                     DropdownMenuItem(
                         text = { Text("Move to Top") },
                         onClick = {
-                            onMoveToTop()
+                            onIntent(TodoItemIntent.MoveToTop(item))
                             showMenu = false
                         }
                     )
@@ -285,7 +319,7 @@ fun TodoItemRow(
                     DropdownMenuItem(
                         text = { Text("Move to Bottom") },
                         onClick = {
-                            onMoveToBottom()
+                            onIntent(TodoItemIntent.MoveToBottom(item))
                             showMenu = false
                         }
                     )
@@ -294,7 +328,7 @@ fun TodoItemRow(
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete), color = Color.Red) },
                     onClick = {
-                        onDelete()
+                        onIntent(TodoItemIntent.Delete(item))
                         showMenu = false
                     }
                 )
@@ -303,22 +337,22 @@ fun TodoItemRow(
         }
     }
 
-    if (showDatePicker) {
+    if (activeOverlay == ActiveRowOverlay.DueDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = item.dueDate ?: System.currentTimeMillis()
         )
         DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
+            onDismissRequest = { activeOverlay = null },
             confirmButton = {
                 TextButton(onClick = {
-                    onUpdateItem(item.copy(dueDate = datePickerState.selectedDateMillis))
-                    showDatePicker = false
+                    onIntent(TodoItemIntent.Update(item.copy(dueDate = datePickerState.selectedDateMillis)))
+                    activeOverlay = null
                 }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    onUpdateItem(item.copy(dueDate = null))
-                    showDatePicker = false
+                    onIntent(TodoItemIntent.Update(item.copy(dueDate = null)))
+                    activeOverlay = null
                 }) { Text("Clear") }
             }
         ) {
@@ -326,27 +360,27 @@ fun TodoItemRow(
         }
     }
     
-    if (showScheduleDatePicker) {
+    if (activeOverlay == ActiveRowOverlay.ScheduleDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = item.scheduledDate?.let { 
                 LocalDate.parse(it).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
             } ?: System.currentTimeMillis()
         )
         DatePickerDialog(
-            onDismissRequest = { showScheduleDatePicker = false },
+            onDismissRequest = { activeOverlay = null },
             confirmButton = {
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis?.let {
                         java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
                     }
-                    onUpdateItem(item.copy(scheduledDate = selectedDate))
-                    showScheduleDatePicker = false
+                    onIntent(TodoItemIntent.Update(item.copy(scheduledDate = selectedDate)))
+                    activeOverlay = null
                 }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    onUpdateItem(item.copy(scheduledDate = null))
-                    showScheduleDatePicker = false
+                    onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
+                    activeOverlay = null
                 }) { Text("Clear") }
             }
         ) {
@@ -354,53 +388,53 @@ fun TodoItemRow(
         }
     }
 
-    if (showRecurrenceDialog) {
+    if (activeOverlay == ActiveRowOverlay.Recurrence) {
         RecurrenceDialog(
             initialRule = item.recurrenceRule,
-            onDismiss = { showRecurrenceDialog = false },
+            onDismiss = { activeOverlay = null },
             onConfirm = { rule ->
-                onUpdateItem(item.copy(recurrenceRule = rule))
-                showRecurrenceDialog = false
+                onIntent(TodoItemIntent.Update(item.copy(recurrenceRule = rule)))
+                activeOverlay = null
             }
         )
     }
 
-    if (showEditTitleDialog) {
+    if (activeOverlay == ActiveRowOverlay.EditTitle) {
         EditTitleDialog(
             initialTitle = item.title,
-            onDismiss = { showEditTitleDialog = false },
+            onDismiss = { activeOverlay = null },
             onConfirm = { title ->
-                onUpdateItem(item.copy(title = title))
-                showEditTitleDialog = false
+                onIntent(TodoItemIntent.Update(item.copy(title = title)))
+                activeOverlay = null
             }
         )
     }
 
-    if (showEditDescriptionDialog) {
+    if (activeOverlay == ActiveRowOverlay.EditDescription) {
         EditDescriptionDialog(
             initialDescription = item.description,
-            onDismiss = { showEditDescriptionDialog = false },
+            onDismiss = { activeOverlay = null },
             onConfirm = { desc ->
-                onUpdateItem(item.copy(description = desc))
-                showEditDescriptionDialog = false
+                onIntent(TodoItemIntent.Update(item.copy(description = desc)))
+                activeOverlay = null
             }
         )
     }
 
-    if (showPriorityDialog) {
+    if (activeOverlay == ActiveRowOverlay.Priority) {
         PriorityDialog(
             initialPriority = item.priority,
-            onDismiss = { showPriorityDialog = false },
+            onDismiss = { activeOverlay = null },
             onConfirm = { priority ->
-                onUpdateItem(item.copy(priority = priority))
-                showPriorityDialog = false
+                onIntent(TodoItemIntent.Update(item.copy(priority = priority)))
+                activeOverlay = null
             }
         )
     }
 
-    if (showSnoozeForDialog) {
+    if (activeOverlay == ActiveRowOverlay.Snooze) {
         SnoozeForDialog(
-            onDismiss = { showSnoozeForDialog = false },
+            onDismiss = { activeOverlay = null },
             onConfirm = { amount, isMonths ->
                 val baseDate = if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()
                 val newDate = if (isMonths) {
@@ -408,16 +442,19 @@ fun TodoItemRow(
                 } else {
                     fyi.teddy.android.todo.util.TaskSchedulerUtils.snoozeForDays(baseDate, amount)
                 }
-                onUpdateItem(item.copy(scheduledDate = newDate.toString()))
-                showSnoozeForDialog = false
+                onIntent(TodoItemIntent.Update(item.copy(scheduledDate = newDate.toString())))
+                activeOverlay = null
             }
         )
     }
 
-    if (showAddSubtaskDialog) {
+    if (activeOverlay == ActiveRowOverlay.AddSubtask) {
         AddSubtaskDialog(
-            onDismiss = { showAddSubtaskDialog = false },
-            onAdd = onAddSubtask
+            onDismiss = { activeOverlay = null },
+            onAdd = { title ->
+                onIntent(TodoItemIntent.AddSubtask(item.id, title))
+                activeOverlay = null
+            }
         )
     }
 }

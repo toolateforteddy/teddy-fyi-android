@@ -27,6 +27,7 @@ import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
 import fyi.teddy.android.todo.ui.components.EditListDialog
 import fyi.teddy.android.todo.ui.components.TodoInputBar
 import fyi.teddy.android.todo.ui.components.TodoItemRow
+import fyi.teddy.android.todo.ui.components.TodoItemIntent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.dionsegijn.konfetti.compose.KonfettiView
@@ -343,7 +344,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             expandedParentIds.value + parent.id
                                         }
                                     },
-                                    showDelete = isEditMode,
+                                    isEditing = isEditMode,
                                     isPlanningMode = currentMode == TodoMode.PLANNING,
                                     planningDate = selectedPlanningDate,
                                     showScheduledDate = currentMode != TodoMode.TODAY,
@@ -363,25 +364,15 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
 
                                         viewModel.toggleComplete(parent, isChecked)
                                     },
-                                    onDelete = { viewModel.deleteItem(parent) },
-                                    onUpdateItem = { viewModel.updateItem(it) },
-                                    onAddSubtask = { title -> onAddNewItem(title, parent.id) },
-                                    onMoveToTop = {
-                                        viewModel.moveParentToTop(parent)
-                                    },
-                                    onMoveToBottom = {
-                                        viewModel.moveParentToBottom(parent)
-                                    },
-                                    onMoveUp = {
-                                        if (parentIndex > 0) {
-                                            val prevParent = groupedItems[parentIndex - 1].first
-                                            viewModel.swapPositions(parent, prevParent)
-                                        }
-                                    },
-                                    onMoveDown = {
-                                        if (parentIndex < groupedItems.size - 1) {
-                                            val nextParent = groupedItems[parentIndex + 1].first
-                                            viewModel.swapPositions(parent, nextParent)
+                                    onIntent = { intent ->
+                                        when (intent) {
+                                            is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
+                                            is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
+                                            is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
+                                            is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
+                                            is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
+                                            is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
+                                            is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
                                         }
                                     }
                                 )
@@ -398,7 +389,7 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                     TodoItemRow(
                                         item = child,
                                         isSubtask = true,
-                                        showDelete = isEditMode,
+                                        isEditing = isEditMode,
                                         isPlanningMode = currentMode == TodoMode.PLANNING,
                                         planningDate = selectedPlanningDate,
                                         showScheduledDate = currentMode != TodoMode.TODAY,
@@ -412,24 +403,15 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                             }
                                             viewModel.toggleComplete(child, isChecked)
                                         },
-                                        onDelete = { viewModel.deleteItem(child) },
-                                        onUpdateItem = { viewModel.updateItem(it) },
-                                        onMoveToTop = {
-                                            viewModel.moveChildToTop(child)
-                                        },
-                                        onMoveToBottom = {
-                                            viewModel.moveChildToBottom(child)
-                                        },
-                                        onMoveUp = {
-                                            if (childIndex > 0) {
-                                                val prevChild = children[childIndex - 1]
-                                                viewModel.swapPositions(child, prevChild)
-                                            }
-                                        },
-                                        onMoveDown = {
-                                            if (childIndex < children.size - 1) {
-                                                val nextChild = children[childIndex + 1]
-                                                viewModel.swapPositions(child, nextChild)
+                                        onIntent = { intent ->
+                                            when (intent) {
+                                                is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
+                                                is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
+                                                is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
+                                                is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
+                                                is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
+                                                is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
+                                                is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
                                             }
                                         }
                                     )

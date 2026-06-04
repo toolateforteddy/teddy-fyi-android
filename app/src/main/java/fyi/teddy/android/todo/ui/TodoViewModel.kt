@@ -48,6 +48,11 @@ class TodoViewModel(
     private val _confettiTrigger = MutableSharedFlow<Unit>(replay = 0)
     val confettiTrigger: SharedFlow<Unit> = _confettiTrigger.asSharedFlow()
 
+    private val moveItemUpUseCase = fyi.teddy.android.todo.domain.MoveItemUpUseCase(repository)
+    private val moveItemDownUseCase = fyi.teddy.android.todo.domain.MoveItemDownUseCase(repository)
+    private val moveItemToTopUseCase = fyi.teddy.android.todo.domain.MoveItemToTopUseCase(repository)
+    private val moveItemToBottomUseCase = fyi.teddy.android.todo.domain.MoveItemToBottomUseCase(repository)
+
     private val todayDateFlow = MutableStateFlow(LocalDate.now().toString())
 
     // Cold/Hot source flows from repository
@@ -273,29 +278,19 @@ class TodoViewModel(
         viewModelScope.launch { repository.swapPositions(item1, item2) }
     }
 
-    fun moveParentToTop(item: TodoItem) {
-        val parents = allItems.value.filter { it.parentId == null }
-        val minPos = parents.minByOrNull { it.position }?.position ?: 0
-        updateItem(item.copy(position = minPos - 1))
+    fun moveItemUp(item: TodoItem) {
+        viewModelScope.launch { moveItemUpUseCase(item) }
     }
 
-    fun moveParentToBottom(item: TodoItem) {
-        val parents = allItems.value.filter { it.parentId == null }
-        val maxPos = parents.maxByOrNull { it.position }?.position ?: 0
-        updateItem(item.copy(position = maxPos + 1))
+    fun moveItemDown(item: TodoItem) {
+        viewModelScope.launch { moveItemDownUseCase(item) }
     }
 
-    fun moveChildToTop(item: TodoItem) {
-        val parentId = item.parentId ?: return
-        val children = allItems.value.filter { it.parentId == parentId }
-        val minPos = children.minByOrNull { it.position }?.position ?: 0
-        updateItem(item.copy(position = minPos - 1))
+    fun moveItemToTop(item: TodoItem) {
+        viewModelScope.launch { moveItemToTopUseCase(item) }
     }
 
-    fun moveChildToBottom(item: TodoItem) {
-        val parentId = item.parentId ?: return
-        val children = allItems.value.filter { it.parentId == parentId }
-        val maxPos = children.maxByOrNull { it.position }?.position ?: 0
-        updateItem(item.copy(position = maxPos + 1))
+    fun moveItemToBottom(item: TodoItem) {
+        viewModelScope.launch { moveItemToBottomUseCase(item) }
     }
 }
