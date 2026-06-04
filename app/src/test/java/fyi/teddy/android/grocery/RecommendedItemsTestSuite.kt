@@ -1,6 +1,5 @@
 package fyi.teddy.android.grocery
 
-import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import fyi.teddy.android.data.AppDatabase
@@ -33,7 +32,6 @@ class RecommendedItemsTestSuite {
     private lateinit var repository: GroceryRepository
     private lateinit var viewModel: GroceryViewModel
     private val userId = "test_user"
-    private val application = mockk<Application>(relaxed = true)
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -47,7 +45,7 @@ class RecommendedItemsTestSuite {
         
         groceryDao = database.groceryDao()
         repository = GroceryRepository(groceryDao)
-        viewModel = GroceryViewModel(application, repository, userId)
+        viewModel = GroceryViewModel(repository, userId)
     }
 
     @After

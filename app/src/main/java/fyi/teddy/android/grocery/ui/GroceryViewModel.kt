@@ -1,7 +1,6 @@
 package fyi.teddy.android.grocery.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
@@ -19,10 +18,9 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class GroceryViewModel(
-    application: Application,
     private val repository: GroceryRepository,
     val userId: String
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)

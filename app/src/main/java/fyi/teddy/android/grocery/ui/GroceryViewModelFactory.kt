@@ -15,7 +15,7 @@ class GroceryViewModelFactory(
             @Suppress("UNCHECKED_CAST")
             val database = AppDatabase.getDatabase(application)
             val repository = GroceryRepository(database.groceryDao())
-            return GroceryViewModel(application, repository, userId) as T
+            return GroceryViewModel(repository, userId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

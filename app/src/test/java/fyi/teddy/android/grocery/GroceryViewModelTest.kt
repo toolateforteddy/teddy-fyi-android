@@ -1,6 +1,5 @@
 package fyi.teddy.android.grocery
 
-import android.app.Application
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.data.GroceryListMember
@@ -21,7 +20,6 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroceryViewModelTest {
 
-    private val application = mockk<Application>(relaxed = true)
     private val repository = mockk<GroceryRepository>(relaxed = true)
     private val userId = "test-user-id"
 
@@ -46,7 +44,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test formatName trims and capitalizes word boundaries cleanly`() {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val input = "   whole milk organic   "
         val expected = "Whole Milk Organic"
         assertEquals(expected, viewModel.formatName(input))
@@ -54,21 +52,21 @@ class GroceryViewModelTest {
 
     @Test
     fun `test formatName already capitalized is unchanged`() {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val input = "Whole Milk Organic"
         assertEquals(input, viewModel.formatName(input))
     }
 
     @Test
     fun `test setPhase updates stateflow`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         viewModel.setPhase(GroceryPhase.SHOPPING)
         assertEquals(GroceryPhase.SHOPPING, viewModel.currentPhase.value)
     }
 
     @Test
     fun `test insertItem delegates formatted insert to repository`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val nameInput = "organic bananas"
         val qtyInput = "3 bunches"
         val categoryId = 4
@@ -89,7 +87,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertItem empty name is ignored`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         viewModel.insertItem("", "1", null)
         viewModel.insertItem("   ", "1", null)
         testScheduler.advanceUntilIdle()
@@ -99,7 +97,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test toggleBought standard updates item immediately`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val item = GroceryItem(id = 1, name = "Bananas", isBought = false, userId = userId)
 
         viewModel.toggleBought(item, isChecked = true)
@@ -114,7 +112,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test toggleBought shopping phase checking item starts 2-second in-cart delay`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val item = GroceryItem(id = 99, name = "Milk", isBought = false, userId = userId)
 
         viewModel.setPhase(GroceryPhase.SHOPPING)
@@ -141,7 +139,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test markDoneForTrip delegates to repository`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         viewModel.markDoneForTrip()
         testScheduler.advanceUntilIdle()
 
@@ -150,7 +148,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertStore delegates capitalized name`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         viewModel.insertStore("trader joe's")
         testScheduler.advanceUntilIdle()
 
@@ -164,7 +162,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertCategory delegates capitalized name`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         viewModel.insertCategory("produce section")
         testScheduler.advanceUntilIdle()
 
@@ -178,7 +176,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test onEvent SetPhase updates stateflow`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.SHOPPING))
         testScheduler.advanceUntilIdle()
         assertEquals(GroceryPhase.SHOPPING, viewModel.state.value.currentPhase)
@@ -186,7 +184,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertItem with units and notes and listId`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val nameInput = "organic bananas"
         val qtyInput = "1.5"
         val categoryId = 4
@@ -212,7 +210,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test MoveItemUp and MoveItemDown use cases`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         val item1 = GroceryItem(id = 1, name = "A", position = 0, userId = userId)
         val item2 = GroceryItem(id = 2, name = "B", position = 1, userId = userId)
         val siblings = listOf(item1, item2)
@@ -228,7 +226,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test list management events`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         
         viewModel.onEvent(GroceryUiEvent.InsertList("Costco Trip"))
         testScheduler.advanceUntilIdle()
@@ -246,7 +244,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test state combines all individual flows correctly`() = runTest {
-        val viewModel = GroceryViewModel(application, repository, userId)
+        val viewModel = GroceryViewModel(repository, userId)
         
         viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.PLANNING))
         viewModel.onEvent(GroceryUiEvent.SetEditMode(true))

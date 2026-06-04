@@ -15,4 +15,16 @@
     <string name="show_completed">Show Completed</string>
     <string name="show_active">Show Active</string>
     <string name="clear_all">Clear All</string>
+    <string name="grocery_settings">Grocery Settings</string>
+    <string name="manage_stores">Manage Stores</string>
+    <string name="manage_categories">Manage Categories</string>
+    <string name="back_to_list">Back to List</string>
+    <string name="create_new_list">Create New List</string>
+    <string name="share_list">Share List</string>
+    <string name="delete_list">Delete List</string>
+    <string name="list_name">List Name</string>
+    <string name="user_id">User ID</string>
+    <string name="close">Close</string>
+    <string name="share">Share</string>
+    <string name="create">Create</string>
 </resources>

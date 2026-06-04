@@ -34,7 +34,7 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
 
     val onAddCategory = {
         if (newCategoryName.isNotBlank()) {
-            viewModel.insertCategory(newCategoryName)
+            viewModel.onEvent(GroceryUiEvent.InsertCategory(newCategoryName))
             newCategoryName = ""
         }
     }
@@ -42,7 +42,7 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Categories") },
+                title = { Text(stringResource(R.string.manage_categories)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -96,15 +96,15 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
                         CategoryItemRow(
                             category = category,
                             onDelete = {
-                                viewModel.deleteCategory(category)
+                                viewModel.onEvent(GroceryUiEvent.DeleteCategory(category))
                             },
                             onMoveUp = {
                                 val targetCategory = categories[index - 1]
-                                viewModel.swapCategoryPositions(category, targetCategory)
+                                viewModel.onEvent(GroceryUiEvent.SwapCategoryPositions(category, targetCategory))
                             },
                             onMoveDown = {
                                 val targetCategory = categories[index + 1]
-                                viewModel.swapCategoryPositions(category, targetCategory)
+                                viewModel.onEvent(GroceryUiEvent.SwapCategoryPositions(category, targetCategory))
                             },
                             isFirst = index == 0,
                             isLast = index == categories.size - 1

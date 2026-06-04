@@ -19,6 +19,7 @@ import fyi.teddy.android.R
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
+import fyi.teddy.android.grocery.data.GroceryItemWithPriceDetails
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryPhase
 
@@ -151,13 +152,9 @@ fun GroceryItemRow(
     var showPriceInput by remember { mutableStateOf(false) }
     var priceText by remember { mutableStateOf("") }
 
-    val minPriceInfo = itemStoreInfos.filter { it.price != null }.minByOrNull { it.price!! }
-    val shoppingStoreInfo = itemStoreInfos.find { it.storeId == shoppingStoreId }
-    
-    val isMoreExpensive = shoppingStoreId != null && 
-                          shoppingStoreInfo?.price != null && 
-                          minPriceInfo?.price != null && 
-                          shoppingStoreInfo.price!! > minPriceInfo.price!!
+    val priceDetails = remember(item, shoppingStoreId, itemStoreInfos, stores) {
+        GroceryItemWithPriceDetails.from(item, shoppingStoreId, itemStoreInfos, stores)
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { 
@@ -174,12 +171,7 @@ fun GroceryItemRow(
                         onCheckedChange = onCheckedChange,
                         colors = CheckboxDefaults.colors(uncheckedColor = Color.Gray)
                     )
-                    ShoppingItemRowContent(
-                        item = item,
-                        isMoreExpensive = isMoreExpensive,
-                        minPriceInfo = minPriceInfo,
-                        stores = stores
-                    )
+                    ShoppingItemRowContent(priceDetails = priceDetails)
                 } else if (isEditMode) {
                     EditableItemRowContent(
                         item = item,
@@ -191,12 +183,9 @@ fun GroceryItemRow(
                     )
                 } else {
                     StandardItemRowContent(
-                        item = item,
+                        priceDetails = priceDetails,
                         onEditCategory = onEditCategory,
-                        onEditQuantity = onEditQuantity,
-                        isMoreExpensive = isMoreExpensive,
-                        minPriceInfo = minPriceInfo,
-                        stores = stores
+                        onEditQuantity = onEditQuantity
                     )
                 }
             }
@@ -239,11 +228,9 @@ fun GroceryItemRow(
 
 @Composable
 fun ShoppingItemRowContent(
-    item: GroceryItem,
-    isMoreExpensive: Boolean,
-    minPriceInfo: GroceryItemStoreInfo?,
-    stores: List<Store>
+    priceDetails: GroceryItemWithPriceDetails
 ) {
+    val item = priceDetails.item
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Text(
             text = item.name,
@@ -268,10 +255,9 @@ fun ShoppingItemRowContent(
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
-        if (isMoreExpensive) {
-            val cheaperStoreName = stores.find { it.id == minPriceInfo?.storeId }?.name ?: "another store"
+        if (priceDetails.isMoreExpensiveAtCurrentStore) {
             Text(
-                text = "Note: $cheaperStoreName is cheaper ($${minPriceInfo?.price})",
+                text = "Note: ${priceDetails.cheaperStoreName} is cheaper ($$${priceDetails.cheaperStorePrice})",
                 color = Color.Yellow,
                 style = MaterialTheme.typography.labelSmall
             )
@@ -281,13 +267,11 @@ fun ShoppingItemRowContent(
 
 @Composable
 fun StandardItemRowContent(
-    item: GroceryItem,
+    priceDetails: GroceryItemWithPriceDetails,
     onEditCategory: () -> Unit,
-    onEditQuantity: () -> Unit,
-    isMoreExpensive: Boolean,
-    minPriceInfo: GroceryItemStoreInfo?,
-    stores: List<Store>
+    onEditQuantity: () -> Unit
 ) {
+    val item = priceDetails.item
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Text(
             text = item.name,
@@ -312,10 +296,9 @@ fun StandardItemRowContent(
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
-        if (isMoreExpensive) {
-            val cheaperStoreName = stores.find { it.id == minPriceInfo?.storeId }?.name ?: "another store"
+        if (priceDetails.isMoreExpensiveAtCurrentStore) {
             Text(
-                text = "Note: $cheaperStoreName is cheaper ($${minPriceInfo?.price})",
+                text = "Note: ${priceDetails.cheaperStoreName} is cheaper ($$${priceDetails.cheaperStorePrice})",
                 color = Color.Yellow,
                 style = MaterialTheme.typography.labelSmall
             )

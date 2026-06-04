@@ -9,7 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import fyi.teddy.android.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,7 +23,7 @@ fun GroceryConfigScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Grocery Settings") },
+                title = { Text(stringResource(R.string.grocery_settings)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,
                     titleContentColor = Color.White
@@ -38,14 +40,14 @@ fun GroceryConfigScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ConfigItem(
-                    title = "Manage Stores",
-                    subtitle = "Trader Joe's, Whole Foods, etc.",
+                    title = stringResource(R.string.manage_stores),
+                    subtitle = "Trader Joe\'s, Whole Foods, etc.",
                     icon = Icons.Default.Store,
                     onClick = onManageStores
                 )
                 
                 ConfigItem(
-                    title = "Manage Categories",
+                    title = stringResource(R.string.manage_categories),
                     subtitle = "Produce, Dairy, etc.",
                     icon = Icons.Default.Category,
                     onClick = onManageCategories
@@ -57,7 +59,7 @@ fun GroceryConfigScreen(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Back to List")
+                    Text(stringResource(R.string.back_to_list))
                 }
             }
         }

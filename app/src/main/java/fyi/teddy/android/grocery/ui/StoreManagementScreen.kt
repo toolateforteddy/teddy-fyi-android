@@ -34,7 +34,7 @@ fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
 
     val onAddStore = {
         if (newStoreName.isNotBlank()) {
-            viewModel.insertStore(newStoreName)
+            viewModel.onEvent(GroceryUiEvent.InsertStore(newStoreName))
             newStoreName = ""
         }
     }
@@ -42,7 +42,7 @@ fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Stores") },
+                title = { Text(stringResource(R.string.manage_stores)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -96,18 +96,18 @@ fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
                         StoreItemRow(
                             store = store,
                             onDelete = {
-                                viewModel.deleteStore(store)
+                                viewModel.onEvent(GroceryUiEvent.DeleteStore(store))
                             },
                             onUpdate = { updatedStore ->
-                                viewModel.updateStore(updatedStore)
+                                viewModel.onEvent(GroceryUiEvent.UpdateStore(updatedStore))
                             },
                             onMoveUp = {
                                 val targetStore = stores[index - 1]
-                                viewModel.swapStorePositions(store, targetStore)
+                                viewModel.onEvent(GroceryUiEvent.SwapStorePositions(store, targetStore))
                             },
                             onMoveDown = {
                                 val targetStore = stores[index + 1]
-                                viewModel.swapStorePositions(store, targetStore)
+                                viewModel.onEvent(GroceryUiEvent.SwapStorePositions(store, targetStore))
                             },
                             isFirst = index == 0,
                             isLast = index == stores.size - 1
