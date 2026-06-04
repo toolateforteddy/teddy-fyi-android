@@ -20,6 +20,7 @@ data class TodoItem(
     val parentId: String? = null,
     val isDaily: Boolean = false,
     val dueDate: Long? = null,
+    val description: String? = null,
 
     // Cloud sync tracking columns
     @ColumnInfo(name = "sync_state")

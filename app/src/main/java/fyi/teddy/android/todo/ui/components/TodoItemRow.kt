@@ -45,6 +45,7 @@ fun TodoItemRow(
     var showMenu by remember { mutableStateOf(false) }
     var showRecurrenceDialog by remember { mutableStateOf(false) }
     var showEditTitleDialog by remember { mutableStateOf(false) }
+    var showEditDescriptionDialog by remember { mutableStateOf(false) }
     var showAddSubtaskDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showScheduleDatePicker by remember { mutableStateOf(false) }
@@ -99,6 +100,14 @@ fun TodoItemRow(
                         modifier = Modifier.padding(start = 4.dp)
                     )
                 }
+            }
+            if (!item.description.isNullOrEmpty()) {
+                Text(
+                    text = item.description,
+                    color = Color.LightGray,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 2.dp)
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (item.recurrenceIntervalDays != null) {
@@ -182,6 +191,13 @@ fun TodoItemRow(
                     text = { Text("Edit Title") },
                     onClick = {
                         showEditTitleDialog = true
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Edit Description") },
+                    onClick = {
+                        showEditDescriptionDialog = true
                         showMenu = false
                     }
                 )
@@ -329,6 +345,17 @@ fun TodoItemRow(
             onConfirm = { title ->
                 onUpdateItem(item.copy(title = title))
                 showEditTitleDialog = false
+            }
+        )
+    }
+
+    if (showEditDescriptionDialog) {
+        EditDescriptionDialog(
+            initialDescription = item.description,
+            onDismiss = { showEditDescriptionDialog = false },
+            onConfirm = { desc ->
+                onUpdateItem(item.copy(description = desc))
+                showEditDescriptionDialog = false
             }
         )
     }

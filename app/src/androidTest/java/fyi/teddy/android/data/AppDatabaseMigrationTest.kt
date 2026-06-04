@@ -104,4 +104,39 @@ class AppDatabaseMigrationTest {
         assert(foundChild)
         cursor.close()
     }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate18To19() {
+        // Create database at version 18
+        val db = helper.createDatabase(TEST_DB, 18)
+        
+        // Insert an item in version 18
+        db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `sync_state`, `version`, `is_deleted`) VALUES ('uuid-1', 'Description Task', 0, 1000, 0, 1000, 0, 'SYNCED', 1, 0)")
+        db.close()
+
+        // Run migration to 19
+        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 19, true, AppDatabase.MIGRATION_18_19)
+        
+        val cursor = migratedDb.query("SELECT * FROM `todo_items`")
+        
+        var foundTask = false
+        while(cursor.moveToNext()) {
+            val id = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+            val title = cursor.getString(cursor.getColumnIndexOrThrow("title"))
+            val descriptionIndex = cursor.getColumnIndex("description")
+            
+            assert(descriptionIndex != -1)
+            val description = cursor.getString(descriptionIndex)
+            
+            if (id == "uuid-1") {
+                assert(title == "Description Task")
+                assert(description == null)
+                foundTask = true
+            }
+        }
+        
+        assert(foundTask)
+        cursor.close()
+    }
 }

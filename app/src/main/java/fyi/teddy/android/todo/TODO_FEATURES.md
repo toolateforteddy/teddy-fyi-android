@@ -36,6 +36,7 @@ Current Features List.
 - [x] **Push to tomorrow**: In Today Mode, add field to the edit mode overflow menu to "schedule for tomorrow". This will remove it from today's planned list, but at the end of the day after removing all the incomplete tasks from today, this task will be put back onto the today schedule so that it starts on the schedule. Maybe this is best implemented by changing the column "scheduled for today" to actually hold a date, and then you can schedule a task for any day you want.
 - [x] **Snooze Task**: On the backlog screen, the edit overflow menu should include a snooze option. Selecting this will open a modal allowing for inputting a number of days (N). During the next N days, the task should not appear in any task list.
 - [x] **Local-First Cloud Sync Pillars**: Upgraded Room database version to 18 and added `MIGRATION_17_18` to migrate existing auto-increment integer IDs to client-generated string UUIDs, safely preserving parent-child (nested tasks) relationships via `'legacy_uuid_' || id`. Added tracking columns (`sync_state`, `version`, and `is_deleted`) required for robust client-side sync state-machine mutations.
+- [x] **Rich Text Notes & Descriptions**: Store long-form contextual notes or descriptions for each task. Added a nullable `description` column to `todo_items`, complete with UI to view inline descriptions and edit/clear descriptions via an "Edit Description" dialog. Fully verified with `migrate18To19` database migration tests.
 
 
 
@@ -53,6 +54,18 @@ Current Features List.
 - [ ] **Add Task From Settings Drawer**: Support a shortcut in the settings drawer to add a new task without opening the app explicitly.
 - [ ] **Auto Categorize**: Once there are categories supported for tasks, add a button to automatically apply categories for each task.
 - [ ] **Incomplete Scheduled Tasks**: At the end of the day, any incomplete tasks scheduled for today should unscheduled and appear in the backlog again.
+
+
+## Proposed Future Schema Changes
+- [ ] **Multi-List / Space Segregation**: Group tasks logically by multiple custom "Lists" or "Spaces" (e.g. Work, Personal) instead of a flat list. Requires a new `todo_lists` table and `listId: String?` foreign key on `todo_items`.
+- [ ] **Starred / Priority Levels**: Flag tasks as high, medium, or low priority to push them to the top of list views. Requires adding a `priority: Int` column to `todo_items`.
+- [ ] **Custom Tags / Categories**: Create cross-cutting labels (e.g. `#urgent`, `#errand`) to tag items across lists. Requires a `tags` table and a `todo_tag_cross_ref` many-to-many join table.
+- [ ] **Multi-Trigger Reminders**: Trigger multiple alerts at customizable offsets prior to the deadline. Requires a `todo_reminders` table with foreign keys referencing tasks.
+- [x] **Rich Text Notes & Descriptions**: Store long-form contextual notes or markdown strings for each task. Requires adding a `description: String?` column to `todo_items`.
+- [ ] **Rich Recurrence Rules (RFC 5545)**: Support complex recurrence patterns (e.g., "every Tuesday and Thursday") using iCalendar RRULE strings. Requires replacing current recurrence columns with a single `recurrenceRule: String?` column.
+- [ ] **Location-Based Reminders**: Trigger alerts when entering or leaving a certain geographic radius. Requires `latitude: Double?`, `longitude: Double?`, `radiusMeters: Float?`, and `locationName: String?` columns on `todo_items`.
+- [ ] **Time Tracking & Effort Metrics**: Estimate task durations and track actual focus time (e.g. via Pomodoro sessions). Requires `estimatedMinutes: Int?` on `todo_items` and a new `time_logs` session tracking table.
+- [ ] **Collaboration & Assignees**: Support sharing family lists or assigning subtasks to specific users. Requires an `assignedToUserId: String?` column on `todo_items` and a shared lists access control list table.
 
 
 ## Bugs

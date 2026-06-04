@@ -145,3 +145,41 @@ fun AddSubtaskDialog(
         }
     )
 }
+
+@Composable
+fun EditDescriptionDialog(
+    initialDescription: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (String?) -> Unit
+) {
+    var editedDescription by remember { mutableStateOf(initialDescription ?: "") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Task Description") },
+        text = {
+            TextField(
+                value = editedDescription,
+                onValueChange = { editedDescription = it },
+                label = { Text("Description") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                minLines = 3,
+                maxLines = 5,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(editedDescription.trim().ifEmpty { null })
+            }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                onConfirm(null)
+            }) {
+                Text("Clear")
+            }
+        }
+    )
+}
