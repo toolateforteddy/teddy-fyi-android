@@ -160,6 +160,8 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                 TopAppBar(
                     title = { 
                         val titleText = when (currentMode) {
+                            TodoMode.BACKLOG -> if (showCompletedOnly) "Completed Backlog" else "Backlog"
+                            TodoMode.SCHEDULED -> if (showCompletedOnly) "Completed Future" else "Future"
                             TodoMode.PLANNING -> {
                                 val today = LocalDate.now()
                                 val selected = LocalDate.parse(selectedPlanningDate)
@@ -170,7 +172,6 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                                 }
                             }
                             TodoMode.TODAY -> "Today's Tasks"
-                            else -> if (showCompletedOnly) stringResource(R.string.show_completed) else stringResource(R.string.app_name) + " List"
                         }
                         Text(
                             text = titleText,
@@ -249,76 +250,80 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxSize().padding(16.dp)
                 ) {
                     // Space list selection row
-                    @OptIn(ExperimentalFoundationApi::class)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                            .horizontalScroll(rememberScrollState()),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // "All" space chip
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (selectedListId == null) MaterialTheme.colorScheme.primary else Color.DarkGray,
+                    if (allLists.isNotEmpty() || isEditMode) {
+                        @OptIn(ExperimentalFoundationApi::class)
+                        Row(
                             modifier = Modifier
-                                .padding(end = 8.dp)
-                                .clickable { viewModel.selectList(null) }
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp)
+                                .horizontalScroll(rememberScrollState()),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "All",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-
-                        // Custom list chips
-                        allLists.forEach { list ->
-                            val isSelected = selectedListId == list.id
+                            // "All" space chip
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.secondary else Color(android.graphics.Color.parseColor(list.colorHex)).copy(alpha = 0.3f),
+                                color = if (selectedListId == null) MaterialTheme.colorScheme.primary else Color.DarkGray,
                                 modifier = Modifier
                                     .padding(end = 8.dp)
-                                    .combinedClickable(
-                                        onClick = { viewModel.selectList(list.id) },
-                                        onLongClick = { listToEdit = list }
-                                    )
+                                    .clickable { viewModel.selectList(null) }
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
+                                Text(
+                                    text = "All",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelLarge,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+
+                            // Custom list chips
+                            allLists.forEach { list ->
+                                val isSelected = selectedListId == list.id
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (isSelected) MaterialTheme.colorScheme.secondary else Color(android.graphics.Color.parseColor(list.colorHex)).copy(alpha = 0.3f),
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .combinedClickable(
+                                            onClick = { viewModel.selectList(list.id) },
+                                            onLongClick = { listToEdit = list }
+                                        )
                                 ) {
-                                    // Little color dot for the list
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(
-                                                color = Color(android.graphics.Color.parseColor(list.colorHex)),
-                                                shape = RoundedCornerShape(4.dp)
-                                            )
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = list.name,
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.labelLarge
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        // Little color dot for the list
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(
+                                                    color = Color(android.graphics.Color.parseColor(list.colorHex)),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                )
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = list.name,
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Add List Button
+                            if (isEditMode) {
+                                IconButton(
+                                    onClick = { showAddListDialog = true },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add Space", tint = Color.Cyan)
                                 }
                             }
                         }
-
-                        // Add List Button
-                        IconButton(
-                            onClick = { showAddListDialog = true },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Space", tint = Color.Cyan)
-                        }
                     }
 
-                    if (!showCompletedOnly && currentMode != TodoMode.TODAY && !isEditMode) {
+                    if (!showCompletedOnly && currentMode != TodoMode.TODAY && currentMode != TodoMode.SCHEDULED && !isEditMode) {
                         TodoInputBar(onAddNewItem = { title -> onAddNewItem(title, null) })
                     }
                     

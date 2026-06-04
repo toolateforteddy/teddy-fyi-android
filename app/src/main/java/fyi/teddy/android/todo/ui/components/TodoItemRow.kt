@@ -148,21 +148,23 @@ fun TodoItemRow(
             }
         }
 
-        IconButton(
-            onClick = {
-                val newPriority = if (item.priority == 2) 0 else 2
-                onUpdateItem(item.copy(priority = newPriority))
-            },
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                imageVector = if (item.priority > 0) Icons.Default.Star else Icons.Default.StarBorder,
-                contentDescription = "Toggle Priority",
-                tint = if (item.priority == 2) Color(0xFFFFD700)
-                       else if (item.priority == 1) Color(0xFFFFA500)
-                       else Color.Gray,
-                modifier = Modifier.size(20.dp)
-            )
+        if (item.priority > 0 || showDelete) {
+            IconButton(
+                onClick = {
+                    val newPriority = if (item.priority == 2) 0 else 2
+                    onUpdateItem(item.copy(priority = newPriority))
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (item.priority > 0) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = "Toggle Priority",
+                    tint = if (item.priority == 2) Color(0xFFFFD700)
+                           else if (item.priority == 1) Color(0xFFFFA500)
+                           else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         if (showDelete) {
