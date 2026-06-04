@@ -341,13 +341,44 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
 
-                try {
-                    db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `listId` TEXT")
-                } catch (e: Exception) {}
+                // Recreate grocery_items with the Foreign Key
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `grocery_items_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `quantity` TEXT NOT NULL, 
+                        `isBought` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `categoryId` INTEGER, 
+                        `timesBought` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `isActive` INTEGER NOT NULL, 
+                        `listId` TEXT, 
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL 
+                    )
+                """.trimIndent())
 
-                try {
-                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_items_listId` ON `grocery_items` (`listId`)")
-                } catch (e: Exception) {}
+                // Copy existing data from old table to new table (listId will default to NULL)
+                db.execSQL("""
+                    INSERT INTO `grocery_items_new` (
+                        `id`, `name`, `quantity`, `isBought`, `createdAt`, `position`, `categoryId`, 
+                        `timesBought`, `userId`, `isActive`, `listId`
+                    ) 
+                    SELECT 
+                        `id`, `name`, `quantity`, `isBought`, `createdAt`, `position`, `categoryId`, 
+                        `timesBought`, `userId`, `isActive`, NULL 
+                    FROM `grocery_items`
+                """.trimIndent())
+
+                // Drop the old table
+                db.execSQL("DROP TABLE `grocery_items`")
+
+                // Rename new table to old table
+                db.execSQL("ALTER TABLE `grocery_items_new` RENAME TO `grocery_items`")
+
+                // Recreate index on listId
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_items_listId` ON `grocery_items` (`listId`)")
             }
         }
 
@@ -361,9 +392,71 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_24_25 = object : Migration(24, 25) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                try {
-                    db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `notes` TEXT")
-                } catch (e: Exception) {}
+                // 1. Create a temporary table with the correct schema including the Foreign Key
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `grocery_items_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `quantity` TEXT NOT NULL, 
+                        `isBought` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `categoryId` INTEGER, 
+                        `timesBought` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `isActive` INTEGER NOT NULL, 
+                        `listId` TEXT, 
+                        `unit` TEXT, 
+                        `notes` TEXT, 
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL 
+                    )
+                """.trimIndent())
+
+                // 2. Check if 'notes' or 'unit' columns already exist in the original grocery_items table
+                val cursor = db.query("PRAGMA table_info(`grocery_items`)")
+                var hasNotes = false
+                var hasUnit = false
+                while (cursor.moveToNext()) {
+                    val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                    if (columnName == "notes") {
+                        hasNotes = true
+                    }
+                    if (columnName == "unit") {
+                        hasUnit = true
+                    }
+                }
+                cursor.close()
+
+                // 3. Construct select columns
+                val selectColumns = StringBuilder("`id`, `name`, `quantity`, `isBought`, `createdAt`, `position`, `categoryId`, `timesBought`, `userId`, `isActive`, `listId`")
+                if (hasUnit) {
+                    selectColumns.append(", `unit`")
+                } else {
+                    selectColumns.append(", NULL as `unit`")
+                }
+                if (hasNotes) {
+                    selectColumns.append(", `notes`")
+                } else {
+                    selectColumns.append(", NULL as `notes`")
+                }
+
+                // 4. Copy the data
+                db.execSQL("""
+                    INSERT INTO `grocery_items_new` (
+                        `id`, `name`, `quantity`, `isBought`, `createdAt`, `position`, `categoryId`, 
+                        `timesBought`, `userId`, `isActive`, `listId`, `unit`, `notes`
+                    ) 
+                    SELECT $selectColumns FROM `grocery_items`
+                """.trimIndent())
+
+                // 5. Drop the old table
+                db.execSQL("DROP TABLE `grocery_items`")
+
+                // 6. Rename new table to old table
+                db.execSQL("ALTER TABLE `grocery_items_new` RENAME TO `grocery_items`")
+
+                // 7. Recreate index on listId
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_items_listId` ON `grocery_items` (`listId`)")
             }
         }
 
