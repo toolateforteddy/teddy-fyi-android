@@ -52,7 +52,7 @@ class TodoDaoExtendedTest {
         val notPlanned = TodoItem(
             title = "Not Planned", 
             scheduledDate = null, 
-            recurrenceIntervalDays = 5, 
+            recurrenceRule = "FREQ=DAILY;INTERVAL=5",
             scheduledAt = System.currentTimeMillis() + 1000000, 
             userId = userId
         )
@@ -199,7 +199,7 @@ class TodoDaoExtendedTest {
             id = "1", 
             title = "Planned Today", 
             scheduledDate = today, 
-            recurrenceIntervalDays = 1,
+            recurrenceRule = "FREQ=DAILY;INTERVAL=1",
             scheduledAt = System.currentTimeMillis() + 100000000,
             userId = userId
         )

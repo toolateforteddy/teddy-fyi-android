@@ -21,31 +21,96 @@ import fyi.teddy.android.R
 
 @Composable
 fun RecurrenceDialog(
-    initialInterval: Int?,
+    initialRule: String?,
     onDismiss: () -> Unit,
-    onConfirm: (Int?) -> Unit
+    onConfirm: (String?) -> Unit
 ) {
-    var daysText by remember { mutableStateOf(initialInterval?.toString() ?: "") }
+    val options = listOf(
+        null to "None",
+        "FREQ=DAILY;INTERVAL=1" to "Every Day",
+        "FREQ=DAILY;INTERVAL=7" to "Every Week",
+        "FREQ=WEEKLY;BYDAY=TU,TH" to "Tuesday & Thursday",
+        "FREQ=WEEKLY;BYDAY=MO,WE,FR" to "Monday, Wednesday & Friday",
+        "FREQ=MONTHLY;INTERVAL=1" to "Every Month"
+    )
+    
+    var selectedRule by remember { mutableStateOf(initialRule) }
+    var customDaysText by remember { 
+        mutableStateOf(
+            if (initialRule?.startsWith("FREQ=DAILY;INTERVAL=") == true) {
+                initialRule.substringAfter("FREQ=DAILY;INTERVAL=")
+            } else ""
+        ) 
+    }
+    var isCustomSelected by remember { 
+        mutableStateOf(
+            initialRule != null && options.none { it.first == initialRule } && initialRule.startsWith("FREQ=DAILY;INTERVAL=")
+        ) 
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set Recurrence") },
+        title = { Text("Set Recurrence Schedule") },
         text = {
             Column {
-                Text("Re-schedule this task X days after completion.")
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = daysText,
-                    onValueChange = { daysText = it },
-                    label = { Text("Days") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
+                options.forEach { (rule, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                selectedRule = rule
+                                isCustomSelected = false
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedRule == rule && !isCustomSelected,
+                            onClick = { 
+                                selectedRule = rule
+                                isCustomSelected = false
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isCustomSelected = true }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = isCustomSelected,
+                        onClick = { isCustomSelected = true }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Custom Days:", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextField(
+                        value = customDaysText,
+                        onValueChange = { 
+                            customDaysText = it
+                            isCustomSelected = true
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.width(80.dp)
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                val days = daysText.toIntOrNull()
-                onConfirm(days)
+                if (isCustomSelected) {
+                    val days = customDaysText.toIntOrNull() ?: 1
+                    onConfirm("FREQ=DAILY;INTERVAL=$days")
+                } else {
+                    onConfirm(selectedRule)
+                }
             }) {
                 Text(stringResource(R.string.save))
             }

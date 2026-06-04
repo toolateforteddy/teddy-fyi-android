@@ -213,4 +213,42 @@ class AppDatabaseMigrationTest {
         assert(foundTask)
         cursor.close()
     }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate21To22() {
+        // Create database at version 21
+        val db = helper.createDatabase(TEST_DB, 21)
+        
+        // Insert an item in version 21
+        db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `recurrenceIntervalDays`, `sync_state`, `version`, `is_deleted`, `priority`) VALUES ('uuid-1', 'Recurrence Task', 0, 1000, 0, 1000, 0, 5, 'SYNCED', 1, 0, 2)")
+        db.close()
+
+        // Run migration to 22
+        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 22, true, AppDatabase.MIGRATION_21_22)
+        
+        // Verify column recurrenceRule exists and is formatted as FREQ=DAILY;INTERVAL=5 for legacy task
+        val cursor = migratedDb.query("SELECT * FROM `todo_items`")
+        var foundTask = false
+        while(cursor.moveToNext()) {
+            val id = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+            val title = cursor.getString(cursor.getColumnIndexOrThrow("title"))
+            val recurrenceRuleIndex = cursor.getColumnIndex("recurrenceRule")
+            val legacyColIndex = cursor.getColumnIndex("recurrenceIntervalDays")
+            
+            assert(recurrenceRuleIndex != -1)
+            assert(legacyColIndex == -1) // recurrenceIntervalDays should be dropped
+            
+            val rrule = cursor.getString(recurrenceRuleIndex)
+            
+            if (id == "uuid-1") {
+                assert(title == "Recurrence Task")
+                assert(rrule == "FREQ=DAILY;INTERVAL=5")
+                foundTask = true
+            }
+        }
+        
+        assert(foundTask)
+        cursor.close()
+    }
 }

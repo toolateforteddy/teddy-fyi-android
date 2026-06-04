@@ -25,7 +25,7 @@ import fyi.teddy.android.todo.data.TodoList
         Category::class,
         TodoList::class
     ], 
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -257,6 +257,62 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Create table `todo_items_new` with the updated schema (replacing recurrenceIntervalDays with recurrenceRule)
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `todo_items_new` (
+                        `id` TEXT NOT NULL, 
+                        `title` TEXT NOT NULL, 
+                        `isCompleted` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `scheduledDate` TEXT, 
+                        `recurrenceRule` TEXT, 
+                        `scheduledAt` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `parentId` TEXT, 
+                        `isDaily` INTEGER NOT NULL, 
+                        `dueDate` INTEGER,
+                        `description` TEXT,
+                        `listId` TEXT,
+                        `priority` INTEGER NOT NULL DEFAULT 0,
+                        `sync_state` TEXT NOT NULL DEFAULT 'SYNCED',
+                        `version` INTEGER NOT NULL DEFAULT 1,
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`listId`) REFERENCES `todo_lists`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL 
+                    )
+                """.trimIndent())
+
+                // 2. Insert existing data, converting recurrenceIntervalDays to standard iCalendar RRULE format (FREQ=DAILY;INTERVAL=X)
+                db.execSQL("""
+                    INSERT INTO `todo_items_new` (
+                        `id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledDate`, 
+                        `recurrenceRule`, `scheduledAt`, `userId`, `parentId`, `isDaily`, `dueDate`, 
+                        `description`, `listId`, `priority`, `sync_state`, `version`, `is_deleted`
+                    ) 
+                    SELECT 
+                        `id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledDate`, 
+                        CASE WHEN `recurrenceIntervalDays` IS NOT NULL THEN 'FREQ=DAILY;INTERVAL=' || `recurrenceIntervalDays` ELSE NULL END, 
+                        `scheduledAt`, `userId`, `parentId`, `isDaily`, `dueDate`, 
+                        `description`, `listId`, `priority`, `sync_state`, `version`, `is_deleted`
+                    FROM `todo_items`
+                """.trimIndent())
+
+                // 3. Drop old table
+                db.execSQL("DROP TABLE `todo_items`")
+
+                // 4. Rename new table to old table
+                db.execSQL("ALTER TABLE `todo_items_new` RENAME TO `todo_items`")
+
+                // 5. Re-create index on listId
+                try {
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_listId` ON `todo_items` (`listId`)")
+                } catch (e: Exception) {}
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -266,7 +322,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
-                        MIGRATION_19_20, MIGRATION_20_21
+                        MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22
                     )
                     .build()
                     .also { Instance = it }

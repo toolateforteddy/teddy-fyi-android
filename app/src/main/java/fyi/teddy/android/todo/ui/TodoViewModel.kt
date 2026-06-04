@@ -179,10 +179,10 @@ class TodoViewModel(
                 delay(2000)
                 _recentlyCompletedIds.update { it - item.id }
                 
-                if (item.recurrenceIntervalDays != null) {
+                if (item.recurrenceRule != null) {
                     val nextTime = fyi.teddy.android.todo.util.TaskSchedulerUtils.calculateNextRecurrenceTime(
                         System.currentTimeMillis(),
-                        item.recurrenceIntervalDays
+                        item.recurrenceRule
                     )
                     updateItem(item.copy(
                         isCompleted = false,

@@ -111,9 +111,9 @@ fun TodoItemRow(
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.recurrenceIntervalDays != null) {
+                if (item.recurrenceRule != null) {
                     Text(
-                        text = "Every ${item.recurrenceIntervalDays} days",
+                        text = formatRecurrenceRule(item.recurrenceRule),
                         color = Color.Gray,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(end = 8.dp)
@@ -354,10 +354,10 @@ fun TodoItemRow(
 
     if (showRecurrenceDialog) {
         RecurrenceDialog(
-            initialInterval = item.recurrenceIntervalDays,
+            initialRule = item.recurrenceRule,
             onDismiss = { showRecurrenceDialog = false },
-            onConfirm = { days ->
-                onUpdateItem(item.copy(recurrenceIntervalDays = days))
+            onConfirm = { rule ->
+                onUpdateItem(item.copy(recurrenceRule = rule))
                 showRecurrenceDialog = false
             }
         )
@@ -417,5 +417,26 @@ fun TodoItemRow(
             onDismiss = { showAddSubtaskDialog = false },
             onAdd = onAddSubtask
         )
+    }
+}
+
+private fun formatRecurrenceRule(rule: String): String {
+    val parts = rule.split(";").associate { 
+        val kv = it.split("=")
+        if (kv.size == 2) kv[0].uppercase() to kv[1].uppercase() else "" to ""
+    }
+    val freq = parts["FREQ"]
+    val interval = parts["INTERVAL"]?.toIntOrNull() ?: 1
+    val byDay = parts["BYDAY"]
+    
+    return when {
+        freq == "DAILY" && interval == 1 -> "Every day"
+        freq == "DAILY" && interval == 7 -> "Every week"
+        freq == "DAILY" -> "Every $interval days"
+        freq == "WEEKLY" && byDay == "TU,TH" -> "Tuesday & Thursday"
+        freq == "WEEKLY" && byDay == "MO,WE,FR" -> "Mon, Wed & Fri"
+        freq == "WEEKLY" -> "Every week"
+        freq == "MONTHLY" -> "Every month"
+        else -> "Recurring"
     }
 }

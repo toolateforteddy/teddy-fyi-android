@@ -33,10 +33,25 @@ class TodoSchedulerActionsTest {
 
     @Test
     fun testCalculateNextRecurrenceTime_Standard() {
-        val baseTimeMs = 1000L
-        val intervalDays = 2
-        // 2 days = 2 * 24 * 60 * 60 * 1000 = 172,800,000 ms
-        val expected = baseTimeMs + 172800000L
-        assertEquals(expected, TaskSchedulerUtils.calculateNextRecurrenceTime(baseTimeMs, intervalDays))
+        val baseTimeMs = java.time.Instant.parse("2024-04-15T12:00:00Z").toEpochMilli()
+        val rrule = "FREQ=DAILY;INTERVAL=2"
+        val nextTimeMs = TaskSchedulerUtils.calculateNextRecurrenceTime(baseTimeMs, rrule)
+        
+        val nextDate = java.time.Instant.ofEpochMilli(nextTimeMs)
+            .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        
+        assertEquals(LocalDate.of(2024, 4, 17), nextDate)
+    }
+
+    @Test
+    fun testCalculateNextRecurrenceTime_Weekly() {
+        val baseTimeMs = java.time.Instant.parse("2024-04-15T12:00:00Z").toEpochMilli() // Monday
+        val rrule = "FREQ=WEEKLY;BYDAY=TU,TH"
+        val nextTimeMs = TaskSchedulerUtils.calculateNextRecurrenceTime(baseTimeMs, rrule)
+        
+        val nextDate = java.time.Instant.ofEpochMilli(nextTimeMs)
+            .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            
+        assertEquals(LocalDate.of(2024, 4, 16), nextDate)
     }
 }

@@ -29,7 +29,7 @@ data class TodoItem(
     val createdAt: Long = System.currentTimeMillis(),
     val position: Int = 0,
     val scheduledDate: String? = null,
-    val recurrenceIntervalDays: Int? = null,
+    val recurrenceRule: String? = null,
     val scheduledAt: Long = System.currentTimeMillis(),
     val userId: String? = null,
     val parentId: String? = null,

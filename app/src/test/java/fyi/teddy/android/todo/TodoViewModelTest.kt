@@ -172,7 +172,7 @@ class TodoViewModelTest {
     @Test
     fun `test toggleComplete checked recurring task reschedules interval and resets state`() = runTest {
         val viewModel = TodoViewModel(application, repository, userId)
-        val item = TodoItem(id = "1", title = "Task", isCompleted = false, recurrenceIntervalDays = 5, userId = userId)
+        val item = TodoItem(id = "1", title = "Task", isCompleted = false, recurrenceRule = "FREQ=DAILY;INTERVAL=5", userId = userId)
 
         viewModel.toggleComplete(item, isChecked = true)
 
@@ -182,7 +182,7 @@ class TodoViewModelTest {
         coVerify(exactly = 1) {
             repository.updateItem(withArg {
                 assert(!it.isCompleted)
-                assert(it.recurrenceIntervalDays == 5)
+                assert(it.recurrenceRule == "FREQ=DAILY;INTERVAL=5")
                 assert(it.scheduledDate == null)
                 // Expected rescheduled scheduledAt is base time + 5 days
                 assert(it.scheduledAt > System.currentTimeMillis())

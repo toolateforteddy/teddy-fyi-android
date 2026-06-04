@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class TodoDao {
     @Query(
-        "SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceIntervalDays IS NULL OR " +
+        "SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceRule IS NULL OR " +
         "scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) " +
         "AND userId = :userId ORDER BY position ASC, createdAt DESC"
     )
@@ -16,7 +16,7 @@ abstract class TodoDao {
         SELECT * FROM todo_items WHERE userId = :userId AND (
             scheduledDate = :today 
             OR (dueDate IS NOT NULL AND dueDate <= (strftime('%s','now') * 1000 + 172800000))
-            OR (isDaily = 1 OR recurrenceIntervalDays IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
+            OR (isDaily = 1 OR recurrenceRule IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
             OR id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId)
             OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId))
         )
