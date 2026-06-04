@@ -15,7 +15,7 @@ import java.time.LocalDate
 class TodoViewModel(
     application: Application,
     private val repository: TodoRepository,
-    userId: String
+    private val userId: String
 ) : AndroidViewModel(application) {
 
     // Internal state flows to enforce Unidirectional Data Flow (UDF)
@@ -27,6 +27,12 @@ class TodoViewModel(
 
     private val _showCompletedOnly = MutableStateFlow(false)
     val showCompletedOnly: StateFlow<Boolean> = _showCompletedOnly.asStateFlow()
+
+    private val _selectedListId = MutableStateFlow<String?>(null)
+    val selectedListId: StateFlow<String?> = _selectedListId.asStateFlow()
+
+    val allLists = repository.getAllLists(userId)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _recentlyCompletedIds = MutableStateFlow(setOf<String>())
     val recentlyCompletedIds: StateFlow<Set<String>> = _recentlyCompletedIds.asStateFlow()
@@ -58,13 +64,21 @@ class TodoViewModel(
         repository.getScheduledItems(userId, today)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    data class TodoFilterSettings(
+        val mode: TodoMode,
+        val showCompleted: Boolean,
+        val recentlyCompleted: Set<String>,
+        val selectedListId: String?
+    )
+
     // Intermediate settings flow to combine multiple filter states
     private val settingsFlow = combine(
         _currentMode,
         _showCompletedOnly,
-        _recentlyCompletedIds
-    ) { mode, showCompleted, recentlyCompleted ->
-        Triple(mode, showCompleted, recentlyCompleted)
+        _recentlyCompletedIds,
+        _selectedListId
+    ) { mode, showCompleted, recentlyCompleted, selectedListId ->
+        TodoFilterSettings(mode, showCompleted, recentlyCompleted, selectedListId)
     }
 
     /**
@@ -78,12 +92,20 @@ class TodoViewModel(
         settingsFlow,
         todayDateFlow
     ) { all, today, scheduled, settings, todayString ->
-        val (mode, showCompleted, recentlyCompleted) = settings
+        val mode = settings.mode
+        val showCompleted = settings.showCompleted
+        val recentlyCompleted = settings.recentlyCompleted
+        val selectedListId = settings.selectedListId
+        
+        val listFilteredAll = all.filter { if (selectedListId != null) it.listId == selectedListId else true }
+        val listFilteredToday = today.filter { if (selectedListId != null) it.listId == selectedListId else true }
+        val listFilteredScheduled = scheduled.filter { if (selectedListId != null) it.listId == selectedListId else true }
+
         val baseItems = when(mode) {
-            TodoMode.TODAY -> today
-            TodoMode.BACKLOG -> all.filter { it.scheduledDate == null }
-            TodoMode.PLANNING -> all
-            TodoMode.SCHEDULED -> scheduled
+            TodoMode.TODAY -> listFilteredToday
+            TodoMode.BACKLOG -> listFilteredAll.filter { it.scheduledDate == null }
+            TodoMode.PLANNING -> listFilteredAll
+            TodoMode.SCHEDULED -> listFilteredScheduled
         }
 
         val filteredItems = baseItems.filter { item ->
@@ -187,8 +209,42 @@ class TodoViewModel(
                     title = capitalizedTitle,
                     userId = userId,
                     parentId = parentId,
-                    scheduledDate = scheduledDate
+                    scheduledDate = scheduledDate,
+                    listId = _selectedListId.value
                 ))
+            }
+        }
+    }
+
+    fun selectList(listId: String?) {
+        _selectedListId.value = listId
+    }
+
+    fun insertList(name: String, colorHex: String = "#000000") {
+        if (name.isNotBlank()) {
+            viewModelScope.launch {
+                repository.insertList(
+                    fyi.teddy.android.todo.data.TodoList(
+                        name = name,
+                        colorHex = colorHex,
+                        userId = userId
+                    )
+                )
+            }
+        }
+    }
+
+    fun updateList(list: fyi.teddy.android.todo.data.TodoList) {
+        viewModelScope.launch {
+            repository.updateList(list)
+        }
+    }
+
+    fun deleteList(list: fyi.teddy.android.todo.data.TodoList) {
+        viewModelScope.launch {
+            repository.deleteList(list)
+            if (_selectedListId.value == list.id) {
+                _selectedListId.value = null
             }
         }
     }

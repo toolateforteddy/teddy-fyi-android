@@ -1,13 +1,20 @@
 package fyi.teddy.android.todo.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -15,7 +22,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
+import fyi.teddy.android.todo.ui.components.AddListDialog
 import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
+import fyi.teddy.android.todo.ui.components.EditListDialog
 import fyi.teddy.android.todo.ui.components.TodoInputBar
 import fyi.teddy.android.todo.ui.components.TodoItemRow
 import kotlinx.coroutines.delay
@@ -45,9 +54,13 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
     val groupedItems by viewModel.groupedItems.collectAsState()
     val selectedPlanningDate by viewModel.selectedPlanningDate.collectAsState()
     val recentlyCompletedIds by viewModel.recentlyCompletedIds.collectAsState()
+    val allLists by viewModel.allLists.collectAsState()
+    val selectedListId by viewModel.selectedListId.collectAsState()
     
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     var showPlanningDatePicker by remember { mutableStateOf(false) }
+    var showAddListDialog by remember { mutableStateOf(false) }
+    var listToEdit by remember { mutableStateOf<fyi.teddy.android.todo.data.TodoList?>(null) }
     val expandedParentIds = remember { mutableStateOf(setOf<String>()) }
     val parties = remember { mutableStateListOf<Party>() }
     
@@ -86,6 +99,31 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
             onConfirm = {
                 viewModel.deleteAll(userId)
                 showClearAllConfirmation = false
+            }
+        )
+    }
+
+    if (showAddListDialog) {
+        AddListDialog(
+            onDismiss = { showAddListDialog = false },
+            onConfirm = { name, colorHex ->
+                viewModel.insertList(name, colorHex)
+                showAddListDialog = false
+            }
+        )
+    }
+
+    listToEdit?.let { list ->
+        EditListDialog(
+            list = list,
+            onDismiss = { listToEdit = null },
+            onConfirm = { updated ->
+                viewModel.updateList(updated)
+                listToEdit = null
+            },
+            onDelete = {
+                viewModel.deleteList(list)
+                listToEdit = null
             }
         )
     }
@@ -210,6 +248,76 @@ fun TodoScreen(userId: String, onBack: () -> Unit) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp)
                 ) {
+                    // Space list selection row
+                    @OptIn(ExperimentalFoundationApi::class)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // "All" space chip
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (selectedListId == null) MaterialTheme.colorScheme.primary else Color.DarkGray,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clickable { viewModel.selectList(null) }
+                        ) {
+                            Text(
+                                text = "All",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        // Custom list chips
+                        allLists.forEach { list ->
+                            val isSelected = selectedListId == list.id
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.secondary else Color(android.graphics.Color.parseColor(list.colorHex)).copy(alpha = 0.3f),
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .combinedClickable(
+                                        onClick = { viewModel.selectList(list.id) },
+                                        onLongClick = { listToEdit = list }
+                                    )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    // Little color dot for the list
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .background(
+                                                color = Color(android.graphics.Color.parseColor(list.colorHex)),
+                                                shape = RoundedCornerShape(4.dp)
+                                            )
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = list.name,
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
+                            }
+                        }
+
+                        // Add List Button
+                        IconButton(
+                            onClick = { showAddListDialog = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Space", tint = Color.Cyan)
+                        }
+                    }
+
                     if (!showCompletedOnly && currentMode != TodoMode.TODAY && !isEditMode) {
                         TodoInputBar(onAddNewItem = { title -> onAddNewItem(title, null) })
                     }

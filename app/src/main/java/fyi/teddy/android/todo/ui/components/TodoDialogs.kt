@@ -1,6 +1,9 @@
 package fyi.teddy.android.todo.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -179,6 +182,155 @@ fun EditDescriptionDialog(
                 onConfirm(null)
             }) {
                 Text("Clear")
+            }
+        }
+    )
+}
+
+@Composable
+fun AddListDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, colorHex: String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    val colors = listOf("#00FFFF", "#FF00FF", "#FFA500", "#00FF00", "#FFFF00", "#FF4500", "#1E90FF")
+    var selectedColor by remember { mutableStateOf(colors[0]) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create New Space") },
+        text = {
+            Column {
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Space Name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Select Color:")
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    colors.forEach { colorStr ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(
+                                    color = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(colorStr)),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { selectedColor = colorStr }
+                                .padding(2.dp)
+                        ) {
+                            if (selectedColor == colorStr) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (name.isNotBlank()) {
+                    onConfirm(name.trim(), selectedColor)
+                }
+            }) {
+                Text(stringResource(R.string.add))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun EditListDialog(
+    list: fyi.teddy.android.todo.data.TodoList,
+    onDismiss: () -> Unit,
+    onConfirm: (fyi.teddy.android.todo.data.TodoList) -> Unit,
+    onDelete: () -> Unit
+) {
+    var name by remember { mutableStateOf(list.name) }
+    val colors = listOf("#00FFFF", "#FF00FF", "#FFA500", "#00FF00", "#FFFF00", "#FF4500", "#1E90FF")
+    var selectedColor by remember { mutableStateOf(list.colorHex) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Space") },
+        text = {
+            Column {
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Space Name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Select Color:")
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    colors.forEach { colorStr ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(
+                                    color = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(colorStr)),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { selectedColor = colorStr }
+                                .padding(2.dp)
+                        ) {
+                            if (selectedColor == colorStr) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = androidx.compose.ui.graphics.Color.Red)
+                ) {
+                    Text("Delete")
+                }
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                    TextButton(onClick = {
+                        if (name.isNotBlank()) {
+                            onConfirm(list.copy(name = name.trim(), colorHex = selectedColor))
+                        }
+                    }) {
+                        Text(stringResource(R.string.save))
+                    }
+                }
             }
         }
     )

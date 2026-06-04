@@ -13,6 +13,7 @@ import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.data.TodoList
 
 @Suppress("MagicNumber")
 @Database(
@@ -21,9 +22,10 @@ import fyi.teddy.android.todo.data.TodoItem
         GroceryItem::class, 
         Store::class, 
         GroceryItemStoreInfo::class, 
-        Category::class
+        Category::class,
+        TodoList::class
     ], 
-    version = 19,
+    version = 20,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -218,6 +220,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Create todo_lists table
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `todo_lists` (
+                        `id` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `colorHex` TEXT NOT NULL DEFAULT '#000000', 
+                        `userId` TEXT, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `sync_state` TEXT NOT NULL DEFAULT 'SYNCED', 
+                        `version` INTEGER NOT NULL DEFAULT 1, 
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0, 
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+
+                // 2. Add listId column to todo_items
+                try {
+                    db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `listId` TEXT")
+                } catch (e: Exception) {}
+
+                // 3. Create index on listId
+                try {
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_listId` ON `todo_items` (`listId`)")
+                } catch (e: Exception) {}
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -226,7 +257,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-                        MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
+                        MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
+                        MIGRATION_19_20
                     )
                     .build()
                     .also { Instance = it }

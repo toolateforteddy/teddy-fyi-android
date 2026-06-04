@@ -2,6 +2,7 @@ package fyi.teddy.android.todo.repository
 
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.util.TaskSchedulerUtils
 import kotlinx.coroutines.flow.Flow
 
@@ -73,4 +74,24 @@ class TodoRepository(private val todoDao: TodoDao) {
      * Swaps display positions of two todo items to facilitate drag/drop or ordering.
      */
     suspend fun swapPositions(item1: TodoItem, item2: TodoItem) = todoDao.swapPositions(item1, item2)
+
+    /**
+     * Retrieves all todo lists for a specific user.
+     */
+    fun getAllLists(userId: String): Flow<List<TodoList>> = todoDao.getAllLists(userId)
+
+    /**
+     * Inserts a new todo list.
+     */
+    suspend fun insertList(list: TodoList) = todoDao.insertList(list)
+
+    /**
+     * Updates an existing todo list.
+     */
+    suspend fun updateList(list: TodoList) = todoDao.updateList(list)
+
+    /**
+     * Deletes a todo list and nullifies any reference to it on todo items.
+     */
+    suspend fun deleteList(list: TodoList) = todoDao.deleteListAndNullifyItems(list)
 }

@@ -3,9 +3,24 @@ package fyi.teddy.android.todo.data
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.ForeignKey
+import androidx.room.Index
 import java.util.UUID
 
-@Entity(tableName = "todo_items")
+@Entity(
+    tableName = "todo_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = TodoList::class,
+            parentColumns = ["id"],
+            childColumns = ["listId"],
+            onDelete = ForeignKey.SET_NULL,
+        )
+    ],
+    indices = [
+        Index(value = ["listId"])
+    ]
+)
 data class TodoItem(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
@@ -21,6 +36,7 @@ data class TodoItem(
     val isDaily: Boolean = false,
     val dueDate: Long? = null,
     val description: String? = null,
+    val listId: String? = null,
 
     // Cloud sync tracking columns
     @ColumnInfo(name = "sync_state")

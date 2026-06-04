@@ -75,4 +75,25 @@ abstract class TodoDao {
         updateItem(item1.copy(position = pos2))
         updateItem(item2.copy(position = pos1))
     }
+
+    @Query("SELECT * FROM todo_lists WHERE userId = :userId AND is_deleted = 0 ORDER BY createdAt ASC")
+    abstract fun getAllLists(userId: String): Flow<List<TodoList>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertList(list: TodoList)
+
+    @Update
+    abstract suspend fun updateList(list: TodoList)
+
+    @Delete
+    abstract suspend fun deleteList(list: TodoList)
+
+    @Transaction
+    open suspend fun deleteListAndNullifyItems(list: TodoList) {
+        nullifyListIdForItems(list.id)
+        deleteList(list)
+    }
+
+    @Query("UPDATE todo_items SET listId = NULL WHERE listId = :listId")
+    protected abstract suspend fun nullifyListIdForItems(listId: String)
 }

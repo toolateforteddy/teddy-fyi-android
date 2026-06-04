@@ -139,4 +139,43 @@ class AppDatabaseMigrationTest {
         assert(foundTask)
         cursor.close()
     }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate19To20() {
+        // Create database at version 19
+        val db = helper.createDatabase(TEST_DB, 19)
+        
+        // Insert an item in version 19
+        db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `sync_state`, `version`, `is_deleted`) VALUES ('uuid-1', 'Space Task', 0, 1000, 0, 1000, 0, 'SYNCED', 1, 0)")
+        db.close()
+
+        // Run migration to 20
+        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 20, true, AppDatabase.MIGRATION_19_20)
+        
+        // 1. Verify table todo_lists exists
+        val listsCursor = migratedDb.query("SELECT * FROM `todo_lists`")
+        listsCursor.close()
+
+        // 2. Verify column listId exists and is null for legacy task
+        val cursor = migratedDb.query("SELECT * FROM `todo_items`")
+        var foundTask = false
+        while(cursor.moveToNext()) {
+            val id = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+            val title = cursor.getString(cursor.getColumnIndexOrThrow("title"))
+            val listIdIndex = cursor.getColumnIndex("listId")
+            
+            assert(listIdIndex != -1)
+            val listId = cursor.getString(listIdIndex)
+            
+            if (id == "uuid-1") {
+                assert(title == "Space Task")
+                assert(listId == null)
+                foundTask = true
+            }
+        }
+        
+        assert(foundTask)
+        cursor.close()
+    }
 }
