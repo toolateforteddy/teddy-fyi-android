@@ -16,7 +16,7 @@ data class TodoList(
 
     // Cloud sync tracking columns
     @ColumnInfo(name = "sync_state")
-    val syncState: String = "SYNCED",
+    val syncState: String = "PENDING_INSERT",
     
     val version: Int = 1,
     

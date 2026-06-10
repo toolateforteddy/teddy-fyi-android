@@ -96,4 +96,28 @@ abstract class TodoDao {
 
     @Query("UPDATE todo_items SET listId = NULL WHERE listId = :listId")
     protected abstract suspend fun nullifyListIdForItems(listId: String)
+
+    @Query("SELECT * FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedItems(): List<TodoItem>
+
+    @Query("SELECT * FROM todo_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedLists(): List<TodoList>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertItems(items: List<TodoItem>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertLists(lists: List<TodoList>)
+
+    @Query("DELETE FROM todo_items WHERE id = :id")
+    abstract suspend fun hardDeleteItem(id: String)
+
+    @Query("DELETE FROM todo_lists WHERE id = :id")
+    abstract suspend fun hardDeleteList(id: String)
+
+    @Query("SELECT * FROM todo_items")
+    abstract suspend fun getAllItemsOneShot(): List<TodoItem>
+
+    @Query("SELECT * FROM todo_lists")
+    abstract suspend fun getAllListsOneShot(): List<TodoList>
 }
