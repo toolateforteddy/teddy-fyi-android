@@ -25,8 +25,35 @@ object TodoSyncManager {
             }
             TodoChangeDelta(
                 id = item.id,
-                operation_type = operationType,
+                operationType = operationType,
                 version = item.version,
+                data = data
+            )
+        }
+    }
+
+    suspend fun collectLocalListChanges(db: AppDatabase, isFirstSync: Boolean): List<TodoListChangeDelta> {
+        val todoDao = db.todoDao()
+        val unsyncedLists = if (isFirstSync) {
+            todoDao.getAllListsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            todoDao.getUnsyncedLists()
+        }
+
+        return unsyncedLists.map { list ->
+            val operationType = when {
+                list.isDeleted -> OperationType.DELETE
+                list.syncState == "PENDING_INSERT" -> OperationType.INSERT
+                list.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
+                else -> OperationType.UPDATE
+            }
+            val data = if (operationType == OperationType.DELETE) null else {
+                Json.encodeToJsonElement(TodoListDto.serializer(), list.toDto())
+            }
+            TodoListChangeDelta(
+                id = list.id,
+                operationType = operationType,
+                version = list.version,
                 data = data
             )
         }
@@ -36,6 +63,7 @@ object TodoSyncManager {
         db: AppDatabase,
         successIds: List<String>,
         remoteChanges: List<TodoChangeDelta>,
+        remoteListChanges: List<TodoListChangeDelta>,
         isFirstSync: Boolean
     ) {
         val todoDao = db.todoDao()
@@ -63,29 +91,51 @@ object TodoSyncManager {
             }
         }
 
-        // For lists, since the server doesn't sync lists, we just mark them as SYNCED locally on successful sync response
+        // Transition successfully uploaded lists back to sync_state = SYNCED
         unsyncedLists.forEach { localList ->
             if (localList.isDeleted) {
-                todoDao.hardDeleteList(localList.id)
+                if (successIds.contains(localList.id)) {
+                    todoDao.hardDeleteList(localList.id)
+                }
             } else {
-                todoDao.insertList(localList.copy(syncState = "SYNCED"))
+                if (successIds.contains(localList.id)) {
+                    todoDao.insertList(localList.copy(syncState = "SYNCED"))
+                }
             }
         }
 
         // Upsert incoming remote_todo_changes into local Room DB
         remoteChanges.forEach { changeDelta ->
-            if (changeDelta.operation_type == OperationType.DELETE) {
+            if (changeDelta.operationType == OperationType.DELETE) {
                 todoDao.hardDeleteItem(changeDelta.id)
             } else {
                 val itemDto = changeDelta.data?.let {
                     try {
                         Json.decodeFromJsonElement(TodoItemDto.serializer(), it)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         null
                     }
                 }
                 if (itemDto != null) {
                     todoDao.insertItem(itemDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // Upsert incoming remote_todo_list_changes into local Room DB
+        remoteListChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                todoDao.hardDeleteList(changeDelta.id)
+            } else {
+                val listDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(TodoListDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (listDto != null) {
+                    todoDao.insertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }

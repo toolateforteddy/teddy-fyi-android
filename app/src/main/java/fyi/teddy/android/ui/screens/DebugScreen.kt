@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.data.SyncLog
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.delay
@@ -48,23 +49,23 @@ fun DebugScreen(
     var authedHelloBody by remember { mutableStateOf<String?>(null) }
     var isLoadingAuthedHello by remember { mutableStateOf(false) }
 
-    // Sync Worker State from SharedPreferences
-    var lastSuccessTime by remember { mutableStateOf(0L) }
-    var lastStatus by remember { mutableStateOf<String?>(null) }
-    var lastError by remember { mutableStateOf<String?>(null) }
-    var lastAttemptTime by remember { mutableStateOf(0L) }
+    // Sync Logs and States observed directly from Room!
+    val recentLogs by db.syncLogDao().getRecentLogs(limit = 10).collectAsState(initial = emptyList())
+
+    val latestLog = recentLogs.firstOrNull()
+    val lastStatus = latestLog?.status
+    val lastAttemptTime = latestLog?.timestamp ?: 0L
+    val lastError = latestLog?.errorMessage
+    val lastSuccessTime = recentLogs.firstOrNull { it.status == "SUCCESS" }?.timestamp ?: 0L
+
     var lastSyncedAtState by remember { mutableStateOf<String?>(null) }
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
     var isSyncExpanded by remember { mutableStateOf(false) }
 
-    // Helper to reload shared preference metadata
+    // Helper to reload shared preference metadata (e.g. server high-watermark)
     fun reloadSyncMetadata() {
         val prefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-        lastSuccessTime = prefs.getLong("last_successful_sync_time_millis", 0L)
-        lastStatus = prefs.getString("last_sync_status", null)
-        lastError = prefs.getString("last_sync_error_message", null)
-        lastAttemptTime = prefs.getLong("last_sync_attempt_time_millis", 0L)
         lastSyncedAtState = prefs.getString("last_synced_at", null)
     }
 
@@ -81,7 +82,7 @@ fun DebugScreen(
         while (true) {
             reloadSyncMetadata()
             currentTime = System.currentTimeMillis()
-            delay(2000) // Poll every 2 seconds to keep UI/timers fresh
+            delay(1000) // Poll/Tick every 1 second to keep UI/timers fresh
         }
     }
 
@@ -347,7 +348,7 @@ fun DebugScreen(
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
-                                                text = lastError!!,
+                                                text = lastError,
                                                 color = Color.White,
                                                 fontSize = 12.sp,
                                                 fontFamily = FontFamily.Monospace
@@ -362,7 +363,6 @@ fun DebugScreen(
                                     onClick = {
                                         scope.launch {
                                             SyncWorker.enqueue(context)
-                                            reloadSyncMetadata()
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
@@ -387,11 +387,8 @@ fun DebugScreen(
                                             val prefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
                                             prefs.edit()
                                                 .remove("last_synced_at")
-                                                .remove("last_successful_sync_time_millis")
-                                                .remove("last_sync_status")
-                                                .remove("last_sync_error_message")
-                                                .remove("last_sync_attempt_time_millis")
                                                 .commit()
+                                            db.syncLogDao().clearAll()
                                             SyncWorker.enqueue(context)
                                             reloadSyncMetadata()
                                         }
@@ -409,11 +406,93 @@ fun DebugScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("RESET METADATA & FORCE FULL SYNC", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
+
+                                if (recentLogs.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "EXECUTION LOG HISTORY",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        letterSpacing = 1.sp,
+                                        fontSize = 12.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    recentLogs.forEach { log ->
+                                        SyncLogItemRow(log = log)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SyncLogItemRow(log: SyncLog) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (log.status) {
+                            "SUCCESS" -> Color.Green
+                            "FAILURE" -> Color.Red
+                            else -> Color.Yellow
+                        }
+                    )
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = log.status,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "↑${log.todoChangesSent + log.groceryChangesSent} sent  |  ↓${log.todoChangesReceived + log.groceryChangesReceived} recv",
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+                if (!log.errorMessage.isNullOrEmpty()) {
+                    Text(
+                        text = log.errorMessage,
+                        color = Color(0xFFFF8A80),
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            Text(
+                text = sdf.format(Date(log.timestamp)),
+                color = Color.White,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(
+                text = "${log.durationMillis}ms",
+                color = Color.Gray,
+                fontSize = 11.sp
+            )
         }
     }
 }

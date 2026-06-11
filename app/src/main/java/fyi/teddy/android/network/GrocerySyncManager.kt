@@ -25,8 +25,143 @@ object GrocerySyncManager {
             }
             GroceryChangeDelta(
                 id = item.id,
-                operation_type = operationType,
+                operationType = operationType,
                 version = item.version,
+                data = data
+            )
+        }
+    }
+
+    suspend fun collectLocalListChanges(db: AppDatabase, isFirstSync: Boolean): List<GroceryListChangeDelta> {
+        val groceryDao = db.groceryDao()
+        val unsyncedGroceryLists = if (isFirstSync) {
+            groceryDao.getAllListsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedLists()
+        }
+
+        return unsyncedGroceryLists.map { list ->
+            val operationType = when {
+                list.isDeleted -> OperationType.DELETE
+                list.syncState == "PENDING_INSERT" -> OperationType.INSERT
+                list.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
+                else -> OperationType.UPDATE
+            }
+            val data = if (operationType == OperationType.DELETE) null else {
+                Json.encodeToJsonElement(GroceryListDto.serializer(), list.toDto())
+            }
+            GroceryListChangeDelta(
+                id = list.id,
+                operationType = operationType,
+                version = list.version,
+                data = data
+            )
+        }
+    }
+
+    suspend fun collectLocalListMemberChanges(db: AppDatabase, isFirstSync: Boolean): List<GroceryListMemberChangeDelta> {
+        val groceryDao = db.groceryDao()
+        val unsyncedListMembers = if (isFirstSync) {
+            groceryDao.getAllListMembersOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedListMembers()
+        }
+
+        return unsyncedListMembers.map { member ->
+            val operationType = when {
+                member.isDeleted -> OperationType.DELETE
+                member.syncState == "PENDING_INSERT" -> OperationType.INSERT
+                member.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
+                else -> OperationType.UPDATE
+            }
+            val data = if (operationType == OperationType.DELETE) null else {
+                Json.encodeToJsonElement(GroceryListMemberDto.serializer(), member.toDto())
+            }
+            GroceryListMemberChangeDelta(
+                id = member.id,
+                operationType = operationType,
+                version = member.version,
+                data = data
+            )
+        }
+    }
+
+    suspend fun collectLocalStoreChanges(db: AppDatabase, isFirstSync: Boolean): List<StoreChangeDelta> {
+        val groceryDao = db.groceryDao()
+        val unsyncedStores = if (isFirstSync) {
+            groceryDao.getAllStoresOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedStores()
+        }
+
+        return unsyncedStores.map { store ->
+            val operationType = when {
+                store.isDeleted -> OperationType.DELETE
+                store.syncState == "PENDING_INSERT" -> OperationType.INSERT
+                store.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
+                else -> OperationType.UPDATE
+            }
+            val data = if (operationType == OperationType.DELETE) null else {
+                Json.encodeToJsonElement(StoreDto.serializer(), store.toDto())
+            }
+            StoreChangeDelta(
+                id = store.id,
+                operationType = operationType,
+                version = store.version,
+                data = data
+            )
+        }
+    }
+
+    suspend fun collectLocalCategoryChanges(db: AppDatabase, isFirstSync: Boolean): List<CategoryChangeDelta> {
+        val groceryDao = db.groceryDao()
+        val unsyncedCategories = if (isFirstSync) {
+            groceryDao.getAllCategoriesOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedCategories()
+        }
+
+        return unsyncedCategories.map { category ->
+            val operationType = when {
+                category.isDeleted -> OperationType.DELETE
+                category.syncState == "PENDING_INSERT" -> OperationType.INSERT
+                category.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
+                else -> OperationType.UPDATE
+            }
+            val data = if (operationType == OperationType.DELETE) null else {
+                Json.encodeToJsonElement(CategoryDto.serializer(), category.toDto())
+            }
+            CategoryChangeDelta(
+                id = category.id,
+                operationType = operationType,
+                version = category.version,
+                data = data
+            )
+        }
+    }
+
+    suspend fun collectLocalStoreInfoChanges(db: AppDatabase, isFirstSync: Boolean): List<GroceryItemStoreInfoChangeDelta> {
+        val groceryDao = db.groceryDao()
+        val unsyncedStoreInfos = if (isFirstSync) {
+            groceryDao.getAllStoreInfosOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedStoreInfos()
+        }
+
+        return unsyncedStoreInfos.map { info ->
+            val operationType = when {
+                info.isDeleted -> OperationType.DELETE
+                info.syncState == "PENDING_INSERT" -> OperationType.INSERT
+                info.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
+                else -> OperationType.UPDATE
+            }
+            val data = if (operationType == OperationType.DELETE) null else {
+                Json.encodeToJsonElement(GroceryItemStoreInfoDto.serializer(), info.toDto())
+            }
+            GroceryItemStoreInfoChangeDelta(
+                id = "${info.groceryItemId}_${info.storeId}",
+                operationType = operationType,
+                version = info.version,
                 data = data
             )
         }
@@ -36,6 +171,11 @@ object GrocerySyncManager {
         db: AppDatabase,
         successIds: List<String>,
         remoteChanges: List<GroceryChangeDelta>,
+        remoteStoreChanges: List<StoreChangeDelta>,
+        remoteCategoryChanges: List<CategoryChangeDelta>,
+        remoteListChanges: List<GroceryListChangeDelta>,
+        remoteListMemberChanges: List<GroceryListMemberChangeDelta>,
+        remoteStoreInfoChanges: List<GroceryItemStoreInfoChangeDelta>,
         isFirstSync: Boolean
     ) {
         val groceryDao = db.groceryDao()
@@ -48,6 +188,26 @@ object GrocerySyncManager {
             groceryDao.getAllListsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
         } else {
             groceryDao.getUnsyncedLists()
+        }
+        val unsyncedListMembers = if (isFirstSync) {
+            groceryDao.getAllListMembersOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedListMembers()
+        }
+        val unsyncedStores = if (isFirstSync) {
+            groceryDao.getAllStoresOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedStores()
+        }
+        val unsyncedCategories = if (isFirstSync) {
+            groceryDao.getAllCategoriesOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedCategories()
+        }
+        val unsyncedStoreInfos = if (isFirstSync) {
+            groceryDao.getAllStoreInfosOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            groceryDao.getUnsyncedStoreInfos()
         }
 
         // Transition successfully uploaded grocery items back to sync_state = SYNCED
@@ -64,29 +224,182 @@ object GrocerySyncManager {
             }
         }
 
-        // For grocery lists, mark them as SYNCED locally on successful sync response
+        // Transition successfully uploaded grocery lists back to sync_state = SYNCED
         unsyncedGroceryLists.forEach { localGroceryList ->
             if (localGroceryList.isDeleted) {
-                groceryDao.hardDeleteList(localGroceryList.id)
+                if (successIds.contains(localGroceryList.id)) {
+                    groceryDao.hardDeleteList(localGroceryList.id)
+                }
             } else {
-                groceryDao.insertList(localGroceryList.copy(syncState = "SYNCED"))
+                if (successIds.contains(localGroceryList.id)) {
+                    groceryDao.insertList(localGroceryList.copy(syncState = "SYNCED"))
+                }
+            }
+        }
+
+        // Transition successfully uploaded grocery list members back to sync_state = SYNCED
+        unsyncedListMembers.forEach { localMember ->
+            if (localMember.isDeleted) {
+                if (successIds.contains(localMember.id)) {
+                    groceryDao.hardDeleteListMember(localMember.id)
+                }
+            } else {
+                if (successIds.contains(localMember.id)) {
+                    groceryDao.insertListMember(localMember.copy(syncState = "SYNCED"))
+                }
+            }
+        }
+
+        // Transition successfully uploaded stores back to sync_state = SYNCED
+        unsyncedStores.forEach { localStore ->
+            val stringId = localStore.id.toString()
+            if (localStore.isDeleted) {
+                if (successIds.contains(stringId)) {
+                    groceryDao.hardDeleteStore(localStore.id)
+                }
+            } else {
+                if (successIds.contains(stringId)) {
+                    groceryDao.insertStore(localStore.copy(syncState = "SYNCED"))
+                }
+            }
+        }
+
+        // Transition successfully uploaded categories back to sync_state = SYNCED
+        unsyncedCategories.forEach { localCategory ->
+            val stringId = localCategory.id.toString()
+            if (localCategory.isDeleted) {
+                if (successIds.contains(stringId)) {
+                    groceryDao.hardDeleteCategory(localCategory.id)
+                }
+            } else {
+                if (successIds.contains(stringId)) {
+                    groceryDao.insertCategory(localCategory.copy(syncState = "SYNCED"))
+                }
+            }
+        }
+
+        // Transition successfully uploaded store infos back to sync_state = SYNCED
+        unsyncedStoreInfos.forEach { localInfo ->
+            val compositeId = "${localInfo.groceryItemId}_${localInfo.storeId}"
+            if (localInfo.isDeleted) {
+                if (successIds.contains(compositeId)) {
+                    groceryDao.hardDeleteStoreInfo(localInfo.groceryItemId, localInfo.storeId)
+                }
+            } else {
+                if (successIds.contains(compositeId)) {
+                    groceryDao.insertStoreInfo(localInfo.copy(syncState = "SYNCED"))
+                }
             }
         }
 
         // Upsert incoming remote_grocery_changes into local Room DB
         remoteChanges.forEach { changeDelta ->
-            if (changeDelta.operation_type == OperationType.DELETE) {
+            if (changeDelta.operationType == OperationType.DELETE) {
                 groceryDao.hardDeleteItem(changeDelta.id)
             } else {
                 val groceryDto = changeDelta.data?.let {
                     try {
                         Json.decodeFromJsonElement(GroceryItemDto.serializer(), it)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         null
                     }
                 }
                 if (groceryDto != null) {
                     groceryDao.insertItem(groceryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // Upsert incoming remote_grocery_list_changes into local Room DB
+        remoteListChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                groceryDao.hardDeleteList(changeDelta.id)
+            } else {
+                val listDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(GroceryListDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (listDto != null) {
+                    groceryDao.insertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // Upsert incoming remote_grocery_list_member_changes into local Room DB
+        remoteListMemberChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                groceryDao.hardDeleteListMember(changeDelta.id)
+            } else {
+                val memberDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(GroceryListMemberDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (memberDto != null) {
+                    groceryDao.insertListMember(memberDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // Upsert incoming remote_store_changes into local Room DB
+        remoteStoreChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                groceryDao.hardDeleteStore(changeDelta.id)
+            } else {
+                val storeDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(StoreDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (storeDto != null) {
+                    groceryDao.insertStore(storeDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // Upsert incoming remote_category_changes into local Room DB
+        remoteCategoryChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                groceryDao.hardDeleteCategory(changeDelta.id)
+            } else {
+                val categoryDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(CategoryDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (categoryDto != null) {
+                    groceryDao.insertCategory(categoryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // Upsert incoming remote_grocery_item_store_info_changes into local Room DB
+        remoteStoreInfoChanges.forEach { changeDelta ->
+            val parts = changeDelta.id.split('_', '-')
+            val groceryItemId = parts[0].toIntOrNull() ?: 0
+            val storeId = parts.getOrNull(1)?.toIntOrNull() ?: 0
+
+            if (changeDelta.operationType == OperationType.DELETE) {
+                groceryDao.hardDeleteStoreInfo(groceryItemId, storeId)
+            } else {
+                val infoDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(GroceryItemStoreInfoDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (infoDto != null) {
+                    groceryDao.insertStoreInfo(infoDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }

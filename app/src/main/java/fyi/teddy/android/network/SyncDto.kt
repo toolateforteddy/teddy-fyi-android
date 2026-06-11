@@ -1,7 +1,12 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class, kotlinx.serialization.InternalSerializationApi::class)
 package fyi.teddy.android.network
 
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.Store
+import fyi.teddy.android.grocery.data.Category
+import fyi.teddy.android.grocery.data.GroceryListMember
+import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
 import kotlinx.serialization.SerialName
@@ -16,10 +21,55 @@ enum class OperationType {
 }
 
 @Serializable
+data class TodoListChangeDelta(
+    val id: String,
+    @SerialName("type")
+    val operationType: OperationType,
+    val version: Int,
+    val data: JsonElement? = null
+)
+
+@Serializable
 data class TodoChangeDelta(
     val id: String,
     @SerialName("type")
-    val operation_type: OperationType,
+    val operationType: OperationType,
+    val version: Int,
+    val data: JsonElement? = null
+)
+
+@Serializable
+data class GroceryListChangeDelta(
+    val id: String,
+    @SerialName("type")
+    val operationType: OperationType,
+    val version: Int,
+    val data: JsonElement? = null
+)
+
+@Serializable
+data class GroceryListMemberChangeDelta(
+    val id: String,
+    @SerialName("type")
+    val operationType: OperationType,
+    val version: Int,
+    val data: JsonElement? = null
+)
+
+@Serializable
+data class StoreChangeDelta(
+    val id: Int,
+    @SerialName("type")
+    val operationType: OperationType,
+    val version: Int,
+    val data: JsonElement? = null
+)
+
+@Serializable
+data class CategoryChangeDelta(
+    val id: Int,
+    @SerialName("type")
+    val operationType: OperationType,
     val version: Int,
     val data: JsonElement? = null
 )
@@ -28,25 +78,46 @@ data class TodoChangeDelta(
 data class GroceryChangeDelta(
     val id: Int,
     @SerialName("type")
-    val operation_type: OperationType,
+    val operationType: OperationType,
+    val version: Int,
+    val data: JsonElement? = null
+)
+
+@Serializable
+data class GroceryItemStoreInfoChangeDelta(
+    val id: String,
+    @SerialName("type")
+    val operationType: OperationType,
     val version: Int,
     val data: JsonElement? = null
 )
 
 @Serializable
 data class SyncRequest(
-    val last_synced_at: String?,
-    val client_id: String,
-    val todo_changes: List<TodoChangeDelta>,
-    val grocery_changes: List<GroceryChangeDelta>
+    @SerialName("last_synced_at") val lastSyncedAt: String?,
+    @SerialName("client_id") val clientId: String,
+    @SerialName("todo_list_changes") val todoListChanges: List<TodoListChangeDelta> = emptyList(),
+    @SerialName("todo_changes") val todoChanges: List<TodoChangeDelta> = emptyList(),
+    @SerialName("grocery_list_changes") val groceryListChanges: List<GroceryListChangeDelta> = emptyList(),
+    @SerialName("grocery_list_member_changes") val groceryListMemberChanges: List<GroceryListMemberChangeDelta> = emptyList(),
+    @SerialName("store_changes") val storeChanges: List<StoreChangeDelta> = emptyList(),
+    @SerialName("category_changes") val categoryChanges: List<CategoryChangeDelta> = emptyList(),
+    @SerialName("grocery_changes") val groceryChanges: List<GroceryChangeDelta> = emptyList(),
+    @SerialName("grocery_item_store_info_changes") val groceryItemStoreInfoChanges: List<GroceryItemStoreInfoChangeDelta> = emptyList()
 )
 
 @Serializable
 data class SyncResponse(
-    val success_ids: List<String>,
-    val remote_todo_changes: List<TodoChangeDelta>,
-    val remote_grocery_changes: List<GroceryChangeDelta>,
-    val server_timestamp: String
+    @SerialName("success_ids") val successIds: List<String>,
+    @SerialName("remote_todo_list_changes") val remoteTodoListChanges: List<TodoListChangeDelta> = emptyList(),
+    @SerialName("remote_todo_changes") val remoteTodoChanges: List<TodoChangeDelta> = emptyList(),
+    @SerialName("remote_grocery_list_changes") val remoteGroceryListChanges: List<GroceryListChangeDelta> = emptyList(),
+    @SerialName("remote_grocery_list_member_changes") val remoteGroceryListMemberChanges: List<GroceryListMemberChangeDelta> = emptyList(),
+    @SerialName("remote_store_changes") val remoteStoreChanges: List<StoreChangeDelta> = emptyList(),
+    @SerialName("remote_category_changes") val remoteCategoryChanges: List<CategoryChangeDelta> = emptyList(),
+    @SerialName("remote_grocery_changes") val remoteGroceryChanges: List<GroceryChangeDelta> = emptyList(),
+    @SerialName("remote_grocery_item_store_info_changes") val remoteGroceryItemStoreInfoChanges: List<GroceryItemStoreInfoChangeDelta> = emptyList(),
+    @SerialName("server_timestamp") val serverTimestamp: String
 )
 
 @Serializable
@@ -66,9 +137,9 @@ data class TodoItemDto(
     val description: String?,
     val listId: String?,
     val priority: Int,
-    val sync_state: String,
+    @SerialName("sync_state") val syncState: String,
     val version: Int,
-    val is_deleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 
 @Serializable
@@ -78,9 +149,9 @@ data class TodoListDto(
     val colorHex: String,
     val userId: String?,
     val createdAt: Long,
-    val sync_state: String,
+    @SerialName("sync_state") val syncState: String,
     val version: Int,
-    val is_deleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 
 @Serializable
@@ -98,9 +169,9 @@ data class GroceryItemDto(
     @SerialName("listId") val listId: String?,
     val unit: String?,
     val notes: String?,
-    val sync_state: String,
+    @SerialName("sync_state") val syncState: String,
     val version: Int,
-    val is_deleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 
 @Serializable
@@ -109,9 +180,56 @@ data class GroceryListDto(
     val name: String,
     @SerialName("ownerId") val ownerId: String?,
     @SerialName("createdAt") val createdAt: Long,
-    val sync_state: String,
+    @SerialName("sync_state") val syncState: String,
     val version: Int,
-    val is_deleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class StoreDto(
+    val id: Int,
+    val name: String,
+    val position: Int,
+    @SerialName("isDefaultSupported") val isDefaultSupported: Boolean,
+    @SerialName("userId") val userId: String?,
+    @SerialName("sync_state") val syncState: String,
+    val version: Int,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class CategoryDto(
+    val id: Int,
+    val name: String,
+    val position: Int,
+    @SerialName("userId") val userId: String?,
+    @SerialName("sync_state") val syncState: String,
+    val version: Int,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class GroceryListMemberDto(
+    val id: String,
+    @SerialName("listId") val listId: String,
+    @SerialName("userId") val userId: String,
+    val role: String,
+    @SerialName("joinedAt") val joinedAt: Long,
+    @SerialName("sync_state") val syncState: String,
+    val version: Int,
+    @SerialName("is_deleted") val isDeleted: Boolean
+)
+
+@Serializable
+data class GroceryItemStoreInfoDto(
+    @SerialName("groceryItemId") val groceryItemId: Int,
+    @SerialName("storeId") val storeId: Int,
+    val price: Double?,
+    @SerialName("isAvailable") val isAvailable: Boolean,
+    @SerialName("userId") val userId: String?,
+    @SerialName("sync_state") val syncState: String,
+    val version: Int,
+    @SerialName("is_deleted") val isDeleted: Boolean
 )
 
 // Helper mapping extensions
@@ -133,9 +251,9 @@ fun TodoItem.toDto(): TodoItemDto {
         description = description,
         listId = listId,
         priority = priority,
-        sync_state = syncState,
+        syncState = syncState,
         version = version,
-        is_deleted = isDeleted
+        isDeleted = isDeleted
     )
 }
 
@@ -156,9 +274,9 @@ fun TodoItemDto.toEntity(): TodoItem {
         description = description,
         listId = listId,
         priority = priority,
-        syncState = sync_state,
+        syncState = syncState,
         version = version,
-        isDeleted = is_deleted
+        isDeleted = isDeleted
     )
 }
 
@@ -169,9 +287,9 @@ fun TodoList.toDto(): TodoListDto {
         colorHex = colorHex,
         userId = userId,
         createdAt = createdAt,
-        sync_state = syncState,
+        syncState = syncState,
         version = version,
-        is_deleted = isDeleted
+        isDeleted = isDeleted
     )
 }
 
@@ -182,9 +300,9 @@ fun TodoListDto.toEntity(): TodoList {
         colorHex = colorHex,
         userId = userId,
         createdAt = createdAt,
-        syncState = sync_state,
+        syncState = syncState,
         version = version,
-        isDeleted = is_deleted
+        isDeleted = isDeleted
     )
 }
 
@@ -203,9 +321,9 @@ fun GroceryItem.toDto(): GroceryItemDto {
         listId = listId,
         unit = unit,
         notes = notes,
-        sync_state = syncState,
+        syncState = syncState,
         version = version,
-        is_deleted = isDeleted
+        isDeleted = isDeleted
     )
 }
 
@@ -224,9 +342,9 @@ fun GroceryItemDto.toEntity(): GroceryItem {
         listId = listId,
         unit = unit,
         notes = notes,
-        syncState = sync_state,
+        syncState = syncState,
         version = version,
-        isDeleted = is_deleted
+        isDeleted = isDeleted
     )
 }
 
@@ -236,9 +354,9 @@ fun GroceryList.toDto(): GroceryListDto {
         name = name,
         ownerId = ownerId,
         createdAt = createdAt,
-        sync_state = syncState,
+        syncState = syncState,
         version = version,
-        is_deleted = isDeleted
+        isDeleted = isDeleted
     )
 }
 
@@ -248,8 +366,110 @@ fun GroceryListDto.toEntity(): GroceryList {
         name = name,
         ownerId = ownerId,
         createdAt = createdAt,
-        syncState = sync_state,
+        syncState = syncState,
         version = version,
-        isDeleted = is_deleted
+        isDeleted = isDeleted
+    )
+}
+
+fun Store.toDto(): StoreDto {
+    return StoreDto(
+        id = id,
+        name = name,
+        position = position,
+        isDefaultSupported = isDefaultSupported,
+        userId = userId,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun StoreDto.toEntity(): Store {
+    return Store(
+        id = id,
+        name = name,
+        position = position,
+        isDefaultSupported = isDefaultSupported,
+        userId = userId,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun Category.toDto(): CategoryDto {
+    return CategoryDto(
+        id = id,
+        name = name,
+        position = position,
+        userId = userId,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun CategoryDto.toEntity(): Category {
+    return Category(
+        id = id,
+        name = name,
+        position = position,
+        userId = userId,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun GroceryListMember.toDto(): GroceryListMemberDto {
+    return GroceryListMemberDto(
+        id = id,
+        listId = listId,
+        userId = userId,
+        role = role,
+        joinedAt = joinedAt,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun GroceryListMemberDto.toEntity(): GroceryListMember {
+    return GroceryListMember(
+        id = id,
+        listId = listId,
+        userId = userId,
+        role = role,
+        joinedAt = joinedAt,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun GroceryItemStoreInfo.toDto(): GroceryItemStoreInfoDto {
+    return GroceryItemStoreInfoDto(
+        groceryItemId = groceryItemId,
+        storeId = storeId,
+        price = price,
+        isAvailable = isAvailable,
+        userId = userId,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
+    )
+}
+
+fun GroceryItemStoreInfoDto.toEntity(): GroceryItemStoreInfo {
+    return GroceryItemStoreInfo(
+        groceryItemId = groceryItemId,
+        storeId = storeId,
+        price = price,
+        isAvailable = isAvailable,
+        userId = userId,
+        syncState = syncState,
+        version = version,
+        isDeleted = isDeleted
     )
 }

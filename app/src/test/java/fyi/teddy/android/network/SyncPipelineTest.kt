@@ -9,6 +9,10 @@ import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.repository.TodoRepository
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.Store
+import fyi.teddy.android.grocery.data.Category
+import fyi.teddy.android.grocery.data.GroceryListMember
+import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -81,9 +85,9 @@ class SyncPipelineTest {
         assertEquals(item.description, dto.description)
         assertEquals(item.listId, dto.listId)
         assertEquals(item.priority, dto.priority)
-        assertEquals(item.syncState, dto.sync_state)
+        assertEquals(item.syncState, dto.syncState)
         assertEquals(item.version, dto.version)
-        assertEquals(item.isDeleted, dto.is_deleted)
+        assertEquals(item.isDeleted, dto.isDeleted)
 
         // Map back to entity
         val entity = dto.toEntity()
@@ -109,9 +113,9 @@ class SyncPipelineTest {
         assertEquals(list.colorHex, dto.colorHex)
         assertEquals(list.userId, dto.userId)
         assertEquals(list.createdAt, dto.createdAt)
-        assertEquals(list.syncState, dto.sync_state)
+        assertEquals(list.syncState, dto.syncState)
         assertEquals(list.version, dto.version)
-        assertEquals(list.isDeleted, dto.is_deleted)
+        assertEquals(list.isDeleted, dto.isDeleted)
 
         val entity = dto.toEntity()
         assertEquals(list, entity)
@@ -120,17 +124,17 @@ class SyncPipelineTest {
     @Test
     fun testSerializationAndDeserialization() {
         val request = SyncRequest(
-            last_synced_at = "2023-10-27T10:15:30Z",
-            client_id = "test-client",
-            todo_changes = listOf(
+            lastSyncedAt = "2023-10-27T10:15:30Z",
+            clientId = "test-client",
+            todoChanges = listOf(
                 TodoChangeDelta(
                     id = "1",
-                    operation_type = OperationType.INSERT,
+                    operationType = OperationType.INSERT,
                     version = 1,
                     data = json.encodeToJsonElement(TodoItemDto.serializer(), TodoItem(id = "1", title = "Task 1", syncState = "PENDING_INSERT", version = 1).toDto())
                 )
             ),
-            grocery_changes = emptyList()
+            groceryChanges = emptyList()
         )
 
         val serialized = json.encodeToString(request)
@@ -139,8 +143,8 @@ class SyncPipelineTest {
         assertTrue(serialized.contains("PENDING_INSERT"))
 
         val deserialized = json.decodeFromString<SyncRequest>(serialized)
-        assertEquals(request.last_synced_at, deserialized.last_synced_at)
-        assertEquals(request.todo_changes.size, deserialized.todo_changes.size)
+        assertEquals(request.lastSyncedAt, deserialized.lastSyncedAt)
+        assertEquals(request.todoChanges.size, deserialized.todoChanges.size)
         assertTrue(serialized.contains("INSERT"))
     }
 
@@ -236,7 +240,7 @@ class SyncPipelineTest {
         val dto = groceryItem1.toDto()
         assertEquals(groceryItem1.id, dto.id)
         assertEquals(groceryItem1.name, dto.name)
-        assertEquals(groceryItem1.syncState, dto.sync_state)
+        assertEquals(groceryItem1.syncState, dto.syncState)
 
         // 2. Update SYNCED item
         repository.updateItem(groceryItem2.copy(name = "Organic Apples"))
@@ -256,5 +260,105 @@ class SyncPipelineTest {
         assertNotNull(softDeletedItem2)
         assertEquals("PENDING_DELETE", softDeletedItem2?.syncState)
         assertTrue(softDeletedItem2?.isDeleted == true)
+    }
+
+    @Test
+    fun testStoreAndCategoryDtoMapping() {
+        val store = Store(
+            id = 42,
+            name = "Trader Joe's",
+            position = 2,
+            isDefaultSupported = false,
+            userId = "user-123",
+            syncState = "PENDING_INSERT",
+            version = 1,
+            isDeleted = false
+        )
+
+        val storeDto = store.toDto()
+        assertEquals(store.id, storeDto.id)
+        assertEquals(store.name, storeDto.name)
+        assertEquals(store.position, storeDto.position)
+        assertEquals(store.isDefaultSupported, storeDto.isDefaultSupported)
+        assertEquals(store.userId, storeDto.userId)
+        assertEquals(store.syncState, storeDto.syncState)
+        assertEquals(store.version, storeDto.version)
+        assertEquals(store.isDeleted, storeDto.isDeleted)
+
+        val storeEntity = storeDto.toEntity()
+        assertEquals(store, storeEntity)
+
+        val category = Category(
+            id = 15,
+            name = "Produce",
+            position = 4,
+            userId = "user-123",
+            syncState = "PENDING_UPDATE",
+            version = 2,
+            isDeleted = false
+        )
+
+        val categoryDto = category.toDto()
+        assertEquals(category.id, categoryDto.id)
+        assertEquals(category.name, categoryDto.name)
+        assertEquals(category.position, categoryDto.position)
+        assertEquals(category.userId, categoryDto.userId)
+        assertEquals(category.syncState, categoryDto.syncState)
+        assertEquals(category.version, categoryDto.version)
+        assertEquals(category.isDeleted, categoryDto.isDeleted)
+
+        val categoryEntity = categoryDto.toEntity()
+        assertEquals(category, categoryEntity)
+    }
+
+    @Test
+    fun testGroceryListMemberAndStoreInfoDtoMapping() {
+        val member = GroceryListMember(
+            id = "member-uuid",
+            listId = "list-uuid",
+            userId = "user-uuid",
+            role = "ADMIN",
+            joinedAt = 12345678L,
+            syncState = "PENDING_INSERT",
+            version = 1,
+            isDeleted = false
+        )
+
+        val memberDto = member.toDto()
+        assertEquals(member.id, memberDto.id)
+        assertEquals(member.listId, memberDto.listId)
+        assertEquals(member.userId, memberDto.userId)
+        assertEquals(member.role, memberDto.role)
+        assertEquals(member.joinedAt, memberDto.joinedAt)
+        assertEquals(member.syncState, memberDto.syncState)
+        assertEquals(member.version, memberDto.version)
+        assertEquals(member.isDeleted, memberDto.isDeleted)
+
+        val memberEntity = memberDto.toEntity()
+        assertEquals(member, memberEntity)
+
+        val storeInfo = GroceryItemStoreInfo(
+            groceryItemId = 50,
+            storeId = 12,
+            price = 4.99,
+            isAvailable = true,
+            userId = "user-uuid",
+            syncState = "PENDING_UPDATE",
+            version = 3,
+            isDeleted = false
+        )
+
+        val infoDto = storeInfo.toDto()
+        assertEquals(storeInfo.groceryItemId, infoDto.groceryItemId)
+        assertEquals(storeInfo.storeId, infoDto.storeId)
+        assertEquals(storeInfo.price, infoDto.price)
+        assertEquals(storeInfo.isAvailable, infoDto.isAvailable)
+        assertEquals(storeInfo.userId, infoDto.userId)
+        assertEquals(storeInfo.syncState, infoDto.syncState)
+        assertEquals(storeInfo.version, infoDto.version)
+        assertEquals(storeInfo.isDeleted, infoDto.isDeleted)
+
+        val infoEntity = infoDto.toEntity()
+        assertEquals(storeInfo, infoEntity)
     }
 }

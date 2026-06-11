@@ -196,15 +196,51 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedLists(): List<GroceryList>
 
+    @Query("SELECT * FROM stores WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedStores(): List<Store>
+
+    @Query("SELECT * FROM categories WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedCategories(): List<Category>
+
     @Query("DELETE FROM grocery_items WHERE id = :id")
     abstract suspend fun hardDeleteItem(id: Int)
 
     @Query("DELETE FROM grocery_lists WHERE id = :id")
     abstract suspend fun hardDeleteList(id: String)
 
+    @Query("DELETE FROM stores WHERE id = :id")
+    abstract suspend fun hardDeleteStore(id: Int)
+
+    @Query("DELETE FROM categories WHERE id = :id")
+    abstract suspend fun hardDeleteCategory(id: Int)
+
+    @Query("DELETE FROM grocery_list_members WHERE id = :id")
+    abstract suspend fun hardDeleteListMember(id: String)
+
+    @Query("DELETE FROM grocery_item_store_info WHERE groceryItemId = :groceryItemId AND storeId = :storeId")
+    abstract suspend fun hardDeleteStoreInfo(groceryItemId: Int, storeId: Int)
+
     @Query("SELECT * FROM grocery_items")
     abstract suspend fun getAllItemsOneShot(): List<GroceryItem>
 
     @Query("SELECT * FROM grocery_lists")
     abstract suspend fun getAllListsOneShot(): List<GroceryList>
+
+    @Query("SELECT * FROM stores")
+    abstract suspend fun getAllStoresOneShot(): List<Store>
+
+    @Query("SELECT * FROM categories")
+    abstract suspend fun getAllCategoriesOneShot(): List<Category>
+
+    @Query("SELECT * FROM grocery_list_members")
+    abstract suspend fun getAllListMembersOneShot(): List<GroceryListMember>
+
+    @Query("SELECT * FROM grocery_item_store_info")
+    abstract suspend fun getAllStoreInfosOneShot(): List<GroceryItemStoreInfo>
+
+    @Query("SELECT * FROM grocery_list_members WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedListMembers(): List<GroceryListMember>
+
+    @Query("SELECT * FROM grocery_item_store_info WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedStoreInfos(): List<GroceryItemStoreInfo>
 }

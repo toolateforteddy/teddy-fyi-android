@@ -87,3 +87,4 @@ When generating code, modifying Room DAOs, or writing WorkManager payloads:
 1. Ensure all network payloads are structured as batch deltas (not single REST mutations).
 2. Maintain strict separation between UI layers and the background sync engine.
 3. Adhere to the `sync_state` lifecycle state machine on every database write.
+4. Note that you (the Gemini Agent) do not have the ability to take screenshots. You should never try to take screenshots.

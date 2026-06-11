@@ -6,10 +6,12 @@ import androidx.room.withTransaction
 import androidx.work.*
 import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.data.SyncLog
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
+import androidx.core.content.edit
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(
@@ -17,26 +19,40 @@ class SyncWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
-    private fun recordSyncSuccess() {
-        val prefs = applicationContext.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putLong("last_successful_sync_time_millis", System.currentTimeMillis())
-            .putString("last_sync_status", "SUCCESS")
-            .remove("last_sync_error_message")
-            .putLong("last_sync_attempt_time_millis", System.currentTimeMillis())
-            .apply()
-    }
-
-    private fun recordSyncFailure(errorMessage: String) {
-        val prefs = applicationContext.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString("last_sync_status", "ERROR")
-            .putString("last_sync_error_message", errorMessage)
-            .putLong("last_sync_attempt_time_millis", System.currentTimeMillis())
-            .apply()
+    private suspend fun recordSyncLog(
+        status: String,
+        startTime: Long,
+        errorMessage: String? = null,
+        todoChangesSent: Int = 0,
+        groceryChangesSent: Int = 0,
+        todoChangesReceived: Int = 0,
+        groceryChangesReceived: Int = 0
+    ) {
+        val durationMillis = System.currentTimeMillis() - startTime
+        try {
+            val db = AppDatabase.getDatabase(applicationContext)
+            db.syncLogDao().insert(
+                SyncLog(
+                    status = status,
+                    durationMillis = durationMillis,
+                    errorMessage = errorMessage,
+                    todoChangesSent = todoChangesSent,
+                    groceryChangesSent = groceryChangesSent,
+                    todoChangesReceived = todoChangesReceived,
+                    groceryChangesReceived = groceryChangesReceived
+                )
+            )
+            // Prune logs older than 7 days
+            val cutoff = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000)
+            db.syncLogDao().pruneLogs(cutoff)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write sync log to database", e)
+        }
     }
 
     override suspend fun doWork(): Result {
+        val startTime = System.currentTimeMillis()
+
         Log.d(TAG, "Starting synchronization worker...")
 
         // 1. Load authenticated user session
@@ -44,8 +60,9 @@ class SyncWorker(
         session.load(applicationContext)
         val idToken = session.idToken
         if (idToken == null) {
+            val errorMsg = "No auth token found."
             Log.w(TAG, "No auth token found, skipping sync.")
-            recordSyncFailure("No auth token found.")
+            recordSyncLog("FAILURE", startTime, errorMsg)
             return Result.failure()
         }
 
@@ -55,24 +72,48 @@ class SyncWorker(
         var clientId = sharedPrefs.getString("client_id", null)
         if (clientId == null) {
             clientId = java.util.UUID.randomUUID().toString()
-            sharedPrefs.edit().putString("client_id", clientId).apply()
+            sharedPrefs.edit { putString("client_id", clientId) }
         }
 
         val db = AppDatabase.getDatabase(applicationContext)
 
         // 3. Collect local unsynced mutations from each domain independently
         val isFirstSync = lastSyncedAt == null
+        val todoListChanges = TodoSyncManager.collectLocalListChanges(db, isFirstSync)
         val todoChanges = TodoSyncManager.collectLocalChanges(db, isFirstSync)
+        val groceryListChanges = GrocerySyncManager.collectLocalListChanges(db, isFirstSync)
+        val groceryListMemberChanges = GrocerySyncManager.collectLocalListMemberChanges(db, isFirstSync)
+        val storeChanges = GrocerySyncManager.collectLocalStoreChanges(db, isFirstSync)
+        val categoryChanges = GrocerySyncManager.collectLocalCategoryChanges(db, isFirstSync)
         val groceryChanges = GrocerySyncManager.collectLocalChanges(db, isFirstSync)
+        val groceryItemStoreInfoChanges = GrocerySyncManager.collectLocalStoreInfoChanges(db, isFirstSync)
+
+        val todoListChangesSent = todoListChanges.size
+        val todoChangesSent = todoChanges.size
+        val groceryListChangesSent = groceryListChanges.size
+        val groceryListMemberChangesSent = groceryListMemberChanges.size
+        val storeChangesSent = storeChanges.size
+        val categoryChangesSent = categoryChanges.size
+        val groceryChangesSent = groceryChanges.size
+        val groceryItemStoreInfoChangesSent = groceryItemStoreInfoChanges.size
 
         val syncRequest = SyncRequest(
-            last_synced_at = lastSyncedAt,
-            client_id = clientId,
-            todo_changes = todoChanges,
-            grocery_changes = groceryChanges
+            lastSyncedAt = lastSyncedAt,
+            clientId = clientId,
+            todoListChanges = todoListChanges,
+            todoChanges = todoChanges,
+            groceryListChanges = groceryListChanges,
+            groceryListMemberChanges = groceryListMemberChanges,
+            storeChanges = storeChanges,
+            categoryChanges = categoryChanges,
+            groceryChanges = groceryChanges,
+            groceryItemStoreInfoChanges = groceryItemStoreInfoChanges
         )
 
-        Log.d(TAG, "Sending sync payload with ${todoChanges.size} todo changes and ${groceryChanges.size} grocery changes.")
+        Log.d(
+            TAG,
+            "Sending sync payload. Counts: [todoLists: $todoListChangesSent, todoItems: $todoChangesSent, groceryLists: $groceryListChangesSent, groceryMembers: $groceryListMemberChangesSent, stores: $storeChangesSent, categories: $categoryChangesSent, groceryItems: $groceryChangesSent, storeInfos: $groceryItemStoreInfoChangesSent]"
+        )
 
         // 4. Execute the network transaction
         val response = try {
@@ -82,47 +123,112 @@ class SyncWorker(
                 setBody(syncRequest)
             }
         } catch (e: Exception) {
+            val errorMsg = e.localizedMessage ?: e.toString()
             Log.e(TAG, "Network connection error during sync. Requesting retry.", e)
-            recordSyncFailure(e.localizedMessage ?: e.toString())
+            recordSyncLog(
+                status = "RETRY",
+                startTime = startTime,
+                errorMessage = errorMsg,
+                todoChangesSent = todoChangesSent,
+                groceryChangesSent = groceryChangesSent
+            )
             return Result.retry()
         }
 
         // 5. Handle response and update local database
         if (response.status.isSuccess()) {
             val syncResponse = response.body<SyncResponse>()
-            Log.d(TAG, "Sync succeeded. Server time: ${syncResponse.server_timestamp}")
+            val todoListChangesReceived = syncResponse.remoteTodoListChanges.size
+            val todoChangesReceived = syncResponse.remoteTodoChanges.size
+            val groceryListChangesReceived = syncResponse.remoteGroceryListChanges.size
+            val groceryListMemberChangesReceived = syncResponse.remoteGroceryListMemberChanges.size
+            val storeChangesReceived = syncResponse.remoteStoreChanges.size
+            val categoryChangesReceived = syncResponse.remoteCategoryChanges.size
+            val groceryChangesReceived = syncResponse.remoteGroceryChanges.size
+            val groceryItemStoreInfoChangesReceived = syncResponse.remoteGroceryItemStoreInfoChanges.size
+
+            Log.d(
+                TAG,
+                "Sync succeeded. Server time: ${syncResponse.serverTimestamp}. Received: [todoLists: $todoListChangesReceived, todoItems: $todoChangesReceived, groceryLists: $groceryListChangesReceived, groceryMembers: $groceryListMemberChangesReceived, stores: $storeChangesReceived, categories: $categoryChangesReceived, groceryItems: $groceryChangesReceived, storeInfos: $groceryItemStoreInfoChangesReceived]"
+            )
 
             try {
                 db.withTransaction {
                     // Process both domains independently inside a single atomic local transaction
-                    TodoSyncManager.handleSyncSuccess(db, syncResponse.success_ids, syncResponse.remote_todo_changes, isFirstSync)
-                    GrocerySyncManager.handleSyncSuccess(db, syncResponse.success_ids, syncResponse.remote_grocery_changes, isFirstSync)
+                    TodoSyncManager.handleSyncSuccess(
+                        db = db,
+                        successIds = syncResponse.successIds,
+                        remoteChanges = syncResponse.remoteTodoChanges,
+                        remoteListChanges = syncResponse.remoteTodoListChanges,
+                        isFirstSync = isFirstSync
+                    )
+                    GrocerySyncManager.handleSyncSuccess(
+                        db = db,
+                        successIds = syncResponse.successIds,
+                        remoteChanges = syncResponse.remoteGroceryChanges,
+                        remoteStoreChanges = syncResponse.remoteStoreChanges,
+                        remoteCategoryChanges = syncResponse.remoteCategoryChanges,
+                        remoteListChanges = syncResponse.remoteGroceryListChanges,
+                        remoteListMemberChanges = syncResponse.remoteGroceryListMemberChanges,
+                        remoteStoreInfoChanges = syncResponse.remoteGroceryItemStoreInfoChanges,
+                        isFirstSync = isFirstSync
+                    )
 
                     // Overwrite local last_synced_at metadata key
-                    sharedPrefs.edit()
-                        .putString("last_synced_at", syncResponse.server_timestamp)
-                        .commit()
+                    sharedPrefs.edit(commit = true) {
+                        putString("last_synced_at", syncResponse.serverTimestamp)
+                    }
                 }
                 Log.d(TAG, "Local database transaction successfully completed.")
-                recordSyncSuccess()
+                recordSyncLog(
+                    status = "SUCCESS",
+                    startTime = startTime,
+                    todoChangesSent = todoChangesSent,
+                    groceryChangesSent = groceryChangesSent,
+                    todoChangesReceived = todoChangesReceived,
+                    groceryChangesReceived = groceryChangesReceived
+                )
                 return Result.success()
             } catch (e: Exception) {
+                val dbErrorMsg = "DB transaction failed: ${e.localizedMessage ?: e.toString()}"
                 Log.e(TAG, "Database transaction failed during sync response processing.", e)
-                recordSyncFailure("DB transaction failed: ${e.localizedMessage ?: e.toString()}")
+                recordSyncLog(
+                    status = "RETRY",
+                    startTime = startTime,
+                    errorMessage = dbErrorMsg,
+                    todoChangesSent = todoChangesSent,
+                    groceryChangesSent = groceryChangesSent,
+                    todoChangesReceived = todoChangesReceived,
+                    groceryChangesReceived = groceryChangesReceived
+                )
                 return Result.retry()
             }
         } else if (response.status.value == 401) {
-            Log.e(TAG, "Sync failed: 401 Unauthorized token.")
-            recordSyncFailure("HTTP 401 Unauthorized token.")
+            val unauthMsg = "HTTP 401 Unauthorized token."
+            Log.e(TAG, "Sync failed: $unauthMsg")
+            recordSyncLog(
+                status = "FAILURE",
+                startTime = startTime,
+                errorMessage = unauthMsg,
+                todoChangesSent = todoChangesSent,
+                groceryChangesSent = groceryChangesSent
+            )
             return Result.failure()
         } else {
             val errorBody = try {
                 response.bodyAsText()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 response.status.description
             }
+            val httpErrorMsg = "HTTP ${response.status.value}: $errorBody"
             Log.e(TAG, "Sync failed with status code ${response.status.value}. Response: $errorBody")
-            recordSyncFailure("HTTP ${response.status.value}: $errorBody")
+            recordSyncLog(
+                status = "RETRY",
+                startTime = startTime,
+                errorMessage = httpErrorMsg,
+                todoChangesSent = todoChangesSent,
+                groceryChangesSent = groceryChangesSent
+            )
             return Result.retry()
         }
     }
