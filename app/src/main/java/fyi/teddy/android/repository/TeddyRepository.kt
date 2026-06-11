@@ -48,21 +48,21 @@ object TeddyRepository {
     suspend fun callAuthedHello(idToken: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Calling authed hello with token length: ${idToken.length}")
+                Log.d(TAG, "Calling authed hello...")
                 val response = NetworkClient.client.get("https://api-rust.teddy.fyi/api/hc") {
                     header(HttpHeaders.Authorization, "Bearer $idToken")
                 }
                 
-                val statusCode = response.status
-                Log.d(TAG, "Authed hello returned status code: $statusCode")
-                
-                val headers = response.headers.entries().joinToString("\n") { (key, values) ->
-                    "$key: ${values.joinToString(", ")}"
+                // If unauthorized (401), we don't have automatic refresh logic here yet, 
+                // but this is where it would go if we supported refresh tokens.
+                if (response.status == HttpStatusCode.Unauthorized) {
+                    Log.w(TAG, "Got 401 Unauthorized for authed hello")
                 }
                 
+                val statusCode = response.status
                 val body = response.bodyAsText()
                 
-                "Status: $statusCode\n\nHeaders:\n$headers\n\nBody:\n$body"
+                "Status: $statusCode\n\nBody:\n$body"
             } catch (e: Exception) {
                 Log.e(TAG, "Authed hello request failed", e)
                 "Request failed: ${e.localizedMessage}"

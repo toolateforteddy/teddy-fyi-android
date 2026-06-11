@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 LaunchedEffect(Unit) {
+                    fyi.teddy.android.network.NetworkClient.session = session
                     session.load(context)
                     if (session.idToken != null) {
                         if (session.userId == null) {
@@ -65,11 +66,15 @@ class MainActivity : ComponentActivity() {
                             session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
                             session.profilePictureUri = result.profilePictureUri?.toString()
                             
-                            // Wrapped in a coroutine scope because it's a suspend function
-                            scope.launch { session.save(context) }
-                            
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Login.route) { inclusive = true }
+                            scope.launch { 
+                                val success = fyi.teddy.android.network.AuthRepository.login(context, session, result.idToken)
+                                if (success) {
+                                    navController.navigate(Screen.Home.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    }
+                                } else {
+                                    // Handle login failure
+                                }
                             }
                         })
                     }

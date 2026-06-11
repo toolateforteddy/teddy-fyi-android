@@ -55,6 +55,7 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
                             .setServerClientId(
                                 "34718544535-rem2k0n6tue6qmevqgp9c84gmh24a6mp.apps.googleusercontent.com"
                             )
+                            .setNonce(java.util.UUID.randomUUID().toString())
                             .setAutoSelectEnabled(true)
                             .build()
 
