@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import fyi.teddy.android.utils.getIconForTask
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,26 +84,12 @@ fun Modifier.neonGlow(
     }
 }
 
-fun getIconForTask(title: String, defaultIcon: androidx.compose.ui.graphics.vector.ImageVector): androidx.compose.ui.graphics.vector.ImageVector {
-    val t = title.lowercase()
-    return when {
-        t.contains("code") || t.contains("deploy") || t.contains("prod") || t.contains("programming") || t.contains("develop") || t.contains("software") || t.contains("fix") -> {
-            Icons.Default.Code
-        }
-        t.contains("car") || t.contains("maintenance") || t.contains("vehicle") || t.contains("drive") || t.contains("tire") || t.contains("oil") -> {
-            Icons.Default.DirectionsCar
-        }
-        t.contains("interview") || t.contains("respond") || t.contains("vitally") || t.contains("call") || t.contains("forum") || t.contains("email") || t.contains("follow-up") || t.contains("message") || t.contains("chat") -> {
-            Icons.Default.Forum
-        }
-        t.contains("pot") || t.contains("kitchen") || t.contains("cook") || t.contains("stock") || t.contains("acquire") || t.contains("store") || t.contains("shop") || t.contains("buy") -> {
-            Icons.Default.ShoppingBasket
-        }
-        t.contains("osso") || t.contains("ingredient") || t.contains("food") || t.contains("dinner") || t.contains("eat") || t.contains("buco") || t.contains("meal") || t.contains("grocery") || t.contains("recipe") || t.contains("lunch") -> {
-            Icons.Default.Restaurant
-        }
-        else -> defaultIcon
-    }
+
+sealed class HexCellType {
+    data class Task(val title: String, val color: Color) : HexCellType()
+    data class Counter(val count: Int) : HexCellType()
+    data class Backlog(val count: Int) : HexCellType()
+    object Placeholder : HexCellType()
 }
 
 @Composable
@@ -128,7 +115,7 @@ fun BattleMapTodoGrid(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Tactical Battle Map Todo",
+                text = "What shall we do today?",
                 color = Color(0xFFBCADA0),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -146,13 +133,66 @@ fun BattleMapTodoGrid(
         ) {
             val totalWidth = maxWidth - 16.dp // Breathing room at left and right edges for glowing outlines
             
-            // Grid is 3 columns (spans 2.5 * W)
-            val hexWidthDp = totalWidth / 2.5f
+            // Grid is exactly 3 columns (spans 3.0 * W)
+            val hexWidthDp = totalWidth / 3f
             val hexHeightDp = hexWidthDp / 0.866f
-            val gridHeight = hexHeightDp * 3.5f
 
             val xPadding = 8.dp
             val yPadding = 0.dp
+
+            // Build our dynamic nested cells list (alternating rows of 3 and 2)
+            val cells = mutableListOf<Triple<Int, Int, HexCellType>>()
+
+            if (todoItems.isEmpty()) {
+                // Row 0 has 3 slots: [Backlog, Placeholder, Counter]
+                cells.add(Triple(0, 0, HexCellType.Backlog(backlogCount)))
+                cells.add(Triple(1, 0, HexCellType.Placeholder))
+                cells.add(Triple(2, 0, HexCellType.Counter(0)))
+                
+                // Row 1 has 2 slots: [Placeholder, Placeholder]
+                cells.add(Triple(0, 1, HexCellType.Placeholder))
+                cells.add(Triple(1, 1, HexCellType.Placeholder))
+                
+                // Row 2 has 3 slots: [Placeholder, Placeholder, Placeholder]
+                cells.add(Triple(0, 2, HexCellType.Placeholder))
+                cells.add(Triple(1, 2, HexCellType.Placeholder))
+                cells.add(Triple(2, 2, HexCellType.Placeholder))
+            } else {
+                val tasks = todoItems
+                var taskIndex = 0
+                val numTasks = tasks.size
+                var row = 0
+                
+                while (taskIndex < numTasks || row < 3) {
+                    val slotsInRow = if (row % 2 == 0) 3 else 2
+                    for (col in 0 until slotsInRow) {
+                        if (row == 0 && col == 2) {
+                            // Counter is always at top-right (Row 0, Col 2)
+                            cells.add(Triple(col, row, HexCellType.Counter(numTasks)))
+                        } else {
+                            if (taskIndex < numTasks) {
+                                // Assign colors dynamically in loop
+                                val color = when (taskIndex % 6) {
+                                    0 -> Color(0xFF03DAC5) // Cyan
+                                    1 -> Color(0xFFE91E63) // Pink
+                                    2 -> Color(0xFF9C27B0) // Purple
+                                    3 -> Color(0xFFCDDC39) // Lime
+                                    4 -> Color(0xFFFF9800) // Orange
+                                    else -> Color(0xFFFFEB3B) // Yellow
+                                }
+                                cells.add(Triple(col, row, HexCellType.Task(tasks[taskIndex], color)))
+                                taskIndex++
+                            } else {
+                                cells.add(Triple(col, row, HexCellType.Placeholder))
+                            }
+                        }
+                    }
+                    row++
+                }
+            }
+
+            val totalRows = cells.maxOf { it.second } + 1
+            val gridHeight = hexHeightDp * (totalRows * 0.75f + 0.25f)
 
             // Inner container holding the exact size of the interlocking grid
             Box(
@@ -160,353 +200,123 @@ fun BattleMapTodoGrid(
                     .fillMaxWidth()
                     .height(gridHeight)
             ) {
-                // Helper function to render a hexagon cell
-                @Composable
-                fun HexagonCell(
-                    col: Int,
-                    row: Int,
-                    content: @Composable () -> Unit
-                ) {
+                cells.forEach { (col, row, type) ->
+                    val xOffset = xPadding + hexWidthDp * (if (row % 2 == 1) col.toFloat() + 0.5f else col.toFloat())
+                    val yOffset = yPadding + hexHeightDp * (row.toFloat() * 0.75f)
+
                     Box(
                         modifier = Modifier
                             .size(hexWidthDp, hexHeightDp)
-                            .offset(
-                                x = xPadding + hexWidthDp * (col * 0.75f),
-                                y = yPadding + (if (col % 2 == 1) hexHeightDp * (row + 0.5f) else hexHeightDp * row.toFloat())
-                            ),
+                            .offset(x = xOffset, y = yOffset),
                         contentAlignment = Alignment.Center
                     ) {
-                        content()
-                    }
-                }
-
-                // We render each of the 9 positions in the honeycomb grid
-                for (col in 0..2) {
-                    for (row in 0..2) {
-                        // Map col and row to our layout
-                        when (col to row) {
-                            // Slot 2: Counter Cell (Col 2, Row 0)
-                            2 to 0 -> {
-                                HexagonCell(col, row) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(2.dp)
-                                            .neonGlow(Color(0xFFBCADA0), HexagonShape(), blurRadius = 4.dp)
-                                            .clip(HexagonShape())
-                                            .background(Color(0xFF161424))
-                                            .border(2.dp, Color(0xFFBCADA0), HexagonShape())
-                                            .clickable { onNavigateToTodo(null) }
-                                            .padding(8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text(
-                                                text = "${todoItems.size}",
-                                                color = Color(0xFFBCADA0),
-                                                fontSize = 32.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                textAlign = TextAlign.Center
-                                            )
-                                            Text(
-                                                text = "Remaining",
-                                                color = Color(0xFFBCADA0),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
+                        when (type) {
+                            is HexCellType.Counter -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(1.dp)
+                                        .neonGlow(Color(0xFFBCADA0), HexagonShape(), blurRadius = 4.dp)
+                                        .clip(HexagonShape())
+                                        .background(Color(0xFF161424))
+                                        .border(2.dp, Color(0xFFBCADA0), HexagonShape())
+                                        .clickable { onNavigateToTodo(null) }
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = type.count.toString(),
+                                            color = Color(0xFFBCADA0),
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "Remaining",
+                                            color = Color(0xFFBCADA0),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            textAlign = TextAlign.Center
+                                        )
                                     }
                                 }
                             }
-
-                            // Slot 0: Col 0, Row 0 (First task or Backlog)
-                            0 to 0 -> {
-                                HexagonCell(col, row) {
-                                    if (todoItems.isEmpty()) {
-                                        // Show Backlog
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFF3700B3), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFF3700B3), HexagonShape())
-                                                .clickable { onNavigateToTodo("BACKLOG") }
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Build,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFF03DAC5),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = "Backlog ($backlogCount)",
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        // Show Task 0 (Cyan/Blue)
-                                        val title = todoItems[0]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFF03DAC5), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFF03DAC5), HexagonShape())
-                                                .clickable { onNavigateToTodo(null) }
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = getIconForTask(title, Icons.Default.Build),
-                                                    contentDescription = null,
-                                                    tint = Color(0xFF03DAC5),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = title,
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
+                            is HexCellType.Backlog -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(1.dp)
+                                        .neonGlow(Color(0xFF3700B3), HexagonShape(), blurRadius = 4.dp)
+                                        .clip(HexagonShape())
+                                        .background(Color(0xFF161424))
+                                        .border(2.dp, Color(0xFF3700B3), HexagonShape())
+                                        .clickable { onNavigateToTodo("BACKLOG") }
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.Build,
+                                            contentDescription = null,
+                                            tint = Color(0xFF03DAC5),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Backlog (${type.count})",
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center
+                                        )
                                     }
                                 }
                             }
-
-                            // Slot 1: Col 1, Row 0 (Task 1 or Placeholder)
-                            1 to 0 -> {
-                                HexagonCell(col, row) {
-                                    if (todoItems.size >= 2) {
-                                        val title = todoItems[1]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFFE91E63), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFFE91E63), HexagonShape())
-                                                .clickable { onNavigateToTodo(null) }
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = getIconForTask(title, Icons.Default.Build),
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFE91E63),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = title,
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        PlaceholderHex()
+                            is HexCellType.Task -> {
+                                val title = type.title
+                                val color = type.color
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(1.dp)
+                                        .neonGlow(color, HexagonShape(), blurRadius = 4.dp)
+                                        .clip(HexagonShape())
+                                        .background(Color(0xFF161424))
+                                        .border(2.dp, color, HexagonShape())
+                                        .clickable { onNavigateToTodo(null) }
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = getIconForTask(title, Icons.Default.Build),
+                                            contentDescription = null,
+                                            tint = color,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = title,
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center
+                                        )
                                     }
                                 }
                             }
-
-                            // Slot 3: Col 0, Row 1 (Task 2 or Placeholder)
-                            0 to 1 -> {
-                                HexagonCell(col, row) {
-                                    if (todoItems.size >= 3) {
-                                        val title = todoItems[2]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFF9C27B0), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFF9C27B0), HexagonShape())
-                                                .clickable { onNavigateToTodo(null) }
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = getIconForTask(title, Icons.Default.Build),
-                                                    contentDescription = null,
-                                                    tint = Color(0xFF9C27B0),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = title,
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        PlaceholderHex()
-                                    }
-                                }
-                            }
-
-                            // Slot 4: Col 1, Row 1 (Task 3 or Placeholder)
-                            1 to 1 -> {
-                                HexagonCell(col, row) {
-                                    if (todoItems.size >= 4) {
-                                        val title = todoItems[3]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFFCDDC39), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFFCDDC39), HexagonShape())
-                                                .clickable { onNavigateToTodo(null) }
-                                                .padding(8.dp),
-                                        ) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .padding(8.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = getIconForTask(title, Icons.Default.Build),
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFCDDC39),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = title,
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        PlaceholderHex()
-                                    }
-                                }
-                            }
-
-                            // Slot 5: Col 2, Row 1 (Task 4 or Placeholder)
-                            2 to 1 -> {
-                                HexagonCell(col, row) {
-                                    if (todoItems.size >= 5) {
-                                        val title = todoItems[4]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFFFF9800), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFFFF9800), HexagonShape())
-                                                .clickable { onNavigateToTodo(null) }
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = getIconForTask(title, Icons.Default.Build),
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFFF9800),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = title,
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        PlaceholderHex()
-                                    }
-                                }
-                            }
-
-                            // Slot 6: Col 0, Row 2 (Task 5 or Placeholder)
-                            0 to 2 -> {
-                                HexagonCell(col, row) {
-                                    if (todoItems.size >= 6) {
-                                        val title = todoItems[5]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(2.dp)
-                                                .neonGlow(Color(0xFFFFEB3B), HexagonShape(), blurRadius = 4.dp)
-                                                .clip(HexagonShape())
-                                                .background(Color(0xFF161424))
-                                                .border(2.dp, Color(0xFFFFEB3B), HexagonShape())
-                                                .clickable { onNavigateToTodo(null) }
-                                                .padding(8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = getIconForTask(title, Icons.Default.Build),
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFFFEB3B),
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = title,
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        PlaceholderHex()
-                                    }
-                                }
-                            }
-
-                            // Slot 7 & Slot 8 & unused spaces:
-                            else -> {
-                                HexagonCell(col, row) {
-                                    PlaceholderHex()
-                                }
+                            HexCellType.Placeholder -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(1.dp)
+                                        .clip(HexagonShape())
+                                        .background(Color(0xFF050508))
+                                        .border(1.dp, Color(0xFF221F35), HexagonShape())
+                                )
                             }
                         }
                     }
@@ -514,16 +324,4 @@ fun BattleMapTodoGrid(
             }
         }
     }
-}
-
-@Composable
-fun PlaceholderHex() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(2.dp)
-            .clip(HexagonShape())
-            .background(Color(0xFF0D0B14))
-            .border(1.dp, Color(0xFF221F35), HexagonShape())
-    )
 }

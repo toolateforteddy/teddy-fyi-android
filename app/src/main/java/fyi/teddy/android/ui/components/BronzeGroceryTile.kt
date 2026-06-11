@@ -249,9 +249,9 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
             
             Spacer(modifier = Modifier.height(10.dp))
             
-            // Title: "Household Market List" in Serif
+            // Title: "Grocery List" in Serif
             Text(
-                text = "Household Market List",
+                text = "Grocery List",
                 color = Color(0xFFE6D5C3), // Light warm gold/bronze
                 fontSize = 24.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
@@ -267,9 +267,9 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            // Subtitle: "• Shared with Katherine • 15 items" in Serif
+            // Subtitle: "• 15 items •" in Serif
             Text(
-                text = "• Shared with Katherine • $itemCount items",
+                text = "• $itemCount items •",
                 color = Color(0xFFBCADA0), // Lighter gray-bronze
                 fontSize = 15.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,

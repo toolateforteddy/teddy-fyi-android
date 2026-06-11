@@ -98,6 +98,17 @@ fun HomeScreen(
         }
     }.collectAsState(initial = 0)
 
+    val greetingName by remember(userName) {
+        derivedStateOf {
+            val parenthesisMatch = userName?.let { Regex("\\(([^)]+)\\)").find(it) }
+            if (parenthesisMatch != null) {
+                parenthesisMatch.groupValues[1]
+            } else {
+                userName?.split(" ")?.firstOrNull() ?: "Teddy"
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -120,7 +131,7 @@ fun HomeScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Hello, ${userName ?: "Teddy"}",
+                            text = "Hello, $greetingName",
                             color = Color.White,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
@@ -179,32 +190,32 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Tactical Navigation Buttons for secondary functions
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onNavigateToWeather,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF161424)),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Color(0xFF3700B3))
-                    ) {
-                        Text("WEATHER", fontSize = 11.sp, color = Color.White, letterSpacing = 1.sp)
-                    }
-                    Button(
-                        onClick = onNavigateToAuthed,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF161424)),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Color(0xFF3700B3))
-                    ) {
-                        Text("AUTH TEST", fontSize = 11.sp, color = Color.White, letterSpacing = 1.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+//                // Tactical Navigation Buttons for secondary functions
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                ) {
+//                    Button(
+//                        onClick = onNavigateToWeather,
+//                        modifier = Modifier.weight(1f),
+//                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF161424)),
+//                        shape = RoundedCornerShape(8.dp),
+//                        border = BorderStroke(1.dp, Color(0xFF3700B3))
+//                    ) {
+//                        Text("WEATHER", fontSize = 11.sp, color = Color.White, letterSpacing = 1.sp)
+//                    }
+//                    Button(
+//                        onClick = onNavigateToAuthed,
+//                        modifier = Modifier.weight(1f),
+//                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF161424)),
+//                        shape = RoundedCornerShape(8.dp),
+//                        border = BorderStroke(1.dp, Color(0xFF3700B3))
+//                    ) {
+//                        Text("AUTH TEST", fontSize = 11.sp, color = Color.White, letterSpacing = 1.sp)
+//                    }
+//                }
+//
+//                Spacer(modifier = Modifier.height(16.dp))
 
                 // Anchored Grocery Tile
                 BronzeGroceryTile(
