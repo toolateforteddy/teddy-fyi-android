@@ -1,5 +1,6 @@
 package fyi.teddy.android.grocery.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -30,5 +31,14 @@ data class GroceryItem(
     val isActive: Boolean = true,
     val listId: String? = null,
     val unit: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+
+    // Cloud sync tracking columns
+    @ColumnInfo(name = "sync_state")
+    val syncState: String = "PENDING_INSERT",
+    
+    val version: Int = 1,
+    
+    @ColumnInfo(name = "is_deleted")
+    val isDeleted: Boolean = false
 )

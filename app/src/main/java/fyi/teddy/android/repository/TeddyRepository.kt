@@ -49,7 +49,7 @@ object TeddyRepository {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Calling authed hello with token length: ${idToken.length}")
-                val response = NetworkClient.client.get("https://api-rust.teddy.fyi/authed/hello") {
+                val response = NetworkClient.client.get("https://api-rust.teddy.fyi/api/hc") {
                     header(HttpHeaders.Authorization, "Bearer $idToken")
                 }
                 
@@ -66,6 +66,21 @@ object TeddyRepository {
             } catch (e: Exception) {
                 Log.e(TAG, "Authed hello request failed", e)
                 "Request failed: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    suspend fun fetchAuthedHelloBody(idToken: String): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Fetching authed hello body...")
+                val response = NetworkClient.client.get("https://api-rust.teddy.fyi/api/hc") {
+                    header(HttpHeaders.Authorization, "Bearer $idToken")
+                }
+                response.bodyAsText()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch authed hello body: ${e.message}")
+                "Error: ${e.localizedMessage}"
             }
         }
     }

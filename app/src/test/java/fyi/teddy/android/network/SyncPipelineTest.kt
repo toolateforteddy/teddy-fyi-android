@@ -6,6 +6,10 @@ import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
+import fyi.teddy.android.todo.repository.TodoRepository
+import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.repository.GroceryRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -117,15 +121,16 @@ class SyncPipelineTest {
     fun testSerializationAndDeserialization() {
         val request = SyncRequest(
             last_synced_at = "2023-10-27T10:15:30Z",
-            todo_changes = TodoChangesDto(
-                items = listOf(
-                    TodoItem(id = "1", title = "Task 1", syncState = "PENDING_INSERT", version = 1).toDto()
-                ),
-                lists = listOf(
-                    TodoList(id = "l1", name = "List 1", syncState = "PENDING_UPDATE", version = 2).toDto()
+            client_id = "test-client",
+            todo_changes = listOf(
+                TodoChangeDelta(
+                    id = "1",
+                    operation_type = OperationType.INSERT,
+                    version = 1,
+                    data = json.encodeToJsonElement(TodoItemDto.serializer(), TodoItem(id = "1", title = "Task 1", syncState = "PENDING_INSERT", version = 1).toDto())
                 )
             ),
-            grocery_changes = GroceryChangesDto()
+            grocery_changes = emptyList()
         )
 
         val serialized = json.encodeToString(request)
@@ -135,8 +140,8 @@ class SyncPipelineTest {
 
         val deserialized = json.decodeFromString<SyncRequest>(serialized)
         assertEquals(request.last_synced_at, deserialized.last_synced_at)
-        assertEquals(request.todo_changes.items.size, deserialized.todo_changes.items.size)
-        assertEquals(request.todo_changes.items[0].title, deserialized.todo_changes.items[0].title)
+        assertEquals(request.todo_changes.size, deserialized.todo_changes.size)
+        assertTrue(serialized.contains("INSERT"))
     }
 
     @Test
@@ -185,5 +190,71 @@ class SyncPipelineTest {
 
         assertTrue(unsyncedItems.isEmpty())
         assertTrue(unsyncedLists.isEmpty())
+    }
+
+    @Test
+    fun testLocalMutationLifecycleRules() = runTest {
+        val repository = TodoRepository(todoDao)
+        val item1 = TodoItem(id = "item1", title = "Task 1", syncState = "PENDING_INSERT", isDeleted = false)
+        val item2 = TodoItem(id = "item2", title = "Task 2", syncState = "SYNCED", isDeleted = false)
+
+        todoDao.insertItem(item1)
+        todoDao.insertItem(item2)
+
+        // 1. Update SYNCED item
+        repository.updateItem(item2.copy(title = "Updated Task 2"))
+        val updatedItem2 = todoDao.getUnsyncedItems().find { it.id == "item2" }
+        assertNotNull(updatedItem2)
+        assertEquals("PENDING_UPDATE", updatedItem2?.syncState)
+        assertEquals("Updated Task 2", updatedItem2?.title)
+
+        // 2. Delete PENDING_INSERT item (should hard-delete)
+        repository.deleteItem(item1)
+        val remainingItems = todoDao.getAllItemsOneShot()
+        assertFalse(remainingItems.any { it.id == "item1" })
+
+        // 3. Delete SYNCED/PENDING_UPDATE item (should soft-delete)
+        repository.deleteItem(updatedItem2!!)
+        val softDeletedItem2 = todoDao.getUnsyncedItems().find { it.id == "item2" }
+        assertNotNull(softDeletedItem2)
+        assertEquals("PENDING_DELETE", softDeletedItem2?.syncState)
+        assertTrue(softDeletedItem2?.isDeleted == true)
+    }
+
+    @Test
+    fun testGrocerySyncPipelineAndLifecycle() = runTest {
+        val groceryDao = database.groceryDao()
+        val repository = GroceryRepository(groceryDao)
+
+        val groceryItem1 = GroceryItem(id = 1, name = "Bananas", syncState = "PENDING_INSERT")
+        val groceryItem2 = GroceryItem(id = 2, name = "Apples", syncState = "SYNCED")
+
+        groceryDao.insertItem(groceryItem1)
+        groceryDao.insertItem(groceryItem2)
+
+        // 1. Verify mapping
+        val dto = groceryItem1.toDto()
+        assertEquals(groceryItem1.id, dto.id)
+        assertEquals(groceryItem1.name, dto.name)
+        assertEquals(groceryItem1.syncState, dto.sync_state)
+
+        // 2. Update SYNCED item
+        repository.updateItem(groceryItem2.copy(name = "Organic Apples"))
+        val updatedItem2 = groceryDao.getUnsyncedItems().find { it.id == 2 }
+        assertNotNull(updatedItem2)
+        assertEquals("PENDING_UPDATE", updatedItem2?.syncState)
+        assertEquals("Organic Apples", updatedItem2?.name)
+
+        // 3. Delete PENDING_INSERT item (should hard-delete)
+        repository.deleteItem(groceryItem1)
+        val remainingItems = groceryDao.getAllItemsOneShot()
+        assertFalse(remainingItems.any { it.id == 1 })
+
+        // 4. Delete SYNCED/PENDING_UPDATE item (should soft-delete)
+        repository.deleteItem(updatedItem2!!)
+        val softDeletedItem2 = groceryDao.getUnsyncedItems().find { it.id == 2 }
+        assertNotNull(softDeletedItem2)
+        assertEquals("PENDING_DELETE", softDeletedItem2?.syncState)
+        assertTrue(softDeletedItem2?.isDeleted == true)
     }
 }

@@ -1,5 +1,6 @@
 package fyi.teddy.android.grocery.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
@@ -10,5 +11,14 @@ data class GroceryList(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val ownerId: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+
+    // Cloud sync tracking columns
+    @ColumnInfo(name = "sync_state")
+    val syncState: String = "PENDING_INSERT",
+    
+    val version: Int = 1,
+    
+    @ColumnInfo(name = "is_deleted")
+    val isDeleted: Boolean = false
 )

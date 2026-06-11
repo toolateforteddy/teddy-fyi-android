@@ -22,6 +22,7 @@ import fyi.teddy.android.ui.navigation.Screen
 import fyi.teddy.android.ui.screens.AuthedHelloScreen
 import fyi.teddy.android.ui.screens.HomeScreen
 import fyi.teddy.android.ui.screens.WeatherScreen
+import fyi.teddy.android.ui.screens.DebugScreen
 import fyi.teddy.android.ui.theme.TeddyTheme
 
 class MainActivity : ComponentActivity() {
@@ -83,6 +84,7 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(Screen.Todo.createRoute(mode)) 
                             },
                             onNavigateToGrocery = { navController.navigate(Screen.Grocery.route) },
+                            onNavigateToDebug = { navController.navigate(Screen.Debug.route) },
                             onLogout = {
                                 scope.launch { 
                                     session.clear(context)
@@ -139,6 +141,13 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.Categories.route) {
                         CategoryManagementScreen(
                             userId = session.userId ?: "unauthed",
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(Screen.Debug.route) {
+                        DebugScreen(
+                            idToken = session.idToken,
+                            onNavigateToAuthed = { navController.navigate(Screen.Authed.route) },
                             onBack = { navController.popBackStack() }
                         )
                     }

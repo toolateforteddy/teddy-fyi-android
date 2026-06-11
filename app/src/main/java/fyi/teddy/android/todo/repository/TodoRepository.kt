@@ -38,14 +38,26 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun insertItem(item: TodoItem) = todoDao.insertWithNextPosition(item)
 
     /**
-     * Updates an existing todo item's details or completion state.
+     * Updates an existing todo item's details or completion state, ensuring the
+     * local mutation lifecycle state machine is strictly followed.
      */
-    suspend fun updateItem(item: TodoItem) = todoDao.updateItem(item)
+    suspend fun updateItem(item: TodoItem) {
+        val nextSyncState = if (item.syncState == "SYNCED") "PENDING_UPDATE" else item.syncState
+        todoDao.updateItem(item.copy(syncState = nextSyncState))
+    }
 
     /**
-     * Deletes a todo item from the local persistence layer.
+     * Deletes a todo item, strictly adhering to the local mutation lifecycle rules.
+     * If never synced (PENDING_INSERT), hard-deletes locally immediately.
+     * If already synced (SYNCED or PENDING_UPDATE), flags as soft-deleted and PENDING_DELETE.
      */
-    suspend fun deleteItem(item: TodoItem) = todoDao.deleteItem(item)
+    suspend fun deleteItem(item: TodoItem) {
+        if (item.syncState == "PENDING_INSERT") {
+            todoDao.deleteItem(item)
+        } else {
+            todoDao.updateItem(item.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
+    }
 
     /**
      * Deletes all todo items belonging to a specific user.
@@ -86,12 +98,24 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun insertList(list: TodoList) = todoDao.insertList(list)
 
     /**
-     * Updates an existing todo list.
+     * Updates an existing todo list, following local mutation lifecycle state machine rules.
      */
-    suspend fun updateList(list: TodoList) = todoDao.updateList(list)
+    suspend fun updateList(list: TodoList) {
+        val nextSyncState = if (list.syncState == "SYNCED") "PENDING_UPDATE" else list.syncState
+        todoDao.updateList(list.copy(syncState = nextSyncState))
+    }
 
     /**
-     * Deletes a todo list and nullifies any reference to it on todo items.
+     * Deletes a todo list, following local mutation lifecycle state machine rules.
+     * If never synced (PENDING_INSERT), hard-deletes and detaches lists.
+     * If already synced (SYNCED or PENDING_UPDATE), soft-deletes and PENDING_DELETE.
      */
-    suspend fun deleteList(list: TodoList) = todoDao.deleteListAndNullifyItems(list)
+    suspend fun deleteList(list: TodoList) {
+        if (list.syncState == "PENDING_INSERT") {
+            todoDao.deleteListAndNullifyItems(list)
+        } else {
+            todoDao.nullifyListIdForItems(list.id)
+            todoDao.updateList(list.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
+    }
 }

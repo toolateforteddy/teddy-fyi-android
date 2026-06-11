@@ -95,13 +95,16 @@ abstract class TodoDao {
     }
 
     @Query("UPDATE todo_items SET listId = NULL WHERE listId = :listId")
-    protected abstract suspend fun nullifyListIdForItems(listId: String)
+    abstract suspend fun nullifyListIdForItems(listId: String)
 
     @Query("SELECT * FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedItems(): List<TodoItem>
 
     @Query("SELECT * FROM todo_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedLists(): List<TodoList>
+
+    @Query("SELECT (SELECT COUNT(*) FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1) + (SELECT COUNT(*) FROM todo_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1)")
+    abstract fun getUnsyncedCountFlow(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertItems(items: List<TodoItem>)

@@ -232,6 +232,7 @@ fun HomeScreen(
     onNavigateToAuthed: () -> Unit,
     onNavigateToTodo: (String?) -> Unit,
     onNavigateToGrocery: () -> Unit,
+    onNavigateToDebug: () -> Unit,
     onLogout: () -> Unit
 ) {
     Log.d("HomeScreen", "Rendering HomeScreen. userName=$userName, profilePic=$profilePic")
@@ -478,6 +479,7 @@ fun HomeScreen(
                     .size(24.dp)
                     .clip(CircleShape)
                     .background(if (isClusterHappy!!) Color.Green else Color.Red)
+                    .clickable { onNavigateToDebug() }
             ) {
                 Icon(
                     imageVector = if (isClusterHappy!!) Icons.Default.CloudDone else Icons.Default.CloudOff,

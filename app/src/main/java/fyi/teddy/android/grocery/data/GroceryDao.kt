@@ -189,4 +189,22 @@ abstract class GroceryDao {
 
     @Query("SELECT * FROM grocery_items WHERE listId IS NULL AND userId = :userId ORDER BY position ASC, createdAt DESC")
     abstract fun getItemsWithoutList(userId: String): Flow<List<GroceryItem>>
+
+    @Query("SELECT * FROM grocery_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedItems(): List<GroceryItem>
+
+    @Query("SELECT * FROM grocery_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract suspend fun getUnsyncedLists(): List<GroceryList>
+
+    @Query("DELETE FROM grocery_items WHERE id = :id")
+    abstract suspend fun hardDeleteItem(id: Int)
+
+    @Query("DELETE FROM grocery_lists WHERE id = :id")
+    abstract suspend fun hardDeleteList(id: String)
+
+    @Query("SELECT * FROM grocery_items")
+    abstract suspend fun getAllItemsOneShot(): List<GroceryItem>
+
+    @Query("SELECT * FROM grocery_lists")
+    abstract suspend fun getAllListsOneShot(): List<GroceryList>
 }

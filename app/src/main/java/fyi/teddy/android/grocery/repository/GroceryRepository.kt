@@ -11,8 +11,17 @@ class GroceryRepository(private val groceryDao: GroceryDao) {
     fun getRecommendedItems(userId: String): Flow<List<GroceryItem>> = groceryDao.getRecommendedItems(userId)
     
     suspend fun insertItem(item: GroceryItem) = groceryDao.insertItemWithNextPosition(item)
-    suspend fun updateItem(item: GroceryItem) = groceryDao.updateItem(item)
-    suspend fun deleteItem(item: GroceryItem) = groceryDao.deleteItem(item)
+    suspend fun updateItem(item: GroceryItem) {
+        val nextSyncState = if (item.syncState == "SYNCED") "PENDING_UPDATE" else item.syncState
+        groceryDao.updateItem(item.copy(syncState = nextSyncState))
+    }
+    suspend fun deleteItem(item: GroceryItem) {
+        if (item.syncState == "PENDING_INSERT") {
+            groceryDao.deleteItem(item)
+        } else {
+            groceryDao.updateItem(item.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
+    }
     suspend fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) = groceryDao.swapItemPositions(item1, item2)
     
     suspend fun insertStore(store: Store) = groceryDao.insertStoreWithNextPosition(store)
@@ -34,8 +43,17 @@ class GroceryRepository(private val groceryDao: GroceryDao) {
     // List & Collaboration operations
     fun getAllLists(userId: String): Flow<List<GroceryList>> = groceryDao.getAllLists(userId)
     suspend fun insertList(list: GroceryList) = groceryDao.insertList(list)
-    suspend fun updateList(list: GroceryList) = groceryDao.updateList(list)
-    suspend fun deleteList(list: GroceryList) = groceryDao.deleteList(list)
+    suspend fun updateList(list: GroceryList) {
+        val nextSyncState = if (list.syncState == "SYNCED") "PENDING_UPDATE" else list.syncState
+        groceryDao.updateList(list.copy(syncState = nextSyncState))
+    }
+    suspend fun deleteList(list: GroceryList) {
+        if (list.syncState == "PENDING_INSERT") {
+            groceryDao.deleteList(list)
+        } else {
+            groceryDao.updateList(list.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
+    }
     suspend fun insertListMember(member: GroceryListMember) = groceryDao.insertListMember(member)
     suspend fun deleteListMember(member: GroceryListMember) = groceryDao.deleteListMember(member)
     fun getListMembers(listId: String): Flow<List<GroceryListMember>> = groceryDao.getListMembers(listId)

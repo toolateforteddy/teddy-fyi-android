@@ -25,13 +25,14 @@ class GeneralFunctionalityTest {
         assertEquals("login", Screen.Login.route)
         assertEquals("hello", Screen.Home.route)
         assertEquals("weather", Screen.Weather.route)
-        assertEquals("todo", Screen.Todo.route)
+        assertEquals("todo?initialMode={initialMode}", Screen.Todo.route)
         assertEquals("grocery", Screen.Grocery.route)
         
         val routes = listOf(
             Screen.Login.route, Screen.Home.route, Screen.Weather.route,
             Screen.Authed.route, Screen.Todo.route, Screen.Grocery.route,
-            Screen.GroceryConfig.route, Screen.Stores.route, Screen.Categories.route
+            Screen.GroceryConfig.route, Screen.Stores.route, Screen.Categories.route,
+            Screen.Debug.route
         )
         assertEquals(routes.size, routes.distinct().size)
     }

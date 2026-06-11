@@ -29,7 +29,7 @@ import fyi.teddy.android.todo.data.TodoList
         GroceryList::class,
         GroceryListMember::class
     ], 
-    version = 25,
+    version = 26,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -460,6 +460,40 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add sync columns to grocery_items
+                db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `sync_state` TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0")
+
+                // Add sync columns to grocery_lists
+                db.execSQL("ALTER TABLE `grocery_lists` ADD COLUMN `sync_state` TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE `grocery_lists` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `grocery_lists` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0")
+
+                // Add sync columns to grocery_list_members
+                db.execSQL("ALTER TABLE `grocery_list_members` ADD COLUMN `sync_state` TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE `grocery_list_members` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `grocery_list_members` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0")
+
+                // Add sync columns to stores
+                db.execSQL("ALTER TABLE `stores` ADD COLUMN `sync_state` TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE `stores` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `stores` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0")
+
+                // Add sync columns to categories
+                db.execSQL("ALTER TABLE `categories` ADD COLUMN `sync_state` TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE `categories` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `categories` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0")
+
+                // Add sync columns to grocery_item_store_info
+                db.execSQL("ALTER TABLE `grocery_item_store_info` ADD COLUMN `sync_state` TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE `grocery_item_store_info` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `grocery_item_store_info` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -469,7 +503,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
-                        MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25
+                        MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
+                        MIGRATION_25_26
                     )
                     .build()
                     .also { Instance = it }
