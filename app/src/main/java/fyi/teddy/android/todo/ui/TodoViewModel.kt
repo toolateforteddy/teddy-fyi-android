@@ -15,11 +15,22 @@ import java.time.LocalDate
 class TodoViewModel(
     application: Application,
     private val repository: TodoRepository,
-    private val userId: String
+    private val userId: String,
+    initialMode: String? = null
 ) : AndroidViewModel(application) {
 
     // Internal state flows to enforce Unidirectional Data Flow (UDF)
-    private val _currentMode = MutableStateFlow(TodoMode.BACKLOG)
+    private val _currentMode = MutableStateFlow(
+        if (initialMode != null) {
+            try {
+                TodoMode.valueOf(initialMode)
+            } catch (e: Exception) {
+                TodoMode.BACKLOG
+            }
+        } else {
+            TodoMode.BACKLOG
+        }
+    )
     val currentMode: StateFlow<TodoMode> = _currentMode.asStateFlow()
 
     private val _isEditMode = MutableStateFlow(false)
@@ -152,7 +163,7 @@ class TodoViewModel(
             todayDateFlow.value = today
             
             val todayItemsList = repository.getTodayItems(userId, today).first()
-            if (todayItemsList.isNotEmpty() && _currentMode.value == TodoMode.BACKLOG) {
+            if (todayItemsList.isNotEmpty() && _currentMode.value == TodoMode.BACKLOG && initialMode == null) {
                 _currentMode.value = TodoMode.TODAY
             }
         }

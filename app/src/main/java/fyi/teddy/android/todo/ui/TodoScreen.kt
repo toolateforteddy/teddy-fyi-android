@@ -43,10 +43,10 @@ enum class TodoMode {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoScreen(userId: String, onBack: () -> Unit) {
+fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val viewModel: TodoViewModel = viewModel(
-        factory = TodoViewModelFactory(context.applicationContext as android.app.Application, userId)
+        factory = TodoViewModelFactory(context.applicationContext as android.app.Application, userId, initialMode)
     )
     
     val currentMode by viewModel.currentMode.collectAsState()

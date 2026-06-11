@@ -74,11 +74,14 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(Screen.Home.route) {
                         HomeScreen(
+                            userId = session.userId,
                             userName = session.userName,
                             profilePic = session.profilePictureUri,
                             onNavigateToWeather = { navController.navigate(Screen.Weather.route) },
                             onNavigateToAuthed = { navController.navigate(Screen.Authed.route) },
-                            onNavigateToTodo = { navController.navigate(Screen.Todo.route) },
+                            onNavigateToTodo = { mode -> 
+                                navController.navigate(Screen.Todo.createRoute(mode)) 
+                            },
                             onNavigateToGrocery = { navController.navigate(Screen.Grocery.route) },
                             onLogout = {
                                 scope.launch { 
@@ -96,9 +99,20 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.Authed.route) {
                         AuthedHelloScreen(idToken = session.idToken, onBack = { navController.popBackStack() })
                     }
-                    composable(Screen.Todo.route) {
+                    composable(
+                        route = Screen.Todo.route,
+                        arguments = listOf(
+                            androidx.navigation.navArgument("initialMode") {
+                                type = androidx.navigation.NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val initialMode = backStackEntry.arguments?.getString("initialMode")
                         TodoScreen(
                             userId = session.userId ?: "unauthed",
+                            initialMode = initialMode,
                             onBack = { navController.popBackStack() }
                         )
                     }

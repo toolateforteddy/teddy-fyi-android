@@ -5,7 +5,11 @@ sealed class Screen(val route: String) {
     object Home : Screen("hello")
     object Weather : Screen("weather")
     object Authed : Screen("authed")
-    object Todo : Screen("todo")
+    object Todo : Screen("todo?initialMode={initialMode}") {
+        fun createRoute(initialMode: String? = null): String {
+            return if (initialMode != null) "todo?initialMode=$initialMode" else "todo"
+        }
+    }
     object Grocery : Screen("grocery")
     object GroceryConfig : Screen("grocery_config")
     object Stores : Screen("stores")
