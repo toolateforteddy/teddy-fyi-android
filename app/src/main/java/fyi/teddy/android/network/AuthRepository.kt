@@ -22,7 +22,7 @@ object AuthRepository {
             val clientUuid = session.clientUuid ?: UUID.randomUUID().toString()
             val userId = session.userId ?: "unknown"
             
-            val response = NetworkClient.client.post("https://api-rust.teddy.fyi/api/auth/login") {
+            val response = NetworkClient.client.post("https://api-rust.teddy.fyi/auth/login") {
                 contentType(ContentType.Application.Json)
                 setBody(LoginRequest(userId, clientUuid, googleToken))
             }
@@ -35,9 +35,11 @@ object AuthRepository {
                 session.save(context)
                 true
             } else {
+                android.util.Log.e("AuthRepository", "Login failed with status: ${response.status}")
                 false
             }
         } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Login exception", e)
             false
         }
     }

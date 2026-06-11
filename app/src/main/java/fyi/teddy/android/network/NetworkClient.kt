@@ -52,7 +52,7 @@ object NetworkClient {
                     }
                     
                     try {
-                        val response = refreshClient.post("https://api-rust.teddy.fyi/api/auth/refresh") {
+                        val response = refreshClient.post("https://api-rust.teddy.fyi/auth/refresh") {
                             contentType(ContentType.Application.Json)
                             setBody(mapOf(
                                 "user_id" to (session.userId ?: ""),

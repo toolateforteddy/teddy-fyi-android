@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }
                                 } else {
-                                    // Handle login failure
+                                    Log.e("MainActivity", "Backend login failed")
                                 }
                             }
                         })
