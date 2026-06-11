@@ -27,7 +27,7 @@ fun WeatherScreen(onBack: () -> Unit) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black
+        color = Color.Black,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

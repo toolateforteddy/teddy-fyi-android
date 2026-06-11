@@ -7,30 +7,38 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
 @Serializable
-data class LoginRequest(val user_id: String, val client_uuid: String, val google_auth_token: String)
+data class LoginRequest(
+    @SerialName("user_id") val userId: String,
+    @SerialName("client_uuid") val clientUuid: String,
+    @SerialName("google_auth_token") val googleAuthToken: String
+)
 
 @Serializable
-data class TokenResponse(val access_token: String, val refresh_token: String)
+data class TokenResponse(
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String
+)
 
 object AuthRepository {
     suspend fun login(context: Context, session: UserSession, googleToken: String): Boolean {
         return try {
             val clientUuid = session.clientUuid ?: UUID.randomUUID().toString()
-            val userId = session.userId ?: "unknown"
+            val userIdValue = session.userId ?: "unknown"
             
             val response = NetworkClient.client.post("https://api-rust.teddy.fyi/auth/login") {
                 contentType(ContentType.Application.Json)
-                setBody(LoginRequest(userId, clientUuid, googleToken))
+                setBody(LoginRequest(userIdValue, clientUuid, googleToken))
             }
             
             if (response.status.value in 200..299) {
                 val tokens = response.body<TokenResponse>()
-                session.accessToken = tokens.access_token
-                session.refreshToken = tokens.refresh_token
+                session.accessToken = tokens.accessToken
+                session.refreshToken = tokens.refreshToken
                 session.clientUuid = clientUuid
                 session.save(context)
                 true

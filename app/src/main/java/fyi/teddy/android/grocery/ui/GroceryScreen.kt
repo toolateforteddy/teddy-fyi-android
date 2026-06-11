@@ -43,7 +43,7 @@ enum class GroceryPhase {
 fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit) {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
-        factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
+        factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId),
     )
     
     val state by viewModel.state.collectAsState()
@@ -59,14 +59,14 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     
     val lists by viewModel.lists.collectAsState()
     
-    var showListSelectorMenu by remember { mutableStateOf(false) }
-    var showAddListDialog by remember { mutableStateOf(false) }
-    var showShareListDialog by remember { mutableStateOf(false) }
+    var showListSelectorMenu by remember { mutableStateOf(value = false) }
+    var showAddListDialog by remember { mutableStateOf(value = false) }
+    var showShareListDialog by remember { mutableStateOf(value = false) }
     
     val nameFocusRequester = remember { FocusRequester() }
 
     val uniqueNames = remember(items) {
-        items.map { it.name }.distinct().sorted()
+        items.asSequence().map { it.name }.distinct().sorted().toList()
     }
     
     val suggestions = remember(state.newItemName, uniqueNames) {
@@ -237,7 +237,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                 }
 
                 // Share List Dialog
-                if (showShareListDialog && state.selectedListId != null) {
+                if (showShareListDialog && (state.selectedListId != null)) {
                     ShareListDialog(
                         listName = activeListName,
                         membersFlow = remember(state.selectedListId) { viewModel.getListMembers(state.selectedListId!!) },

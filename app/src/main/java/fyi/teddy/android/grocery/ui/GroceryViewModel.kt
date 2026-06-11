@@ -24,37 +24,16 @@ class GroceryViewModel(
 
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
-    val currentPhase: StateFlow<GroceryPhase> = _currentPhase.asStateFlow()
-
     private val _selectedStoreIds = MutableStateFlow(setOf<Int>())
-    val selectedStoreIds: StateFlow<Set<Int>> = _selectedStoreIds.asStateFlow()
-
     private val _shoppingStoreId = MutableStateFlow<Int?>(null)
-    val shoppingStoreId: StateFlow<Int?> = _shoppingStoreId.asStateFlow()
-
     private val _isEditMode = MutableStateFlow(false)
-    val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
-
     private val _showRecommendedDialog = MutableStateFlow(false)
-    val showRecommendedDialog: StateFlow<Boolean> = _showRecommendedDialog.asStateFlow()
-
     private val _newItemName = MutableStateFlow("")
-    val newItemName: StateFlow<String> = _newItemName.asStateFlow()
-
     private val _newItemQuantity = MutableStateFlow("1")
-    val newItemQuantity: StateFlow<String> = _newItemQuantity.asStateFlow()
-
     private val _newItemUnit = MutableStateFlow<String?>(null)
-    val newItemUnit: StateFlow<String?> = _newItemUnit.asStateFlow()
-
     private val _selectedCategoryId = MutableStateFlow<Int?>(null)
-    val selectedCategoryId: StateFlow<Int?> = _selectedCategoryId.asStateFlow()
-
     private val _recentlyCheckedIds = MutableStateFlow(setOf<Int>())
-    val recentlyCheckedIds: StateFlow<Set<Int>> = _recentlyCheckedIds.asStateFlow()
-
     private val _selectedListId = MutableStateFlow<String?>(null)
-    val selectedListId: StateFlow<String?> = _selectedListId.asStateFlow()
 
     // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
@@ -70,6 +49,7 @@ class GroceryViewModel(
         _recentlyCheckedIds,
         _selectedListId
     ) { args ->
+        @Suppress("UNCHECKED_CAST")
         GroceryUiState(
             currentPhase = args[0] as GroceryPhase,
             selectedStoreIds = args[1] as Set<Int>,
@@ -333,10 +313,6 @@ class GroceryViewModel(
 
     fun deleteItem(item: GroceryItem) {
         viewModelScope.launch { repository.deleteItem(item) }
-    }
-
-    fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) {
-        viewModelScope.launch { repository.swapItemPositions(item1, item2) }
     }
 
     fun updateStoreInfo(info: GroceryItemStoreInfo) {

@@ -42,7 +42,7 @@ fun HomeScreen(
     onNavigateToTodo: (String?) -> Unit,
     onNavigateToGrocery: () -> Unit,
     onNavigateToDebug: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
 ) {
     Log.d("HomeScreen", "Rendering HomeScreen. userName=$userName, profilePic=$profilePic")
     val context = LocalContext.current
@@ -61,12 +61,12 @@ fun HomeScreen(
             val todayString = java.time.LocalDate.now().toString()
             db.todoDao().getTodayItems(userId, todayString)
                 .map { items ->
-                    items.filter { 
-                        !it.isCompleted && 
-                        !it.isDeleted && 
-                        it.scheduledDate == todayString && 
-                        it.parentId == null 
-                    }.map { it.title }
+                    items.asSequence().filter { 
+                        (!it.isCompleted) && 
+                        (!it.isDeleted) && 
+                        (it.scheduledDate == todayString) && 
+                        (it.parentId == null) 
+                    }.map { it.title }.toList()
                 }
         } else {
             flowOf(emptyList())

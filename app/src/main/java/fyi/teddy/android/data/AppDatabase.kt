@@ -31,7 +31,7 @@ import fyi.teddy.android.todo.data.TodoList
         SyncLog::class,
     ], 
     version = 27,
-    exportSchema = true
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
@@ -46,7 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `grocery_item_store_info` ADD COLUMN `userId` TEXT")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -56,7 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `position` INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE `stores` ADD COLUMN `position` INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE `stores` ADD COLUMN `isDefaultSupported` INTEGER NOT NULL DEFAULT 1")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -66,7 +66,7 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE TABLE IF NOT EXISTS `categories` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `position` INTEGER NOT NULL)")
                 try {
                     db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `categoryId` INTEGER")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -74,7 +74,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `timesBought` INTEGER NOT NULL DEFAULT 0")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -83,7 +83,7 @@ abstract class AppDatabase : RoomDatabase() {
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `position` INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `isPlannedForToday` INTEGER NOT NULL DEFAULT 0")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -93,7 +93,7 @@ abstract class AppDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `recurrenceIntervalDays` INTEGER")
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `scheduledAt` INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("UPDATE `todo_items` SET `scheduledAt` = `createdAt` WHERE `scheduledAt` = 0")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -101,7 +101,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `userId` TEXT")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -109,7 +109,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `parentId` INTEGER")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -117,7 +117,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `isDaily` INTEGER NOT NULL DEFAULT 0")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -125,7 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `dueDate` INTEGER")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -135,7 +135,7 @@ abstract class AppDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `userId` TEXT")
                     db.execSQL("ALTER TABLE `stores` ADD COLUMN `userId` TEXT")
                     db.execSQL("ALTER TABLE `categories` ADD COLUMN `userId` TEXT")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -149,7 +149,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `isActive` INTEGER NOT NULL DEFAULT 1")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -222,7 +222,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `description` TEXT")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -246,20 +246,24 @@ abstract class AppDatabase : RoomDatabase() {
                 // 2. Add listId column to todo_items
                 try {
                     db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `listId` TEXT")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
 
                 // 3. Create index on listId
                 try {
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_listId` ON `todo_items` (`listId`)")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
         val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
-                    db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `priority` INTEGER NOT NULL DEFAULT 0")
-                } catch (e: Exception) {}
+                    db.execSQL(
+                """
+                ALTER TABLE `todo_items` ADD COLUMN `priority` INTEGER NOT NULL DEFAULT 0
+                """
+            )
+                } catch (_: Exception) {}
             }
         }
 
@@ -315,7 +319,7 @@ abstract class AppDatabase : RoomDatabase() {
                 // 5. Re-create index on listId
                 try {
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_listId` ON `todo_items` (`listId`)")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 
@@ -388,7 +392,7 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 try {
                     db.execSQL("ALTER TABLE `grocery_items` ADD COLUMN `unit` TEXT")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
         }
 

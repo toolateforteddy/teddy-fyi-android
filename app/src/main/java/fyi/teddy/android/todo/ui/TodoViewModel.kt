@@ -24,7 +24,7 @@ class TodoViewModel(
         if (initialMode != null) {
             try {
                 TodoMode.valueOf(initialMode)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 TodoMode.BACKLOG
             }
         } else {
@@ -283,10 +283,6 @@ class TodoViewModel(
 
     fun deleteAll(userId: String) {
         viewModelScope.launch { repository.deleteAll(userId) }
-    }
-
-    fun swapPositions(item1: TodoItem, item2: TodoItem) {
-        viewModelScope.launch { repository.swapPositions(item1, item2) }
     }
 
     fun moveItemUp(item: TodoItem) {

@@ -8,13 +8,13 @@ import fyi.teddy.android.grocery.repository.GroceryRepository
 
 class GroceryViewModelFactory(
     private val application: Application,
-    private val userId: String
+    private val userId: String,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(GroceryViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
             val database = AppDatabase.getDatabase(application)
             val repository = GroceryRepository(database.groceryDao())
+            @Suppress("UNCHECKED_CAST")
             return GroceryViewModel(repository, userId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

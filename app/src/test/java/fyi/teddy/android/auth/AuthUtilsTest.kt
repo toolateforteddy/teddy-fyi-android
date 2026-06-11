@@ -60,7 +60,7 @@ class AuthUtilsTest {
     fun extractPicture_prefersPictureOverEmail() {
         val payload = mapOf(
             "picture" to "https://example.com/pic.jpg",
-            "email" to "test@example.com"
+            "email" to "test@example.com",
         )
         val token = createFakeToken(payload)
         

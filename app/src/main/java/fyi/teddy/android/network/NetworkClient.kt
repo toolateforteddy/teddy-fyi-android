@@ -63,9 +63,9 @@ object NetworkClient {
 
                         if (response.status.value in 200..299) {
                             val tokens = response.body<TokenResponse>()
-                            session.accessToken = tokens.access_token
-                            session.refreshToken = tokens.refresh_token
-                            BearerTokens(tokens.access_token, tokens.refresh_token)
+                            session.accessToken = tokens.accessToken
+                            session.refreshToken = tokens.refreshToken
+                            BearerTokens(tokens.accessToken, tokens.refreshToken)
                         } else {
                             null
                         }

@@ -36,7 +36,7 @@ import java.util.*
 fun DebugScreen(
     idToken: String?,
     onNavigateToAuthed: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -47,7 +47,7 @@ fun DebugScreen(
 
     // Authed Hello Check State
     var authedHelloBody by remember { mutableStateOf<String?>(null) }
-    var isLoadingAuthedHello by remember { mutableStateOf(false) }
+    var isLoadingAuthedHello by remember { mutableStateOf(value = false) }
 
     // Sync Logs and States observed directly from Room!
     val recentLogs by db.syncLogDao().getRecentLogs(limit = 10).collectAsState(initial = emptyList())
@@ -90,7 +90,7 @@ fun DebugScreen(
     val tenMinutesMillis = 10 * 60 * 1000L
     val syncColor = when {
         lastStatus == "ERROR" -> Color.Red
-        lastStatus == "SUCCESS" && (currentTime - lastSuccessTime <= tenMinutesMillis) -> Color.Green
+        (lastStatus == "SUCCESS") && (currentTime - lastSuccessTime <= tenMinutesMillis) -> Color.Green
         else -> Color.Yellow // successfully synced > 10m ago, or no attempts yet (lastStatus != "ERROR")
     }
 

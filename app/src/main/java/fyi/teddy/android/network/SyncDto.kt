@@ -26,7 +26,7 @@ data class TodoListChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -35,7 +35,7 @@ data class TodoChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -44,7 +44,7 @@ data class GroceryListChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -53,7 +53,7 @@ data class GroceryListMemberChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -62,7 +62,7 @@ data class StoreChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -71,7 +71,7 @@ data class CategoryChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -80,7 +80,7 @@ data class GroceryChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -89,7 +89,7 @@ data class GroceryItemStoreInfoChangeDelta(
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
-    val data: JsonElement? = null
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -139,7 +139,7 @@ data class TodoItemDto(
     val priority: Int,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -151,7 +151,7 @@ data class TodoListDto(
     val createdAt: Long,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -171,7 +171,7 @@ data class GroceryItemDto(
     val notes: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -182,7 +182,7 @@ data class GroceryListDto(
     @SerialName("createdAt") val createdAt: Long,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -194,7 +194,7 @@ data class StoreDto(
     @SerialName("userId") val userId: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -205,7 +205,7 @@ data class CategoryDto(
     @SerialName("userId") val userId: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -217,7 +217,7 @@ data class GroceryListMemberDto(
     @SerialName("joinedAt") val joinedAt: Long,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 @Serializable
@@ -229,7 +229,7 @@ data class GroceryItemStoreInfoDto(
     @SerialName("userId") val userId: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean
+    @SerialName("is_deleted") val isDeleted: Boolean,
 )
 
 // Helper mapping extensions

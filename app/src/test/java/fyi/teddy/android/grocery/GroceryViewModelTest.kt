@@ -2,7 +2,6 @@ package fyi.teddy.android.grocery
 
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
-import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.GroceryPhase
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
@@ -61,7 +60,8 @@ class GroceryViewModelTest {
     fun `test setPhase updates stateflow`() = runTest {
         val viewModel = GroceryViewModel(repository, userId)
         viewModel.setPhase(GroceryPhase.SHOPPING)
-        assertEquals(GroceryPhase.SHOPPING, viewModel.currentPhase.value)
+        testScheduler.advanceUntilIdle()
+        assertEquals(GroceryPhase.SHOPPING, viewModel.state.value.currentPhase)
     }
 
     @Test
@@ -75,13 +75,15 @@ class GroceryViewModelTest {
         testScheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) {
-            repository.insertItem(withArg {
-                assertEquals("Organic Bananas", it.name)
-                assertEquals("3 bunches", it.quantity)
-                assertEquals(categoryId, it.categoryId)
-                assertEquals(userId, it.userId)
-                assertTrue(it.isActive)
-            })
+            repository.insertItem(
+                withArg {
+                    assertEquals("Organic Bananas", it.name)
+                    assertEquals("3 bunches", it.quantity)
+                    assertEquals(categoryId, it.categoryId)
+                    assertEquals(userId, it.userId)
+                    assertTrue(it.isActive)
+                },
+            )
         }
     }
 
@@ -118,7 +120,7 @@ class GroceryViewModelTest {
         viewModel.setPhase(GroceryPhase.SHOPPING)
         viewModel.toggleBought(item, isChecked = true)
 
-        // Run the immediate coroutine that saves to DB
+        // Run the immediate coroutine that saves to DB and updates state, but don't advance past the 2s delay
         testScheduler.runCurrent()
 
         // Verify it was marked as bought in the DB immediately
@@ -127,14 +129,14 @@ class GroceryViewModelTest {
         }
 
         // Verify it's present in recentlyCheckedIds (which prevents it from disappearing immediately)
-        assertTrue(viewModel.recentlyCheckedIds.value.contains(99))
+        assertTrue(viewModel.state.value.recentlyCheckedIds.contains(99))
 
         // Advance 2 seconds
         testScheduler.advanceTimeBy(2000)
         testScheduler.runCurrent()
 
         // Verify it was removed from recentlyCheckedIds, so it moves to In Cart
-        assertFalse(viewModel.recentlyCheckedIds.value.contains(99))
+        assertFalse(viewModel.state.value.recentlyCheckedIds.contains(99))
     }
 
     @Test
@@ -247,7 +249,7 @@ class GroceryViewModelTest {
         val viewModel = GroceryViewModel(repository, userId)
         
         viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.PLANNING))
-        viewModel.onEvent(GroceryUiEvent.SetEditMode(true))
+        viewModel.onEvent(GroceryUiEvent.SetEditMode(enabled = true))
         viewModel.onEvent(GroceryUiEvent.SetNewItemName("Apples"))
         viewModel.onEvent(GroceryUiEvent.SetNewItemQuantity("10"))
         viewModel.onEvent(GroceryUiEvent.SetNewItemUnit("pcs"))

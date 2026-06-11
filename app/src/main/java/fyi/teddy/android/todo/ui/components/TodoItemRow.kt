@@ -56,11 +56,11 @@ fun TodoItemRow(
     totalItems: Int,
     isRecentlyCompleted: Boolean = false,
     onCheckedChange: (Boolean) -> Unit,
-    onIntent: (TodoItemIntent) -> Unit
+    onIntent: (TodoItemIntent) -> Unit,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(value = false) }
     var activeOverlay by remember { mutableStateOf<ActiveRowOverlay?>(null) }
-    var dragOffsetY by remember { mutableStateOf(0f) }
+    var dragOffsetY by remember { mutableStateOf(value = 0f) }
 
     Row(
         modifier = Modifier
@@ -127,7 +127,7 @@ fun TodoItemRow(
                         modifier = Modifier.padding(start = 4.dp).size(14.dp)
                     )
                 }
-                if (!isSubtask && subtaskCount > 0 && !isExpanded) {
+                if (!isSubtask && (subtaskCount > 0) && !isExpanded) {
                     Text(
                         text = " ($completedSubtaskCount/$subtaskCount)",
                         color = Color.Gray,
@@ -193,9 +193,11 @@ fun TodoItemRow(
                 Icon(
                     imageVector = if (item.priority > 0) Icons.Default.Star else Icons.Default.StarBorder,
                     contentDescription = "Toggle Priority",
-                    tint = if (item.priority == 2) Color(0xFFFFD700)
-                           else if (item.priority == 1) Color(0xFFFFA500)
-                           else Color.Gray,
+                    tint = when (item.priority) {
+                        2 -> Color(0xFFFFD700)
+                        1 -> Color(0xFFFFA500)
+                        else -> Color.Gray
+                    },
                     modifier = Modifier.size(20.dp)
                 )
             }

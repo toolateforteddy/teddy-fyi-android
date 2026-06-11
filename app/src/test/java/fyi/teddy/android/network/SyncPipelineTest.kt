@@ -8,7 +8,6 @@ import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.repository.TodoRepository
 import fyi.teddy.android.grocery.data.GroceryItem
-import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryListMember
@@ -35,7 +34,7 @@ class SyncPipelineTest {
     fun setup() {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
-            AppDatabase::class.java
+            AppDatabase::class.java,
         ).allowMainThreadQueries().build()
         todoDao = database.todoDao()
     }
@@ -138,7 +137,7 @@ class SyncPipelineTest {
         )
 
         val serialized = json.encodeToString(request)
-        assertTrue(serialized.contains("test-fyi") == false) // safety check
+        assertFalse(serialized.contains("test-fyi")) // safety check
         assertTrue(serialized.contains("Task 1"))
         assertTrue(serialized.contains("PENDING_INSERT"))
 

@@ -1,7 +1,6 @@
 package fyi.teddy.android.data
 
 import androidx.room.testing.MigrationTestHelper
-import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -13,21 +12,21 @@ import java.io.IOException
 @RunWith(AndroidJUnit4::class)
 class AppDatabaseMigrationTest {
 
-    private val TEST_DB = "migration-test"
+    private val testDb = "migration-test"
 
     @get:Rule
     val helper: MigrationTestHelper = MigrationTestHelper(
         InstrumentationRegistry.getInstrumentation(),
         AppDatabase::class.java,
         emptyList(),
-        FrameworkSQLiteOpenHelperFactory()
+        FrameworkSQLiteOpenHelperFactory(),
     )
 
     @Test
     @Throws(IOException::class)
     fun migrate16To17() {
         // Create database at version 16
-        val db = helper.createDatabase(TEST_DB, 16)
+        val db = helper.createDatabase(testDb, 16)
         
         // Add a task with isPlannedForToday = 1 and one with 0
         db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `isPlannedForToday`) VALUES (1, 'Today task', 0, 1000, 0, 1)")
@@ -35,7 +34,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 17
-        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 17, true, AppDatabase.MIGRATION_16_17)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 17, true, AppDatabase.MIGRATION_16_17)
         
         // Verify today's task has scheduledDate set and future task has null
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
@@ -62,7 +61,7 @@ class AppDatabaseMigrationTest {
     @Throws(IOException::class)
     fun migrate17To18() {
         // Create database at version 17
-        val db = helper.createDatabase(TEST_DB, 17)
+        val db = helper.createDatabase(testDb, 17)
         
         // Insert parent and child items
         db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`) VALUES (1, 'Parent task', 0, 1000, 0, 1000, 0)")
@@ -70,7 +69,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 18
-        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 18, true, AppDatabase.MIGRATION_17_18)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 18, true, AppDatabase.MIGRATION_17_18)
         
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
         
@@ -109,14 +108,14 @@ class AppDatabaseMigrationTest {
     @Throws(IOException::class)
     fun migrate18To19() {
         // Create database at version 18
-        val db = helper.createDatabase(TEST_DB, 18)
+        val db = helper.createDatabase(testDb, 18)
         
         // Insert an item in version 18
         db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `sync_state`, `version`, `is_deleted`) VALUES ('uuid-1', 'Description Task', 0, 1000, 0, 1000, 0, 'SYNCED', 1, 0)")
         db.close()
 
         // Run migration to 19
-        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 19, true, AppDatabase.MIGRATION_18_19)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 19, true, AppDatabase.MIGRATION_18_19)
         
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
         
@@ -144,14 +143,14 @@ class AppDatabaseMigrationTest {
     @Throws(IOException::class)
     fun migrate19To20() {
         // Create database at version 19
-        val db = helper.createDatabase(TEST_DB, 19)
+        val db = helper.createDatabase(testDb, 19)
         
         // Insert an item in version 19
         db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `sync_state`, `version`, `is_deleted`) VALUES ('uuid-1', 'Space Task', 0, 1000, 0, 1000, 0, 'SYNCED', 1, 0)")
         db.close()
 
         // Run migration to 20
-        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 20, true, AppDatabase.MIGRATION_19_20)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 20, true, AppDatabase.MIGRATION_19_20)
         
         // 1. Verify table todo_lists exists
         val listsCursor = migratedDb.query("SELECT * FROM `todo_lists`")
@@ -183,14 +182,14 @@ class AppDatabaseMigrationTest {
     @Throws(IOException::class)
     fun migrate20To21() {
         // Create database at version 20
-        val db = helper.createDatabase(TEST_DB, 20)
+        val db = helper.createDatabase(testDb, 20)
         
         // Insert an item in version 20
         db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `sync_state`, `version`, `is_deleted`) VALUES ('uuid-1', 'Priority Task', 0, 1000, 0, 1000, 0, 'SYNCED', 1, 0)")
         db.close()
 
         // Run migration to 21
-        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 21, true, AppDatabase.MIGRATION_20_21)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 21, true, AppDatabase.MIGRATION_20_21)
         
         // Verify column priority exists and is 0 for legacy task
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
@@ -218,14 +217,14 @@ class AppDatabaseMigrationTest {
     @Throws(IOException::class)
     fun migrate21To22() {
         // Create database at version 21
-        val db = helper.createDatabase(TEST_DB, 21)
+        val db = helper.createDatabase(testDb, 21)
         
         // Insert an item in version 21
         db.execSQL("INSERT INTO `todo_items` (`id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, `isDaily`, `recurrenceIntervalDays`, `sync_state`, `version`, `is_deleted`, `priority`) VALUES ('uuid-1', 'Recurrence Task', 0, 1000, 0, 1000, 0, 5, 'SYNCED', 1, 0, 2)")
         db.close()
 
         // Run migration to 22
-        val migratedDb = helper.runMigrationsAndValidate(TEST_DB, 22, true, AppDatabase.MIGRATION_21_22)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 22, true, AppDatabase.MIGRATION_21_22)
         
         // Verify column recurrenceRule exists and is formatted as FREQ=DAILY;INTERVAL=5 for legacy task
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")

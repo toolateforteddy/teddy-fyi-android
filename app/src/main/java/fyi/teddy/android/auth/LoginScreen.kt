@@ -27,13 +27,13 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
     val scope = rememberCoroutineScope()
     val credentialManager = CredentialManager.create(context)
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoggingIn by remember { mutableStateOf(false) }
+    var isLoggingIn by remember { mutableStateOf(value = false) }
 
     val isEmulator = remember { EmulatorUtils.isEmulator() }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black
+        color = Color.Black,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -112,7 +112,7 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
 private fun handleSignIn(result: GetCredentialResponse): GoogleSignInResult? {
     val credential = result.credential
     
-    if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+    if ((credential is CustomCredential) && (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)) {
         try {
             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
             var pic = googleIdTokenCredential.profilePictureUri

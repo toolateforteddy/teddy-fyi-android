@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                         if (session.userId == null) {
                             session.userId = AuthUtils.extractUserIdFromToken(session.idToken!!)
                         }
-                        if (session.profilePictureUri == null || session.profilePictureUri!!.contains("s2/photos/profile")) {
+                        if ((session.profilePictureUri == null) || session.profilePictureUri!!.contains("s2/photos/profile")) {
                             session.profilePictureUri = AuthUtils.extractPictureFromToken(session.idToken!!)?.toString()
                         }
                         session.save(context)
@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(navController = navController, startDestination = Screen.Login.route) {
                     composable(Screen.Login.route) {
-                        LoginScreen(onLoginSuccess = { result ->
+                        LoginScreen { result ->
                             session.userName = result.displayName
                             session.idToken = result.idToken
                             session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                                     Log.e("MainActivity", "Backend login failed")
                                 }
                             }
-                        })
+                        }
                     }
                     composable(Screen.Home.route) {
                         HomeScreen(
@@ -127,8 +127,9 @@ class MainActivity : ComponentActivity() {
                         GroceryScreen(
                             userId = session.userId ?: "unauthed",
                             onBack = { navController.popBackStack() },
-                            onManageConfig = { navController.navigate(Screen.GroceryConfig.route) }
-                        )
+                        ) {
+                            navController.navigate(Screen.GroceryConfig.route)
+                        }
                     }
                     composable(Screen.GroceryConfig.route) {
                         GroceryConfigScreen(
@@ -153,7 +154,7 @@ class MainActivity : ComponentActivity() {
                         DebugScreen(
                             idToken = session.idToken,
                             onNavigateToAuthed = { navController.navigate(Screen.Authed.route) },
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
                         )
                     }
                 }

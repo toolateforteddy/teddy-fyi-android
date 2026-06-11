@@ -70,12 +70,14 @@ class TodoViewModelTest {
 
         // Then
         coVerify(exactly = 1) {
-            repository.insertItem(withArg {
-                assert(it.title == "Buy Some Groceries")
-                assert(it.userId == userId)
-                assert(it.parentId == parentId)
-                assert(it.scheduledDate == scheduledDate)
-            })
+            repository.insertItem(
+                withArg {
+                    assert(it.title == "Buy Some Groceries")
+                    assert(it.userId == userId)
+                    assert(it.parentId == parentId)
+                    assert(it.scheduledDate == scheduledDate)
+                },
+            )
         }
     }
 

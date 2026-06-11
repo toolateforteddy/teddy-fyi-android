@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 
 class SyncWorker(
     appContext: Context,
-    workerParams: WorkerParameters
+    workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
 
     private suspend fun recordSyncLog(
