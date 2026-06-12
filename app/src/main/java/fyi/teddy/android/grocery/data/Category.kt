@@ -10,6 +10,7 @@ data class Category(
     val name: String,
     val position: Int = 0,
     val userId: String? = null,
+    val icon: String? = null,
 
     // Cloud sync tracking columns
     @ColumnInfo(name = "sync_state")

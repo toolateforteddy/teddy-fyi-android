@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.data.Category
+import fyi.teddy.android.todo.ui.components.IconPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,12 +32,25 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
     
     val categories by viewModel.categories.collectAsState()
     var newCategoryName by remember { mutableStateOf("") }
+    var categoryToPickIconFor by remember { mutableStateOf<Category?>(null) }
 
     val onAddCategory = {
         if (newCategoryName.isNotBlank()) {
             viewModel.onEvent(GroceryUiEvent.InsertCategory(newCategoryName))
             newCategoryName = ""
         }
+    }
+
+    if (categoryToPickIconFor != null) {
+        IconPickerDialog(
+            onDismiss = { categoryToPickIconFor = null },
+            onConfirm = { iconName ->
+                categoryToPickIconFor?.let { 
+                    viewModel.onEvent(GroceryUiEvent.UpdateCategory(it.copy(icon = iconName)))
+                }
+                categoryToPickIconFor = null
+            }
+        )
     }
 
     Scaffold(
@@ -95,6 +109,9 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
                     itemsIndexed(categories, key = { _, category -> category.id }) { index, category ->
                         CategoryItemRow(
                             category = category,
+                            onPickIcon = {
+                                categoryToPickIconFor = category
+                            },
                             onDelete = {
                                 viewModel.onEvent(GroceryUiEvent.DeleteCategory(category))
                             },
@@ -119,6 +136,7 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
 @Composable
 fun CategoryItemRow(
     category: Category,
+    onPickIcon: () -> Unit,
     onDelete: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
@@ -133,6 +151,24 @@ fun CategoryItemRow(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onPickIcon) {
+                val icon = fyi.teddy.android.utils.getIconByName(category.icon)
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Pick Icon",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Category,
+                        contentDescription = "Pick Icon",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
             Text(category.name, color = Color.White, modifier = Modifier.weight(1f))
             
             IconButton(

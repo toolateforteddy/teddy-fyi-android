@@ -103,7 +103,7 @@ data class SyncRequest(
     @SerialName("store_changes") val storeChanges: List<StoreChangeDelta> = emptyList(),
     @SerialName("category_changes") val categoryChanges: List<CategoryChangeDelta> = emptyList(),
     @SerialName("grocery_changes") val groceryChanges: List<GroceryChangeDelta> = emptyList(),
-    @SerialName("grocery_item_store_info_changes") val groceryItemStoreInfoChanges: List<GroceryItemStoreInfoChangeDelta> = emptyList()
+    @SerialName("grocery_item_store_info_changes") val groceryItemStoreInfoChanges: List<GroceryItemStoreInfoChangeDelta> = emptyList(),
 )
 
 @Serializable
@@ -137,6 +137,7 @@ data class TodoItemDto(
     val description: String?,
     val listId: String?,
     val priority: Int,
+    val icon: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -203,6 +204,7 @@ data class CategoryDto(
     val name: String,
     val position: Int,
     @SerialName("userId") val userId: String?,
+    val icon: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -251,6 +253,7 @@ fun TodoItem.toDto(): TodoItemDto {
         description = description,
         listId = listId,
         priority = priority,
+        icon = icon,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
@@ -274,6 +277,7 @@ fun TodoItemDto.toEntity(): TodoItem {
         description = description,
         listId = listId,
         priority = priority,
+        icon = icon,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
@@ -404,6 +408,7 @@ fun Category.toDto(): CategoryDto {
         name = name,
         position = position,
         userId = userId,
+        icon = icon,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
@@ -416,6 +421,7 @@ fun CategoryDto.toEntity(): Category {
         name = name,
         position = position,
         userId = userId,
+        icon = icon,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted

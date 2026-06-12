@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.utils.getIconByName
 import java.time.LocalDate
 
 sealed interface TodoItemIntent {
@@ -26,6 +27,7 @@ sealed interface TodoItemIntent {
     data class MoveToBottom(val item: TodoItem) : TodoItemIntent
     data class MoveUp(val item: TodoItem) : TodoItemIntent
     data class MoveDown(val item: TodoItem) : TodoItemIntent
+    data class AssignIcon(val item: TodoItem) : TodoItemIntent
 }
 
 sealed interface ActiveRowOverlay {
@@ -37,6 +39,7 @@ sealed interface ActiveRowOverlay {
     object AddSubtask : ActiveRowOverlay
     object DueDatePicker : ActiveRowOverlay
     object ScheduleDatePicker : ActiveRowOverlay
+    object IconPicker : ActiveRowOverlay
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,6 +115,15 @@ fun TodoItemRow(
         )
         Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val explicitIcon = getIconByName(item.icon)
+                if (explicitIcon != null) {
+                    Icon(
+                        imageVector = explicitIcon,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.padding(end = 8.dp).size(18.dp)
+                    )
+                }
                 Text(
                     text = item.title,
                     color = if (!isPlanningMode && (item.isCompleted || isRecentlyCompleted)) Color.Gray else Color.White,
@@ -247,6 +259,20 @@ fun TodoItemRow(
                     text = { Text("Edit Title") },
                     onClick = {
                         activeOverlay = ActiveRowOverlay.EditTitle
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Change Icon") },
+                    onClick = {
+                        activeOverlay = ActiveRowOverlay.IconPicker
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Assign Icon") },
+                    onClick = {
+                        onIntent(TodoItemIntent.AssignIcon(item))
                         showMenu = false
                     }
                 )
@@ -455,6 +481,16 @@ fun TodoItemRow(
             onDismiss = { activeOverlay = null },
             onAdd = { title ->
                 onIntent(TodoItemIntent.AddSubtask(item.id, title))
+                activeOverlay = null
+            }
+        )
+    }
+
+    if (activeOverlay == ActiveRowOverlay.IconPicker) {
+        IconPickerDialog(
+            onDismiss = { activeOverlay = null },
+            onConfirm = { iconName ->
+                onIntent(TodoItemIntent.Update(item.copy(icon = iconName)))
                 activeOverlay = null
             }
         )

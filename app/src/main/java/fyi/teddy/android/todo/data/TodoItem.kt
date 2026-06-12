@@ -38,6 +38,7 @@ data class TodoItem(
     val description: String? = null,
     val listId: String? = null,
     val priority: Int = 0,
+    val icon: String? = null,
 
     // Cloud sync tracking columns
     @ColumnInfo(name = "sync_state")

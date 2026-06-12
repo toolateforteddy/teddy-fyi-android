@@ -18,6 +18,61 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.Color
+import fyi.teddy.android.utils.getIconByName
+
+@Composable
+fun IconPickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String?) -> Unit
+) {
+    val iconNames = listOf(
+        "Build", "Home", "Plumbing", "ElectricalServices", "CleaningServices",
+        "Brush", "Yard", "Work", "AttachMoney", "CreditCard",
+        "ReceiptLong", "Email", "Phone", "Analytics", "ShoppingCart",
+        "LocalShipping", "DirectionsCar", "Storefront", "LocalPharmacy", "FitnessCenter",
+        "DirectionsBike", "DirectionsRun", "MedicalInformation", "Restaurant", "Bed",
+        "Event", "Schedule", "List", "Group", "Person",
+        "Settings", "Computer", "MenuBook", "Movie", "Palette",
+        "MusicNote", "Pets", "Flight", "Eco", "Lock"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Icon") },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(48.dp),
+                modifier = Modifier.height(300.dp)
+            ) {
+                item {
+                    IconButton(onClick = { onConfirm(null) }) {
+                        Icon(Icons.Default.Clear, contentDescription = "None", tint = Color.Gray)
+                    }
+                }
+                items(iconNames) { name ->
+                    val icon = getIconByName(name)
+                    if (icon != null) {
+                        IconButton(onClick = { onConfirm(name) }) {
+                            Icon(icon, contentDescription = name, tint = Color.White)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
 
 @Composable
 fun RecurrenceDialog(

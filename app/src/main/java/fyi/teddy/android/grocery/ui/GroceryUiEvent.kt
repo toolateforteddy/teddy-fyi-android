@@ -37,6 +37,7 @@ sealed interface GroceryUiEvent {
     
     // Category
     data class InsertCategory(val name: String) : GroceryUiEvent
+    data class UpdateCategory(val category: Category) : GroceryUiEvent
     data class DeleteCategory(val category: Category) : GroceryUiEvent
     data class SwapCategoryPositions(val cat1: Category, val cat2: Category) : GroceryUiEvent
     

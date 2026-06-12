@@ -104,6 +104,7 @@ class GroceryViewModel(
             
             // Category Mutators
             is GroceryUiEvent.InsertCategory -> insertCategory(event.name)
+            is GroceryUiEvent.UpdateCategory -> updateCategory(event.category)
             is GroceryUiEvent.DeleteCategory -> deleteCategory(event.category)
             is GroceryUiEvent.SwapCategoryPositions -> swapCategoryPositions(event.cat1, event.cat2)
             
@@ -373,6 +374,10 @@ class GroceryViewModel(
                 repository.insertCategory(Category(name = capitalized, userId = userId))
             }
         }
+    }
+
+    fun updateCategory(category: Category) {
+        viewModelScope.launch { repository.updateCategory(category) }
     }
 
     fun deleteCategory(category: Category) {

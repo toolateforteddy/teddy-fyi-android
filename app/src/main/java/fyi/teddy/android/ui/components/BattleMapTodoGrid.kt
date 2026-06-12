@@ -11,13 +11,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.utils.getIconForTask
-import androidx.compose.runtime.Composable
+import fyi.teddy.android.utils.getIconByName
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
@@ -86,7 +89,7 @@ fun Modifier.neonGlow(
 
 
 sealed class HexCellType {
-    data class Task(val title: String, val color: Color) : HexCellType()
+    data class Task(val title: String, val color: Color, val icon: String? = null) : HexCellType()
     data class Counter(val count: Int) : HexCellType()
     data class Backlog(val count: Int) : HexCellType()
     object Placeholder : HexCellType()
@@ -94,7 +97,7 @@ sealed class HexCellType {
 
 @Composable
 fun BattleMapTodoGrid(
-    todoItems: List<String>,
+    todoItems: List<TodoItem>,
     backlogCount: Int,
     onNavigateToTodo: (String?) -> Unit,
     modifier: Modifier = Modifier
@@ -180,7 +183,7 @@ fun BattleMapTodoGrid(
                                     4 -> Color(0xFFFF9800) // Orange
                                     else -> Color(0xFFFFEB3B) // Yellow
                                 }
-                                cells.add(Triple(col, row, HexCellType.Task(tasks[taskIndex], color)))
+                                cells.add(Triple(col, row, HexCellType.Task(tasks[taskIndex].title, color, tasks[taskIndex].icon)))
                                 taskIndex++
                             } else {
                                 cells.add(Triple(col, row, HexCellType.Placeholder))
@@ -212,14 +215,19 @@ fun BattleMapTodoGrid(
                     ) {
                         when (type) {
                             is HexCellType.Counter -> {
+                                val color = Color(0xFFBCADA0)
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(1.dp)
-                                        .neonGlow(Color(0xFFBCADA0), HexagonShape(), blurRadius = 4.dp)
+                                        .neonGlow(color, HexagonShape(), blurRadius = 4.dp)
                                         .clip(HexagonShape())
-                                        .background(Color(0xFF161424))
-                                        .border(2.dp, Color(0xFFBCADA0), HexagonShape())
+                                        .background(
+                                            Brush.radialGradient(
+                                                colors = listOf(color.copy(alpha = 0.15f), Color(0xFF12101A))
+                                            )
+                                        )
+                                        .border(2.dp, color, HexagonShape())
                                         .clickable { onNavigateToTodo(null) }
                                         .padding(8.dp),
                                     contentAlignment = Alignment.Center
@@ -227,48 +235,62 @@ fun BattleMapTodoGrid(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             text = type.count.toString(),
-                                            color = Color(0xFFBCADA0),
+                                            color = Color.White,
                                             fontSize = 32.sp,
                                             fontWeight = FontWeight.Bold,
                                             textAlign = TextAlign.Center
                                         )
                                         Text(
-                                            text = "Remaining",
-                                            color = Color(0xFFBCADA0),
-                                            fontSize = 11.sp,
+                                            text = "REMAINING",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
                                             fontWeight = FontWeight.Medium,
-                                            textAlign = TextAlign.Center
+                                            textAlign = TextAlign.Center,
+                                            letterSpacing = 0.5.sp
                                         )
                                     }
                                 }
                             }
                             is HexCellType.Backlog -> {
+                                val color = Color(0xFF3700B3)
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(1.dp)
-                                        .neonGlow(Color(0xFF3700B3), HexagonShape(), blurRadius = 4.dp)
+                                        .neonGlow(color, HexagonShape(), blurRadius = 4.dp)
                                         .clip(HexagonShape())
-                                        .background(Color(0xFF161424))
-                                        .border(2.dp, Color(0xFF3700B3), HexagonShape())
+                                        .background(
+                                            Brush.radialGradient(
+                                                colors = listOf(color.copy(alpha = 0.15f), Color(0xFF12101A))
+                                            )
+                                        )
+                                        .border(2.dp, color, HexagonShape())
                                         .clickable { onNavigateToTodo("BACKLOG") }
-                                        .padding(8.dp),
+                                        .padding(12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
                                             imageVector = Icons.Default.Build,
                                             contentDescription = null,
-                                            tint = Color(0xFF03DAC5),
-                                            modifier = Modifier.size(24.dp)
+                                            tint = color,
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .offset(y = (-4).dp)
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "Backlog (${type.count})",
+                                            text = "BACKLOG",
                                             color = Color.White,
-                                            fontSize = 11.sp,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "(${type.count} Items)",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
                                             textAlign = TextAlign.Center
                                         )
                                     }
@@ -283,27 +305,43 @@ fun BattleMapTodoGrid(
                                         .padding(1.dp)
                                         .neonGlow(color, HexagonShape(), blurRadius = 4.dp)
                                         .clip(HexagonShape())
-                                        .background(Color(0xFF161424))
+                                        .background(
+                                            Brush.radialGradient(
+                                                colors = listOf(color.copy(alpha = 0.15f), Color(0xFF12101A))
+                                            )
+                                        )
                                         .border(2.dp, color, HexagonShape())
                                         .clickable { onNavigateToTodo(null) }
-                                        .padding(8.dp),
+                                        .padding(12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
-                                            imageVector = getIconForTask(title, Icons.Default.Build),
+                                            imageVector = getIconByName(type.icon) ?: getIconForTask(title, Icons.Default.Build),
                                             contentDescription = null,
                                             tint = color,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .offset(y = (-4).dp)
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        var fontSize by remember(title) { mutableStateOf(14.sp) }
+                                        
                                         Text(
-                                            text = title,
+                                            text = title.uppercase(),
                                             color = Color.White,
-                                            fontSize = 11.sp,
-                                            maxLines = 2,
+                                            fontSize = fontSize,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center
+                                            textAlign = TextAlign.Center,
+                                            lineHeight = fontSize * 1.2f,
+                                            onTextLayout = { textLayoutResult ->
+                                                if (textLayoutResult.hasVisualOverflow && fontSize > 11.sp) {
+                                                    fontSize = (fontSize.value - 0.5f).sp
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -315,7 +353,7 @@ fun BattleMapTodoGrid(
                                         .padding(1.dp)
                                         .clip(HexagonShape())
                                         .background(Color(0xFF050508))
-                                        .border(1.dp, Color(0xFF221F35), HexagonShape())
+                                        .border(1.dp, Color(0xFF221F35).copy(alpha = 0.2f), HexagonShape())
                                 )
                             }
                         }

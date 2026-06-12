@@ -373,6 +373,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
                                             is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
                                             is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
+                                            is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
                                         }
                                     }
                                 )
@@ -412,6 +413,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
                                                 is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
                                                 is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
+                                                is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
                                             }
                                         }
                                     )

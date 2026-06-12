@@ -39,6 +39,49 @@ private val ICON_CATEGORIES = mapOf(
     )
 )
 
+private val MATERIAL_ICON_MAP = mapOf(
+    "Build" to Icons.Default.Build,
+    "Home" to Icons.Default.Home,
+    "Plumbing" to Icons.Default.Plumbing,
+    "ElectricalServices" to Icons.Default.ElectricalServices,
+    "CleaningServices" to Icons.Default.CleaningServices,
+    "Brush" to Icons.Default.Brush,
+    "Yard" to Icons.Default.Yard,
+    "Work" to Icons.Default.Work,
+    "AttachMoney" to Icons.Default.AttachMoney,
+    "CreditCard" to Icons.Default.CreditCard,
+    "ReceiptLong" to Icons.Default.ReceiptLong,
+    "Email" to Icons.Default.Email,
+    "Phone" to Icons.Default.Phone,
+    "Analytics" to Icons.Default.Analytics,
+    "ShoppingCart" to Icons.Default.ShoppingCart,
+    "LocalShipping" to Icons.Default.LocalShipping,
+    "DirectionsCar" to Icons.Default.DirectionsCar,
+    "Storefront" to Icons.Default.Storefront,
+    "LocalPharmacy" to Icons.Default.LocalPharmacy,
+    "FitnessCenter" to Icons.Default.FitnessCenter,
+    "DirectionsBike" to Icons.Default.DirectionsBike,
+    "DirectionsRun" to Icons.Default.DirectionsRun,
+    "MedicalInformation" to Icons.Default.MedicalInformation,
+    "Restaurant" to Icons.Default.Restaurant,
+    "Bed" to Icons.Default.Bed,
+    "Event" to Icons.Default.Event,
+    "Schedule" to Icons.Default.Schedule,
+    "List" to Icons.Default.List,
+    "Group" to Icons.Default.Group,
+    "Person" to Icons.Default.Person,
+    "Settings" to Icons.Default.Settings,
+    "Computer" to Icons.Default.Computer,
+    "MenuBook" to Icons.Default.MenuBook,
+    "Movie" to Icons.Default.Movie,
+    "Palette" to Icons.Default.Palette,
+    "MusicNote" to Icons.Default.MusicNote,
+    "Pets" to Icons.Default.Pets,
+    "Flight" to Icons.Default.Flight,
+    "Eco" to Icons.Default.Eco,
+    "Lock" to Icons.Default.Lock
+)
+
 fun getIconForTask(title: String, defaultIcon: ImageVector): ImageVector {
     val taskWords = title.lowercase().split(Regex("[\\s,.:;?!'\"()_-]+")).toSet()
 
@@ -56,3 +99,7 @@ fun getIconForTask(title: String, defaultIcon: ImageVector): ImageVector {
     return defaultIcon
 }
 
+fun getIconByName(name: String?): ImageVector? {
+    if (name == null) return null
+    return MATERIAL_ICON_MAP[name] ?: MATERIAL_ICON_MAP[name.replaceFirstChar { it.uppercase() }]
+}

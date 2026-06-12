@@ -61,12 +61,12 @@ fun HomeScreen(
             val todayString = java.time.LocalDate.now().toString()
             db.todoDao().getTodayItems(userId, todayString)
                 .map { items ->
-                    items.asSequence().filter { 
+                    items.filter { 
                         (!it.isCompleted) && 
                         (!it.isDeleted) && 
                         (it.scheduledDate == todayString) && 
                         (it.parentId == null) 
-                    }.map { it.title }.toList()
+                    }
                 }
         } else {
             flowOf(emptyList())
@@ -115,7 +115,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0D0B14), Color(0xFF050508))
+                        colors = listOf(Color(0xFF0A0814), Color(0xFF050508))
                     )
                 )
                 .padding(16.dp)

@@ -4,7 +4,18 @@ import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.util.TaskSchedulerUtils
+import fyi.teddy.android.network.NetworkClient
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class AssignIconResponse(
+    @SerialName("emoji_or_asset_token") val icon: String
+)
 
 /**
  * Repository layer for managing [TodoItem] data operations.
@@ -86,6 +97,37 @@ class TodoRepository(private val todoDao: TodoDao) {
      * Swaps display positions of two todo items to facilitate drag/drop or ordering.
      */
     suspend fun swapPositions(item1: TodoItem, item2: TodoItem) = todoDao.swapPositions(item1, item2)
+
+    /**
+     * Calls the remote endpoint to intelligently suggest an icon for the given item
+     * based on its title, and updates the local item if successful.
+     */
+    suspend fun assignIcon(item: TodoItem, idToken: String): String? {
+        return try {
+            val response = NetworkClient.client.post("https://api-rust.teddy.fyi/api/assign-icon") {
+                header(HttpHeaders.Authorization, "Bearer $idToken")
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("todo_title" to item.title))
+            }
+            android.util.Log.d("TodoRepository", "assignIcon response status: ${response.status}")
+            if (response.status.isSuccess()) {
+                val iconResponse = response.body<AssignIconResponse>()
+                val iconName = iconResponse.icon
+                android.util.Log.d("TodoRepository", "assignIcon iconName: $iconName")
+                if (iconName.isNotBlank() && iconName != "null") {
+                    updateItem(item.copy(icon = iconName))
+                    iconName
+                } else null
+            } else {
+                val errorBody = try { response.body<String>() } catch (_: Exception) { "could not read error body" }
+                android.util.Log.e("TodoRepository", "assignIcon failed: $errorBody")
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TodoRepository", "assignIcon exception", e)
+            null
+        }
+    }
 
     /**
      * Retrieves all todo lists for a specific user.
