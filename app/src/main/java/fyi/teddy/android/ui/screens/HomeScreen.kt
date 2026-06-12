@@ -26,6 +26,10 @@ import androidx.credentials.CredentialManager
 import coil.compose.AsyncImage
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.repository.TeddyRepository
+import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.repository.TodoRepository
+import fyi.teddy.android.todo.ui.components.TodoItemIntent
+import fyi.teddy.android.todo.ui.components.TodoItemMenu
 import fyi.teddy.android.ui.components.BattleMapTodoGrid
 import fyi.teddy.android.ui.components.BronzeGroceryTile
 import kotlinx.coroutines.flow.flowOf
@@ -48,12 +52,15 @@ fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isClusterHappy by remember { mutableStateOf<Boolean?>(null) }
+    
+    var selectedTodoForItemMenu by remember { mutableStateOf<TodoItem?>(null) }
 
     LaunchedEffect(Unit) {
         isClusterHappy = TeddyRepository.checkClusterHealth()
     }
 
     val db = remember { AppDatabase.getDatabase(context) }
+    val todoRepository = remember(db) { TodoRepository(db.todoDao(), context) }
 
     // Fetch live data from Database
     val todoItems by remember(userId) {
@@ -181,12 +188,52 @@ fun HomeScreen(
                 }
 
                 // Tactical Hex Todo Grid (Click to open Todo Manager)
-                BattleMapTodoGrid(
-                    todoItems = todoItems,
-                    backlogCount = backlogCount,
-                    onNavigateToTodo = onNavigateToTodo,
-                    modifier = Modifier.weight(1f)
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    BattleMapTodoGrid(
+                        todoItems = todoItems,
+                        backlogCount = backlogCount,
+                        onNavigateToTodo = onNavigateToTodo,
+                        onTodoLongClick = { selectedTodoForItemMenu = it },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    selectedTodoForItemMenu?.let { item ->
+                        TodoItemMenu(
+                            item = item,
+                            expanded = true,
+                            onDismissRequest = { selectedTodoForItemMenu = null },
+                            onIntent = { intent ->
+                                scope.launch {
+                                    when (intent) {
+                                        is TodoItemIntent.Update -> todoRepository.updateItem(intent.item)
+                                        is TodoItemIntent.Delete -> todoRepository.deleteItem(intent.item)
+                                        is TodoItemIntent.ToggleComplete -> todoRepository.updateItem(intent.item.copy(isCompleted = intent.isChecked))
+                                        is TodoItemIntent.AssignIcon -> {
+                                            val session = fyi.teddy.android.auth.UserSession()
+                                            session.load(context)
+                                            val token = session.idToken
+                                            if (token != null) {
+                                                todoRepository.assignIcon(intent.item, token)
+                                            }
+                                        }
+                                        is TodoItemIntent.AddSubtask -> {
+                                            todoRepository.insertItem(TodoItem(
+                                                title = intent.title,
+                                                userId = item.userId,
+                                                parentId = intent.parentId,
+                                                listId = item.listId
+                                            ))
+                                        }
+                                        // Movement intents might be harder without the full list, 
+                                        // but we can try basic implementations if needed.
+                                        else -> { /* Not implemented on home screen yet */ }
+                                    }
+                                }
+                                selectedTodoForItemMenu = null
+                            }
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

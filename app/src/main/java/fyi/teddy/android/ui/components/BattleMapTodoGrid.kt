@@ -2,7 +2,7 @@ package fyi.teddy.android.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CutCornerShape
@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -89,17 +91,18 @@ fun Modifier.neonGlow(
 
 
 sealed class HexCellType {
-    data class Task(val title: String, val color: Color, val icon: String? = null) : HexCellType()
+    data class Task(val item: TodoItem, val color: Color) : HexCellType()
     data class Counter(val count: Int) : HexCellType()
     data class Backlog(val count: Int) : HexCellType()
-    object Placeholder : HexCellType()
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun BattleMapTodoGrid(
     todoItems: List<TodoItem>,
     backlogCount: Int,
     onNavigateToTodo: (String?) -> Unit,
+    onTodoLongClick: (TodoItem) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -112,8 +115,9 @@ fun BattleMapTodoGrid(
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
                 .neonGlow(Color(0xFF3700B3), CutCornerShape(12.dp), blurRadius = 4.dp)
-                .border(2.dp, Color(0xFF3700B3), CutCornerShape(12.dp))
+                .clip(CutCornerShape(12.dp))
                 .background(Color(0xFF161424))
+                .border(2.dp, Color(0xFF3700B3), CutCornerShape(12.dp))
                 .padding(vertical = 10.dp, horizontal = 16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -147,19 +151,9 @@ fun BattleMapTodoGrid(
             val cells = mutableListOf<Triple<Int, Int, HexCellType>>()
 
             if (todoItems.isEmpty()) {
-                // Row 0 has 3 slots: [Backlog, Placeholder, Counter]
+                // Row 0 has 3 slots: [Backlog, Counter] (Placeholder removed)
                 cells.add(Triple(0, 0, HexCellType.Backlog(backlogCount)))
-                cells.add(Triple(1, 0, HexCellType.Placeholder))
                 cells.add(Triple(2, 0, HexCellType.Counter(0)))
-                
-                // Row 1 has 2 slots: [Placeholder, Placeholder]
-                cells.add(Triple(0, 1, HexCellType.Placeholder))
-                cells.add(Triple(1, 1, HexCellType.Placeholder))
-                
-                // Row 2 has 3 slots: [Placeholder, Placeholder, Placeholder]
-                cells.add(Triple(0, 2, HexCellType.Placeholder))
-                cells.add(Triple(1, 2, HexCellType.Placeholder))
-                cells.add(Triple(2, 2, HexCellType.Placeholder))
             } else {
                 val tasks = todoItems
                 var taskIndex = 0
@@ -183,10 +177,8 @@ fun BattleMapTodoGrid(
                                     4 -> Color(0xFFFF9800) // Orange
                                     else -> Color(0xFFFFEB3B) // Yellow
                                 }
-                                cells.add(Triple(col, row, HexCellType.Task(tasks[taskIndex].title, color, tasks[taskIndex].icon)))
+                                cells.add(Triple(col, row, HexCellType.Task(tasks[taskIndex], color)))
                                 taskIndex++
-                            } else {
-                                cells.add(Triple(col, row, HexCellType.Placeholder))
                             }
                         }
                     }
@@ -195,13 +187,43 @@ fun BattleMapTodoGrid(
             }
 
             val totalRows = cells.maxOf { it.second } + 1
-            val gridHeight = hexHeightDp * (totalRows * 0.75f + 0.25f)
+            // Ensure at least 6 rows to maintain structural depth even when tasks are few
+            val displayRows = maxOf(totalRows, 6)
+            val gridHeight = hexHeightDp * (displayRows * 0.75f + 0.25f)
 
             // Inner container holding the exact size of the interlocking grid
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(gridHeight)
+                    .drawBehind {
+                        val hexWidth = hexWidthDp.toPx()
+                        val hexHeight = hexHeightDp.toPx()
+                        val xPaddingPx = xPadding.toPx()
+                        val yPaddingPx = yPadding.toPx()
+                        val gridColor = Color(0xFF1B182B).copy(alpha = 0.2f)
+                        val strokeWidth = 1.dp.toPx()
+
+                        val outline = HexagonShape().createOutline(Size(hexWidth, hexHeight), layoutDirection, this)
+                        if (outline is Outline.Generic) {
+                            val hexPath = outline.path
+                            for (r in 0 until displayRows) {
+                                val slotsInRow = if (r % 2 == 0) 3 else 2
+                                for (c in 0 until slotsInRow) {
+                                    val xOffset = xPaddingPx + hexWidth * (if (r % 2 == 1) c.toFloat() + 0.5f else c.toFloat())
+                                    val yOffset = yPaddingPx + hexHeight * (r.toFloat() * 0.75f)
+
+                                    translate(left = xOffset, top = yOffset) {
+                                        drawPath(
+                                            path = hexPath,
+                                            color = gridColor,
+                                            style = Stroke(width = strokeWidth)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
             ) {
                 cells.forEach { (col, row, type) ->
                     val xOffset = xPadding + hexWidthDp * (if (row % 2 == 1) col.toFloat() + 0.5f else col.toFloat())
@@ -228,7 +250,9 @@ fun BattleMapTodoGrid(
                                             )
                                         )
                                         .border(2.dp, color, HexagonShape())
-                                        .clickable { onNavigateToTodo(null) }
+                                        .combinedClickable(
+                                            onClick = { onNavigateToTodo(null) }
+                                        )
                                         .padding(8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -265,7 +289,9 @@ fun BattleMapTodoGrid(
                                             )
                                         )
                                         .border(2.dp, color, HexagonShape())
-                                        .clickable { onNavigateToTodo("BACKLOG") }
+                                        .combinedClickable(
+                                            onClick = { onNavigateToTodo("BACKLOG") }
+                                        )
                                         .padding(12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -297,7 +323,7 @@ fun BattleMapTodoGrid(
                                 }
                             }
                             is HexCellType.Task -> {
-                                val title = type.title
+                                val title = type.item.title
                                 val color = type.color
                                 Box(
                                     modifier = Modifier
@@ -311,13 +337,16 @@ fun BattleMapTodoGrid(
                                             )
                                         )
                                         .border(2.dp, color, HexagonShape())
-                                        .clickable { onNavigateToTodo(null) }
+                                        .combinedClickable(
+                                            onClick = { onNavigateToTodo(null) },
+                                            onLongClick = { onTodoLongClick(type.item) }
+                                        )
                                         .padding(12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
-                                            imageVector = getIconByName(type.icon) ?: getIconForTask(title, Icons.Default.Build),
+                                            imageVector = getIconByName(type.item.icon) ?: getIconForTask(title, Icons.Default.Build),
                                             contentDescription = null,
                                             tint = color,
                                             modifier = Modifier
@@ -345,16 +374,6 @@ fun BattleMapTodoGrid(
                                         )
                                     }
                                 }
-                            }
-                            HexCellType.Placeholder -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(1.dp)
-                                        .clip(HexagonShape())
-                                        .background(Color(0xFF050508))
-                                        .border(1.dp, Color(0xFF221F35).copy(alpha = 0.2f), HexagonShape())
-                                )
                             }
                         }
                     }

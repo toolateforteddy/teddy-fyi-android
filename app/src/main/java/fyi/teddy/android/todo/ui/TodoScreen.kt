@@ -374,6 +374,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
                                             is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
                                             is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
+                                            is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
                                         }
                                     }
                                 )
@@ -414,6 +415,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
                                                 is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
                                                 is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
+                                                is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
                                             }
                                         }
                                     )

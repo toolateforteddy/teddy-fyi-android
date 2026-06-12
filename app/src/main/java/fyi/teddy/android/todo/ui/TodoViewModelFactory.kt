@@ -15,7 +15,7 @@ class TodoViewModelFactory(
         if (modelClass.isAssignableFrom(TodoViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             val database = AppDatabase.getDatabase(application)
-            val repository = TodoRepository(database.todoDao())
+            val repository = TodoRepository(database.todoDao(), application)
             return TodoViewModel(application, repository, userId, initialMode) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

@@ -1,10 +1,12 @@
 package fyi.teddy.android.todo.repository
 
+import android.content.Context
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.util.TaskSchedulerUtils
 import fyi.teddy.android.network.NetworkClient
+import fyi.teddy.android.network.SyncWorker
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -23,7 +25,14 @@ data class AssignIconResponse(
  * Acts as the clean API boundary between the domain view models and Room database DAOs,
  * facilitating future local-first synchronization engine integrations.
  */
-class TodoRepository(private val todoDao: TodoDao) {
+class TodoRepository(
+    private val todoDao: TodoDao,
+    private val context: Context? = null
+) {
+
+    private fun scheduleSync() {
+        context?.let { SyncWorker.enqueueDebounced(it) }
+    }
 
     /**
      * Retrieves all [TodoItem]s for a specific user, sorted by position and creation date.
@@ -47,7 +56,10 @@ class TodoRepository(private val todoDao: TodoDao) {
     /**
      * Inserts a new [TodoItem] at the next position sequence for the user.
      */
-    suspend fun insertItem(item: TodoItem) = todoDao.insertWithNextPosition(item)
+    suspend fun insertItem(item: TodoItem) {
+        todoDao.insertWithNextPosition(item)
+        scheduleSync()
+    }
 
     /**
      * Updates an existing [TodoItem]'s details or completion state, ensuring the
@@ -56,6 +68,7 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun updateItem(item: TodoItem) {
         val nextSyncState = if (item.syncState == "SYNCED") "PENDING_UPDATE" else item.syncState
         todoDao.updateItem(item.copy(syncState = nextSyncState))
+        scheduleSync()
     }
 
     /**
@@ -69,22 +82,32 @@ class TodoRepository(private val todoDao: TodoDao) {
         } else {
             todoDao.updateItem(item.copy(syncState = "PENDING_DELETE", isDeleted = true))
         }
+        scheduleSync()
     }
 
     /**
      * Deletes all [TodoItem]s belonging to a specific user.
      */
-    suspend fun deleteAll(userId: String) = todoDao.deleteAll(userId)
+    suspend fun deleteAll(userId: String) {
+        todoDao.deleteAll(userId)
+        scheduleSync()
+    }
 
     /**
      * Resets any non-daily planned items for the user.
      */
-    suspend fun resetPlannedItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()) = todoDao.resetPlannedItems(userId, today)
+    suspend fun resetPlannedItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()) {
+        todoDao.resetPlannedItems(userId, today)
+        scheduleSync()
+    }
 
     /**
      * Automatically claims unowned items for the currently logged-in user.
      */
-    suspend fun claimUnownedItems(userId: String) = todoDao.claimUnownedItems(userId)
+    suspend fun claimUnownedItems(userId: String) {
+        todoDao.claimUnownedItems(userId)
+        scheduleSync()
+    }
 
     /**
      * Resets state of recurring daily items back to uncompleted for today's date.
@@ -92,12 +115,16 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun resetDailyItems(userId: String) {
         val today = TaskSchedulerUtils.getTodayDateString()
         todoDao.resetDailyItems(userId, today)
+        scheduleSync()
     }
 
     /**
      * Swaps display positions of two todo items to facilitate drag/drop or ordering.
      */
-    suspend fun swapPositions(item1: TodoItem, item2: TodoItem) = todoDao.swapPositions(item1, item2)
+    suspend fun swapPositions(item1: TodoItem, item2: TodoItem) {
+        todoDao.swapPositions(item1, item2)
+        scheduleSync()
+    }
 
     /**
      * Calls the remote endpoint to intelligently suggest an icon for the given item
@@ -138,7 +165,10 @@ class TodoRepository(private val todoDao: TodoDao) {
     /**
      * Inserts a new todo list.
      */
-    suspend fun insertList(list: TodoList) = todoDao.insertList(list)
+    suspend fun insertList(list: TodoList) {
+        todoDao.insertList(list)
+        scheduleSync()
+    }
 
     /**
      * Updates an existing todo list, following local mutation lifecycle state machine rules.
@@ -146,6 +176,7 @@ class TodoRepository(private val todoDao: TodoDao) {
     suspend fun updateList(list: TodoList) {
         val nextSyncState = if (list.syncState == "SYNCED") "PENDING_UPDATE" else list.syncState
         todoDao.updateList(list.copy(syncState = nextSyncState))
+        scheduleSync()
     }
 
     /**
@@ -160,5 +191,6 @@ class TodoRepository(private val todoDao: TodoDao) {
             todoDao.nullifyListIdForItems(list.id)
             todoDao.updateList(list.copy(syncState = "PENDING_DELETE", isDeleted = true))
         }
+        scheduleSync()
     }
 }

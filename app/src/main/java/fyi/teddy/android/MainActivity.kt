@@ -17,6 +17,7 @@ import fyi.teddy.android.grocery.ui.CategoryManagementScreen
 import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
+import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.todo.ui.TodoScreen
 import fyi.teddy.android.ui.navigation.Screen
 import fyi.teddy.android.ui.screens.AuthedHelloScreen
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
                         "Session loaded: name=${session.userName}, tokenPrefix=${session.idToken?.take(10)}, picUri=${session.profilePictureUri}"
                     )
                     if (session.idToken != null) {
+                        SyncWorker.enqueueIfNecessary(context)
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
                             scope.launch { 
                                 val success = fyi.teddy.android.network.AuthRepository.login(context, session, result.idToken)
                                 if (success) {
+                                    SyncWorker.enqueueIfNecessary(context)
                                     navController.navigate(Screen.Home.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }

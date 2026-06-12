@@ -13,7 +13,7 @@ class GroceryViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(GroceryViewModel::class.java)) {
             val database = AppDatabase.getDatabase(application)
-            val repository = GroceryRepository(database.groceryDao())
+            val repository = GroceryRepository(database.groceryDao(), application)
             @Suppress("UNCHECKED_CAST")
             return GroceryViewModel(repository, userId) as T
         }

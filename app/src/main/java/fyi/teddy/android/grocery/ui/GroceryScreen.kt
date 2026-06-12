@@ -89,6 +89,28 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
             TopAppBar(
                 title = { Text("Grocery: ${state.currentPhase.displayName}") },
                 actions = {
+                    if (state.currentPhase == GroceryPhase.NEED) {
+                        val sharedPrefs = context.getSharedPreferences("sync_metadata", android.content.Context.MODE_PRIVATE)
+                        val lastSyncedAtString = sharedPrefs.getString("last_synced_at", null)
+                        val isStale = remember(lastSyncedAtString) {
+                            if (lastSyncedAtString == null) true
+                            else {
+                                try {
+                                    val lastSynced = java.time.OffsetDateTime.parse(lastSyncedAtString)
+                                    lastSynced.isBefore(java.time.OffsetDateTime.now().minusDays(1))
+                                } catch (_: Exception) { true }
+                            }
+                        }
+                        if (isStale) {
+                            IconButton(onClick = { fyi.teddy.android.network.SyncWorker.enqueue(context) }) {
+                                Icon(
+                                    Icons.Default.Sync,
+                                    contentDescription = "Sync Stale Data",
+                                    tint = Color.Yellow
+                                )
+                            }
+                        }
+                    }
                     if (state.currentPhase != GroceryPhase.SHOPPING) {
                         IconButton(onClick = { viewModel.onEvent(GroceryUiEvent.SetEditMode(!state.isEditMode)) }) {
                             Icon(

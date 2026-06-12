@@ -257,5 +257,58 @@ class SyncWorker(
                 syncWorkRequest
             )
         }
+
+        /**
+         * Enqueues a sync with a 1-hour debounce delay.
+         * Subsequent calls will replace the existing work, effectively pushing back the timer.
+         */
+        fun enqueueDebounced(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setConstraints(constraints)
+                .setInitialDelay(1, TimeUnit.HOURS)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME,
+                ExistingWorkPolicy.REPLACE,
+                syncWorkRequest
+            )
+        }
+
+        /**
+         * Checks if there are any local unsynced changes and enqueues a sync if so.
+         */
+        suspend fun enqueueIfNecessary(context: Context) {
+            val db = AppDatabase.getDatabase(context)
+            val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
+            val isFirstSync = sharedPrefs.getString("last_synced_at", null) == null
+            
+            val hasChanges = if (isFirstSync) true else {
+                db.todoDao().getUnsyncedItems().isNotEmpty() ||
+                db.todoDao().getUnsyncedLists().isNotEmpty() ||
+                db.groceryDao().getUnsyncedItems().isNotEmpty() ||
+                db.groceryDao().getUnsyncedLists().isNotEmpty() ||
+                db.groceryDao().getUnsyncedStores().isNotEmpty() ||
+                db.groceryDao().getUnsyncedCategories().isNotEmpty() ||
+                db.groceryDao().getUnsyncedListMembers().isNotEmpty() ||
+                db.groceryDao().getUnsyncedStoreInfos().isNotEmpty()
+            }
+
+            if (hasChanges) {
+                Log.d(TAG, "Unsynced changes detected on startup, enqueuing sync.")
+                enqueue(context)
+            } else {
+                Log.d(TAG, "No unsynced changes detected on startup.")
+            }
+        }
     }
 }
