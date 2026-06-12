@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
 data class AssignIconResponse(
-    @SerialName("emoji_or_asset_token") val icon: String
+    @SerialName("emoji_or_asset_token") val icon: String,
 )
 
 /**
@@ -25,31 +26,31 @@ data class AssignIconResponse(
 class TodoRepository(private val todoDao: TodoDao) {
 
     /**
-     * Retrieves all todo items for a specific user, sorted by position and creation date.
+     * Retrieves all [TodoItem]s for a specific user, sorted by position and creation date.
      */
     fun getAllItems(userId: String): Flow<List<TodoItem>> = todoDao.getAllItems(userId)
 
     /**
-     * Retrieves all todo items active or scheduled for today, utilizing modernized date formats.
+     * Retrieves all [TodoItem]s active or scheduled for today, utilizing modernized date formats.
      */
     fun getTodayItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()): Flow<List<TodoItem>> {
         return todoDao.getTodayItems(userId, today)
     }
 
     /**
-     * Retrieves all future scheduled todo items starting after today's date.
+     * Retrieves all future scheduled [TodoItem]s starting after today's date.
      */
     fun getScheduledItems(userId: String, today: String = TaskSchedulerUtils.getTodayDateString()): Flow<List<TodoItem>> {
         return todoDao.getScheduledItems(userId, today)
     }
 
     /**
-     * Inserts a new todo item at the next position sequence for the user.
+     * Inserts a new [TodoItem] at the next position sequence for the user.
      */
     suspend fun insertItem(item: TodoItem) = todoDao.insertWithNextPosition(item)
 
     /**
-     * Updates an existing todo item's details or completion state, ensuring the
+     * Updates an existing [TodoItem]'s details or completion state, ensuring the
      * local mutation lifecycle state machine is strictly followed.
      */
     suspend fun updateItem(item: TodoItem) {
@@ -58,7 +59,7 @@ class TodoRepository(private val todoDao: TodoDao) {
     }
 
     /**
-     * Deletes a todo item, strictly adhering to the local mutation lifecycle rules.
+     * Deletes a [TodoItem], strictly adhering to the local mutation lifecycle rules.
      * If never synced (PENDING_INSERT), hard-deletes locally immediately.
      * If already synced (SYNCED or PENDING_UPDATE), flags as soft-deleted and PENDING_DELETE.
      */
@@ -71,7 +72,7 @@ class TodoRepository(private val todoDao: TodoDao) {
     }
 
     /**
-     * Deletes all todo items belonging to a specific user.
+     * Deletes all [TodoItem]s belonging to a specific user.
      */
     suspend fun deleteAll(userId: String) = todoDao.deleteAll(userId)
 
@@ -114,7 +115,7 @@ class TodoRepository(private val todoDao: TodoDao) {
                 val iconResponse = response.body<AssignIconResponse>()
                 val iconName = iconResponse.icon
                 android.util.Log.d("TodoRepository", "assignIcon iconName: $iconName")
-                if (iconName.isNotBlank() && iconName != "null") {
+                if (iconName.isNotBlank() && (iconName != "null")) {
                     updateItem(item.copy(icon = iconName))
                     iconName
                 } else null
