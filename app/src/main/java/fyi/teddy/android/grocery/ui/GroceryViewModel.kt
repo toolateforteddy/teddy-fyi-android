@@ -1,5 +1,7 @@
 package fyi.teddy.android.grocery.ui
 
+import android.app.Application
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fyi.teddy.android.grocery.data.Category
@@ -19,18 +21,24 @@ import java.util.Locale
 
 class GroceryViewModel(
     private val repository: GroceryRepository,
-    val userId: String
+    val userId: String,
+    private val application: Application
 ) : ViewModel() {
+
+    private val prefs = application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE)
 
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
     private val _selectedStoreIds = MutableStateFlow(setOf<Int>())
-    private val _shoppingStoreId = MutableStateFlow<Int?>(null)
+    private val _shoppingStoreId = MutableStateFlow<Int?>(
+        prefs.getInt("last_shopping_store_id", -1).takeIf { it != -1 }
+    )
     private val _isEditMode = MutableStateFlow(false)
     private val _showRecommendedDialog = MutableStateFlow(false)
     private val _newItemName = MutableStateFlow("")
     private val _newItemQuantity = MutableStateFlow("1")
     private val _newItemUnit = MutableStateFlow<String?>(null)
+    private val _newItemInput = MutableStateFlow("")
     private val _selectedCategoryId = MutableStateFlow<Int?>(null)
     private val _recentlyCheckedIds = MutableStateFlow(setOf<Int>())
     private val _selectedListId = MutableStateFlow<String?>(null)
@@ -45,6 +53,7 @@ class GroceryViewModel(
         _newItemName,
         _newItemQuantity,
         _newItemUnit,
+        _newItemInput,
         _selectedCategoryId,
         _recentlyCheckedIds,
         _selectedListId
@@ -59,9 +68,10 @@ class GroceryViewModel(
             newItemName = args[5] as String,
             newItemQuantity = args[6] as String,
             newItemUnit = args[7] as String?,
-            selectedCategoryId = args[8] as Int?,
-            recentlyCheckedIds = args[9] as Set<Int>,
-            selectedListId = args[10] as String?
+            newItemInput = args[8] as String,
+            selectedCategoryId = args[9] as Int?,
+            recentlyCheckedIds = args[10] as Set<Int>,
+            selectedListId = args[11] as String?
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -79,8 +89,10 @@ class GroceryViewModel(
             is GroceryUiEvent.SetNewItemName -> setNewItemName(event.name)
             is GroceryUiEvent.SetNewItemQuantity -> setNewItemQuantity(event.qty)
             is GroceryUiEvent.SetNewItemUnit -> setNewItemUnit(event.unit)
+            is GroceryUiEvent.SetNewItemInput -> setNewItemInput(event.input)
             is GroceryUiEvent.SetSelectedCategoryId -> setSelectedCategoryId(event.categoryId)
             is GroceryUiEvent.SetSelectedListId -> setSelectedListId(event.listId)
+            is GroceryUiEvent.InsertItemFromInput -> insertItemFromInput(event.input)
             
             // Item Mutators
             is GroceryUiEvent.InsertItem -> insertItem(event.name, event.quantity, event.categoryId, event.unit)
@@ -93,6 +105,7 @@ class GroceryViewModel(
                 viewModelScope.launch { moveGroceryItemDownUseCase(event.item, event.siblings) }
             }
             is GroceryUiEvent.UpdateStoreInfo -> updateStoreInfo(event.info)
+            is GroceryUiEvent.DeleteStoreInfo -> deleteStoreInfo(event.info)
             is GroceryUiEvent.ToggleBought -> toggleBought(event.item, event.isChecked)
             is GroceryUiEvent.MarkDoneForTrip -> markDoneForTrip()
             
@@ -175,6 +188,11 @@ class GroceryViewModel(
 
     fun setShoppingStoreId(storeId: Int?) {
         _shoppingStoreId.value = storeId
+        if (storeId != null) {
+            prefs.edit().putInt("last_shopping_store_id", storeId).apply()
+        } else {
+            prefs.edit().remove("last_shopping_store_id").apply()
+        }
     }
 
     fun setEditMode(enabled: Boolean) {
@@ -197,6 +215,10 @@ class GroceryViewModel(
         _newItemUnit.value = unit
     }
 
+    fun setNewItemInput(input: String) {
+        _newItemInput.value = input
+    }
+
     fun setSelectedCategoryId(categoryId: Int?) {
         _selectedCategoryId.value = categoryId
     }
@@ -205,21 +227,40 @@ class GroceryViewModel(
     val baseFilteredItems: StateFlow<List<GroceryItem>> = combine(
         items,
         storeInfos,
+        stores,
         _currentPhase,
         _selectedStoreIds,
         _shoppingStoreId
-    ) { all, infos, phase, selectedStores, shoppingStore ->
-        val activeItems = all.filter { it.isActive }
+    ) { args ->
+        val itemsList = args[0] as List<GroceryItem>
+        val infos = args[1] as List<GroceryItemStoreInfo>
+        val allStores = args[2] as List<Store>
+        val phase = args[3] as GroceryPhase
+        val selectedStores = args[4] as Set<Int>
+        val shoppingStore = args[5] as Int?
+
+        val activeItems = itemsList.filter { it.isActive }
         when (phase) {
             GroceryPhase.NEED -> activeItems
             GroceryPhase.PLANNING -> {
-                if (selectedStores.isEmpty()) activeItems
-                else {
+                if (selectedStores.isEmpty()) {
+                    // Show everything in planning by default
+                    activeItems
+                } else if (selectedStores.contains(-1)) {
+                    // "Unassigned" filter: items that have NO store mappings at all
+                    activeItems.filter { item ->
+                        val itemInfos = infos.filter { it.groceryItemId == item.id }
+                        itemInfos.isEmpty()
+                    }
+                } else {
+                    // Filtered view: items explicitly marked as available at ANY of the selected stores
+                    // OR items that have no mapping for that store yet (Default to store's support flag)
                     activeItems.filter { item ->
                         val itemInfos = infos.filter { it.groceryItemId == item.id }
                         selectedStores.any { storeId ->
                             val info = itemInfos.find { it.storeId == storeId }
-                            info?.isAvailable ?: true
+                            val store = allStores.find { it.id == storeId }
+                            info?.isAvailable ?: store?.isDefaultSupported ?: true
                         }
                     }
                 }
@@ -227,9 +268,11 @@ class GroceryViewModel(
             GroceryPhase.SHOPPING -> {
                 if (shoppingStore == null) emptyList()
                 else {
+                    // High-velocity mode: Show items unless explicitly marked as unavailable
+                    val store = allStores.find { it.id == shoppingStore }
                     activeItems.filter { item ->
                         val info = infos.find { it.groceryItemId == item.id && it.storeId == shoppingStore }
-                        info?.isAvailable ?: true
+                        info?.isAvailable ?: store?.isDefaultSupported ?: true
                     }
                 }
             }
@@ -263,46 +306,100 @@ class GroceryViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Database mutators wrapped in view model scopes
-    fun insertItem(name: String, quantity: String, categoryId: Int?, unit: String? = null) {
+    fun insertItemFromInput(input: String) {
+        if (input.isBlank()) return
+        val (name, quantity, unit) = parseNaturalLanguage(input)
+        insertItem(name, quantity, _selectedCategoryId.value, unit)
+        _newItemInput.value = ""
+    }
+
+    private fun parseNaturalLanguage(input: String): Triple<String, String?, String?> {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return Triple("", null, null)
+
+        val numberWords = mapOf(
+            "one" to "1", "two" to "2", "three" to "3", "four" to "4", "five" to "5",
+            "six" to "6", "seven" to "7", "eight" to "8", "nine" to "9", "ten" to "10"
+        )
+        
+        val commonUnits = setOf(
+            "lb", "lbs", "oz", "gram", "g", "kg", "kilogram", "liter", "l", "ml", 
+            "cup", "cups", "bottle", "bottles", "can", "cans", "box", "boxes", 
+            "pack", "packs", "bag", "bags", "bunch", "bunches", "dozen", "dz", 
+            "gallon", "gal", "qt", "quart", "pint", "pt"
+        )
+
+        val words = trimmed.split("\\s+".toRegex())
+        val firstWord = words[0].lowercase()
+        
+        val quantity: String?
+        val remainingWords: List<String>
+
+        if (firstWord.all { it.isDigit() }) {
+            quantity = firstWord
+            remainingWords = words.drop(1)
+        } else if (numberWords.containsKey(firstWord)) {
+            quantity = numberWords[firstWord]!!
+            remainingWords = words.drop(1)
+        } else {
+            // Not a number or number-word, whole input is the name
+            return Triple(trimmed, null, null)
+        }
+
+        if (remainingWords.isEmpty()) {
+            return Triple(trimmed, quantity, null)
+        }
+
+        // Check for units
+        val firstRemaining = remainingWords[0].lowercase()
+        
+        // Pattern: "Quantity [Unit] of [Name]"
+        if (remainingWords.size > 1 && remainingWords[1].lowercase() == "of") {
+            val unit = remainingWords[0]
+            val name = remainingWords.drop(2).joinToString(" ")
+            if (name.isNotBlank()) {
+                return Triple(name, quantity, unit)
+            }
+        }
+        
+        // Pattern: "Quantity [KnownUnit] [Name]"
+        if (commonUnits.contains(firstRemaining) && remainingWords.size > 1) {
+            val unit = remainingWords[0]
+            val name = remainingWords.drop(1).joinToString(" ")
+            return Triple(name, quantity, unit)
+        }
+
+        // Default: everything else after quantity is the name
+        return Triple(remainingWords.joinToString(" "), quantity, null)
+    }
+
+    fun insertItem(name: String, quantity: String?, categoryId: Int?, unit: String? = null) {
         if (name.isNotBlank()) {
             val capitalizedName = formatName(name)
             viewModelScope.launch {
-                val item = GroceryItem(
-                    name = capitalizedName,
-                    quantity = quantity,
-                    categoryId = categoryId,
-                    userId = userId,
-                    isActive = true,
-                    listId = _selectedListId.value,
-                    unit = unit
-                )
-                val existingInactive = items.value.find { 
-                    it.name.equals(capitalizedName, ignoreCase = true) && !it.isActive 
+                val existing = items.value.find { 
+                    it.name.equals(capitalizedName, ignoreCase = true) 
                 }
-                val itemId = if (existingInactive != null) {
-                    repository.updateItem(existingInactive.copy(
+                
+                if (existing != null) {
+                    repository.updateItem(existing.copy(
                         isActive = true, 
-                        quantity = quantity, 
-                        categoryId = categoryId,
+                        quantity = quantity ?: existing.quantity, 
+                        categoryId = categoryId ?: existing.categoryId,
                         isBought = false,
-                        unit = unit
+                        unit = unit ?: existing.unit
                     ))
-                    existingInactive.id
                 } else {
+                    val item = GroceryItem(
+                        name = capitalizedName,
+                        quantity = quantity ?: "1",
+                        categoryId = categoryId,
+                        userId = userId,
+                        isActive = true,
+                        listId = _selectedListId.value,
+                        unit = unit
+                    )
                     repository.insertItem(item).toInt()
-                }
-
-                stores.value.forEach { store ->
-                    if (!store.isDefaultSupported) {
-                        repository.insertStoreInfo(
-                            GroceryItemStoreInfo(
-                                groceryItemId = itemId,
-                                storeId = store.id,
-                                isAvailable = false,
-                                userId = userId
-                            )
-                        )
-                    }
                 }
             }
         }
@@ -318,6 +415,10 @@ class GroceryViewModel(
 
     fun updateStoreInfo(info: GroceryItemStoreInfo) {
         viewModelScope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
+    }
+
+    fun deleteStoreInfo(info: GroceryItemStoreInfo) {
+        viewModelScope.launch { repository.deleteStoreInfo(info) }
     }
 
     fun toggleBought(item: GroceryItem, isChecked: Boolean) {
@@ -341,6 +442,7 @@ class GroceryViewModel(
     fun markDoneForTrip() {
         viewModelScope.launch {
             repository.markDoneForTrip(userId)
+            setShoppingStoreId(null)
         }
     }
 

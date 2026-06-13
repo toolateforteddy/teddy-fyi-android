@@ -16,16 +16,19 @@ sealed interface GroceryUiEvent {
     data class SetNewItemName(val name: String) : GroceryUiEvent
     data class SetNewItemQuantity(val qty: String) : GroceryUiEvent
     data class SetNewItemUnit(val unit: String?) : GroceryUiEvent
+    data class SetNewItemInput(val input: String) : GroceryUiEvent
     data class SetSelectedCategoryId(val categoryId: Int?) : GroceryUiEvent
     data class SetSelectedListId(val listId: String?) : GroceryUiEvent
+    data class InsertItemFromInput(val input: String) : GroceryUiEvent
     
     // Mutators
-    data class InsertItem(val name: String, val quantity: String, val categoryId: Int?, val unit: String? = null) : GroceryUiEvent
+    data class InsertItem(val name: String, val quantity: String? = null, val categoryId: Int?, val unit: String? = null) : GroceryUiEvent
     data class UpdateItem(val item: GroceryItem) : GroceryUiEvent
     data class DeleteItem(val item: GroceryItem) : GroceryUiEvent
     data class MoveItemUp(val item: GroceryItem, val siblings: List<GroceryItem>) : GroceryUiEvent
     data class MoveItemDown(val item: GroceryItem, val siblings: List<GroceryItem>) : GroceryUiEvent
     data class UpdateStoreInfo(val info: GroceryItemStoreInfo) : GroceryUiEvent
+    data class DeleteStoreInfo(val info: GroceryItemStoreInfo) : GroceryUiEvent
     data class ToggleBought(val item: GroceryItem, val isChecked: Boolean) : GroceryUiEvent
     object MarkDoneForTrip : GroceryUiEvent
     

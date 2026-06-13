@@ -86,6 +86,8 @@ data class GroceryChangeDelta(
 @Serializable
 data class GroceryItemStoreInfoChangeDelta(
     val id: String,
+    @SerialName("groceryItemId") val groceryItemId: Int,
+    @SerialName("storeId") val storeId: Int,
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
@@ -138,6 +140,7 @@ data class TodoItemDto(
     val listId: String?,
     val priority: Int,
     val icon: String?,
+    @SerialName("lastScheduledDate") val lastScheduledDate: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -254,6 +257,7 @@ fun TodoItem.toDto(): TodoItemDto {
         listId = listId,
         priority = priority,
         icon = icon,
+        lastScheduledDate = lastScheduledDate,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
@@ -278,6 +282,7 @@ fun TodoItemDto.toEntity(): TodoItem {
         listId = listId,
         priority = priority,
         icon = icon,
+        lastScheduledDate = lastScheduledDate,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted

@@ -9,6 +9,7 @@ data class GroceryUiState(
     val newItemName: String = "",
     val newItemQuantity: String = "1",
     val newItemUnit: String? = null,
+    val newItemInput: String = "",
     val selectedCategoryId: Int? = null,
     val recentlyCheckedIds: Set<Int> = emptySet(),
     val selectedListId: String? = null

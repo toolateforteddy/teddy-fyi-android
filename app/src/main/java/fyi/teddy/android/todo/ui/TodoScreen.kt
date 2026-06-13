@@ -19,15 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
-import fyi.teddy.android.todo.ui.components.AddListDialog
-import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
-import fyi.teddy.android.todo.ui.components.EditListDialog
-import fyi.teddy.android.todo.ui.components.TodoInputBar
-import fyi.teddy.android.todo.ui.components.TodoItemRow
-import fyi.teddy.android.todo.ui.components.TodoItemIntent
+import fyi.teddy.android.todo.ui.components.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.dionsegijn.konfetti.compose.KonfettiView
@@ -36,6 +32,21 @@ import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
+
+private fun formatDateBucket(date: String): String {
+    return try {
+        val localDate = LocalDate.parse(date)
+        val today = LocalDate.now()
+        when {
+            localDate == today -> "Today"
+            localDate == today.plusDays(1) -> "Tomorrow"
+            localDate.isBefore(today.plusDays(7)) -> localDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+            else -> date
+        }
+    } catch (_: Exception) {
+        date
+    }
+}
 
 enum class TodoMode {
     BACKLOG, PLANNING, TODAY, SCHEDULED
@@ -145,17 +156,43 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                         viewModel.setSelectedPlanningDate(selectedDate)
                     }
                     showPlanningDatePicker = false
-                }) { Text(stringResource(R.string.save)) }
+                }) { Text(stringResource(R.string.save), color = NeonTeal) }
             },
             dismissButton = {
-                TextButton(onClick = { showPlanningDatePicker = false }) { Text(stringResource(R.string.cancel)) }
-            }
+                TextButton(onClick = { showPlanningDatePicker = false }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = Color(0xFF121214),
+                titleContentColor = NeonTeal,
+                headlineContentColor = Color.White,
+                selectedDayContainerColor = NeonTeal,
+                selectedDayContentColor = Color.Black,
+                todayContentColor = NeonTeal,
+                todayDateBorderColor = NeonTeal
+            )
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Color(0xFF121214),
+                    titleContentColor = NeonTeal,
+                    headlineContentColor = Color.White,
+                    selectedDayContainerColor = NeonTeal,
+                    selectedDayContentColor = Color.Black,
+                    todayContentColor = NeonTeal,
+                    todayDateBorderColor = NeonTeal,
+                    dayContentColor = Color.White,
+                    weekdayContentColor = Color.Gray,
+                    yearContentColor = Color.White,
+                    currentYearContentColor = NeonTeal,
+                    selectedYearContentColor = Color.Black,
+                    selectedYearContainerColor = NeonTeal
+                )
+            )
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -163,24 +200,13 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                         val titleText = when (currentMode) {
                             TodoMode.BACKLOG -> if (showCompletedOnly) "Completed Backlog" else "Backlog"
                             TodoMode.SCHEDULED -> if (showCompletedOnly) "Completed Future" else "Future"
-                            TodoMode.PLANNING -> {
-                                val today = LocalDate.now()
-                                val selected = LocalDate.parse(selectedPlanningDate)
-                                when {
-                                    selected == today -> "Planning: Today"
-                                    selected == today.plusDays(1) -> "Planning: Tomorrow"
-                                    else -> "Planning: $selectedPlanningDate"
-                                }
-                            }
+                            TodoMode.PLANNING -> "Planning"
                             TodoMode.TODAY -> "Today's Tasks"
                         }
                         Text(
                             text = titleText,
-                            modifier = if (currentMode == TodoMode.PLANNING) {
-                                Modifier.clickable { showPlanningDatePicker = true }
-                            } else {
-                                Modifier
-                            }
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Black
                         )
                     },
                     actions = {
@@ -188,7 +214,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                             Icon(
                                 if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle, 
                                 contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(R.string.show_completed),
-                                tint = if (showCompletedOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                tint = if (showCompletedOnly) NeonTeal else Color.White
                             )
                         }
 
@@ -196,7 +222,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                             Icon(
                                 Icons.Default.Edit, 
                                 contentDescription = stringResource(R.string.edit_mode),
-                                tint = if (isEditMode) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                tint = if (isEditMode) NeonTeal else Color.White
                             )
                         }
                         
@@ -220,57 +246,94 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                         selected = currentMode == TodoMode.BACKLOG,
                         onClick = { viewModel.setMode(TodoMode.BACKLOG) },
                         icon = { Icon(Icons.Default.List, contentDescription = "Backlog") },
-                        label = { Text("Backlog") }
+                        label = { Text("Backlog") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = NeonTeal,
+                            selectedTextColor = NeonTeal,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                        )
                     )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.PLANNING,
                         onClick = { viewModel.setMode(TodoMode.PLANNING) },
                         icon = { Icon(Icons.Default.EditCalendar, contentDescription = "Planning") },
-                        label = { Text("Planning") }
+                        label = { Text("Planning") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = NeonTeal,
+                            selectedTextColor = NeonTeal,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                        )
                     )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.TODAY,
                         onClick = { viewModel.setMode(TodoMode.TODAY) },
                         icon = { Icon(Icons.Default.Today, contentDescription = "Today") },
-                        label = { Text("Today") }
+                        label = { Text("Today") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = NeonTeal,
+                            selectedTextColor = NeonTeal,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                        )
                     )
                     NavigationBarItem(
                         selected = currentMode == TodoMode.SCHEDULED,
                         onClick = { viewModel.setMode(TodoMode.SCHEDULED) },
                         icon = { Icon(Icons.Default.DateRange, contentDescription = "Scheduled") },
-                        label = { Text("Scheduled") }
+                        label = { Text("Scheduled") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = NeonTeal,
+                            selectedTextColor = NeonTeal,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                        )
                     )
                 }
-            }
+            },
+            containerColor = Color.Black
         ) { paddingValues ->
             Surface(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 color = Color.Black
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp)
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
                 ) {
+                    if (currentMode == TodoMode.PLANNING) {
+                        HexTimeline(
+                            selectedDate = selectedPlanningDate,
+                            onDateSelected = { viewModel.setSelectedPlanningDate(it) },
+                            onOpenCalendar = { showPlanningDatePicker = true }
+                        )
+                    }
+
                     // Space list selection row
                     if (allLists.isNotEmpty() || isEditMode) {
                         @OptIn(ExperimentalFoundationApi::class)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp)
+                                .padding(vertical = 12.dp)
                                 .horizontalScroll(rememberScrollState()),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // "All" space chip
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = if (selectedListId == null) MaterialTheme.colorScheme.primary else Color.DarkGray,
+                                color = if (selectedListId == null) NeonTeal.copy(alpha = 0.2f) else Color.DarkGray,
                                 modifier = Modifier
                                     .padding(end = 8.dp)
                                     .clickable { viewModel.selectList(null) }
                             ) {
                                 Text(
                                     text = "All",
-                                    color = Color.White,
+                                    color = if (selectedListId == null) NeonTeal else Color.White,
                                     style = MaterialTheme.typography.labelLarge,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
@@ -281,7 +344,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                 val isSelected = selectedListId == list.id
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.secondary else Color(android.graphics.Color.parseColor(list.colorHex)).copy(alpha = 0.3f),
+                                    color = if (isSelected) NeonTeal.copy(alpha = 0.3f) else Color(android.graphics.Color.parseColor(list.colorHex)).copy(alpha = 0.2f),
                                     modifier = Modifier
                                         .padding(end = 8.dp)
                                         .combinedClickable(
@@ -318,7 +381,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                     onClick = { showAddListDialog = true },
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Add Space", tint = Color.Cyan)
+                                    Icon(Icons.Default.Add, contentDescription = "Add Space", tint = NeonTeal)
                                 }
                             }
                         }
@@ -328,97 +391,206 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                         TodoInputBar(onAddNewItem = { title -> onAddNewItem(title, null) })
                     }
                     
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        groupedItems.forEachIndexed { parentIndex, (parent, children) ->
-                            item(key = parent.id) {
-                                val isExpanded = expandedParentIds.value.contains(parent.id)
-                                TodoItemRow(
-                                    item = parent,
-                                    subtaskCount = children.size,
-                                    completedSubtaskCount = children.count { it.isCompleted },
-                                    isExpanded = isExpanded,
-                                    onToggleExpand = {
-                                        expandedParentIds.value = if (isExpanded) {
-                                            expandedParentIds.value - parent.id
-                                        } else {
-                                            expandedParentIds.value + parent.id
-                                        }
-                                    },
-                                    isEditing = isEditMode,
-                                    isPlanningMode = currentMode == TodoMode.PLANNING,
-                                    planningDate = selectedPlanningDate,
-                                    showScheduledDate = currentMode != TodoMode.TODAY,
-                                    index = parentIndex,
-                                    totalItems = groupedItems.size,
-                                    isRecentlyCompleted = recentlyCompletedIds.contains(parent.id),
-                                    onCheckedChange = { isChecked ->
-                                        if (currentMode == TodoMode.PLANNING) {
-                                            viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
-                                            if (isChecked) {
-                                                children.forEach { 
-                                                    viewModel.updateItem(it.copy(scheduledDate = selectedPlanningDate))
-                                                }
-                                            }
-                                            return@TodoItemRow
-                                        }
-
-                                        viewModel.toggleComplete(parent, isChecked)
-                                    },
-                                    onIntent = { intent ->
-                                        when (intent) {
-                                            is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
-                                            is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
-                                            is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
-                                            is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
-                                            is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
-                                            is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
-                                            is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
-                                            is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
-                                            is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                    if (groupedItems.isEmpty() && currentMode == TodoMode.TODAY && !showCompletedOnly) {
+                        TodoEmptyState()
+                    } else {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            if (currentMode == TodoMode.SCHEDULED) {
+                                val scheduledGroups = groupedItems.groupBy { it.first.scheduledDate ?: "Unscheduled" }
+                                scheduledGroups.forEach { (date, itemsForDate) ->
+                                    @OptIn(ExperimentalFoundationApi::class)
+                                    stickyHeader {
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = Color.Black
+                                        ) {
+                                            Text(
+                                                text = formatDateBucket(date),
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = NeonTeal,
+                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                            )
                                         }
                                     }
-                                )
-                            }
-                            
-                            val isExpanded = expandedParentIds.value.contains(parent.id)
-                            if (isExpanded) {
-                                val childrenToShow = if (currentMode == TodoMode.TODAY || currentMode == TodoMode.SCHEDULED) {
-                                    children.filter { it.scheduledDate != null || it.isCompleted }
-                                } else {
-                                    children
-                                }
-                                itemsIndexed(childrenToShow, key = { _, it -> it.id }) { childIndex, child ->
-                                    TodoItemRow(
-                                        item = child,
-                                        isSubtask = true,
-                                        isEditing = isEditMode,
-                                        isPlanningMode = currentMode == TodoMode.PLANNING,
-                                        planningDate = selectedPlanningDate,
-                                        showScheduledDate = currentMode != TodoMode.TODAY,
-                                        index = childIndex,
-                                        totalItems = children.size,
-                                        isRecentlyCompleted = recentlyCompletedIds.contains(child.id),
-                                        onCheckedChange = { isChecked ->
-                                            if (currentMode == TodoMode.PLANNING) {
-                                                viewModel.updateItem(child.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
-                                                return@TodoItemRow
+                                    items(itemsForDate.size) { index ->
+                                        val (parent, children) = itemsForDate[index]
+                                        val isExpanded = expandedParentIds.value.contains(parent.id)
+                                        TodoItemRow(
+                                            item = parent,
+                                            subtaskCount = children.size,
+                                            completedSubtaskCount = children.count { it.isCompleted },
+                                            isExpanded = isExpanded,
+                                            onToggleExpand = {
+                                                expandedParentIds.value = if (isExpanded) {
+                                                    expandedParentIds.value - parent.id
+                                                } else {
+                                                    expandedParentIds.value + parent.id
+                                                }
+                                            },
+                                            isEditing = isEditMode,
+                                            isPlanningMode = currentMode == TodoMode.PLANNING,
+                                            planningDate = selectedPlanningDate,
+                                            showScheduledDate = false,
+                                            index = index,
+                                            totalItems = itemsForDate.size,
+                                            isRecentlyCompleted = recentlyCompletedIds.contains(parent.id),
+                                            onCheckedChange = { isChecked ->
+                                                viewModel.toggleComplete(parent, isChecked)
+                                            },
+                                            onIntent = { intent ->
+                                                when (intent) {
+                                                    is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
+                                                    is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
+                                                    is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
+                                                    is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
+                                                    is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
+                                                    is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
+                                                    is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
+                                                    is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
+                                                    is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                }
                                             }
-                                            viewModel.toggleComplete(child, isChecked)
-                                        },
-                                        onIntent = { intent ->
-                                            when (intent) {
-                                                is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
-                                                is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
-                                                is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
-                                                is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
-                                                is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
-                                                is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
-                                                is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
-                                                is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
-                                                is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                        )
+                                        
+                                        if (isExpanded) {
+                                            children.filter { it.scheduledDate == date }.forEach { child ->
+                                                TodoItemRow(
+                                                    item = child,
+                                                    isSubtask = true,
+                                                    isEditing = isEditMode,
+                                                    isPlanningMode = currentMode == TodoMode.PLANNING,
+                                                    planningDate = selectedPlanningDate,
+                                                    showScheduledDate = false,
+                                                    index = 0,
+                                                    totalItems = 1,
+                                                    isRecentlyCompleted = recentlyCompletedIds.contains(child.id),
+                                                    onCheckedChange = { isChecked ->
+                                                        viewModel.toggleComplete(child, isChecked)
+                                                    },
+                                                    onIntent = { intent ->
+                                                        when (intent) {
+                                                            is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
+                                                            is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
+                                                            is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
+                                                            is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
+                                                            is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
+                                                            is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
+                                                            is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
+                                                            is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
+                                                            is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                        }
+                                                    }
+                                                )
                                             }
                                         }
-                                    )
+                                    }
+                                }
+                            } else {
+                                var showedRolloverHeader = false
+                                groupedItems.forEachIndexed { parentIndex, (parent, children) ->
+                                    if (currentMode == TodoMode.BACKLOG && parent.lastScheduledDate != null && !showedRolloverHeader) {
+                                        item {
+                                            Text(
+                                                text = "Yesterday's Unfinished",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFFFFA500),
+                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                            )
+                                        }
+                                        showedRolloverHeader = true
+                                    }
+                                    item(key = parent.id) {
+                                        val isExpanded = expandedParentIds.value.contains(parent.id)
+                                        TodoItemRow(
+                                            item = parent,
+                                            subtaskCount = children.size,
+                                            completedSubtaskCount = children.count { it.isCompleted },
+                                            isExpanded = isExpanded,
+                                            onToggleExpand = {
+                                                expandedParentIds.value = if (isExpanded) {
+                                                    expandedParentIds.value - parent.id
+                                                } else {
+                                                    expandedParentIds.value + parent.id
+                                                }
+                                            },
+                                            isEditing = isEditMode,
+                                            isPlanningMode = currentMode == TodoMode.PLANNING,
+                                            planningDate = selectedPlanningDate,
+                                            showScheduledDate = currentMode != TodoMode.TODAY,
+                                            index = parentIndex,
+                                            totalItems = groupedItems.size,
+                                            isRecentlyCompleted = recentlyCompletedIds.contains(parent.id),
+                                            onCheckedChange = { isChecked ->
+                                                if (currentMode == TodoMode.PLANNING) {
+                                                    viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
+                                                    if (isChecked) {
+                                                        children.forEach { 
+                                                            viewModel.updateItem(it.copy(scheduledDate = selectedPlanningDate))
+                                                        }
+                                                    }
+                                                } else {
+                                                    viewModel.toggleComplete(parent, isChecked)
+                                                }
+                                            },
+                                            onIntent = { intent ->
+                                                when (intent) {
+                                                    is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
+                                                    is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
+                                                    is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
+                                                    is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
+                                                    is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
+                                                    is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
+                                                    is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
+                                                    is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
+                                                    is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                }
+                                            }
+                                        )
+                                    }
+                                    
+                                    val isExpanded = expandedParentIds.value.contains(parent.id)
+                                    if (isExpanded) {
+                                        val childrenToShow = if (currentMode == TodoMode.TODAY || currentMode == TodoMode.SCHEDULED) {
+                                            children.filter { it.scheduledDate != null || it.isCompleted }
+                                        } else {
+                                            children
+                                        }
+                                        itemsIndexed(childrenToShow, key = { _, it -> it.id }) { childIndex, child ->
+                                            TodoItemRow(
+                                                item = child,
+                                                isSubtask = true,
+                                                isEditing = isEditMode,
+                                                isPlanningMode = currentMode == TodoMode.PLANNING,
+                                                planningDate = selectedPlanningDate,
+                                                showScheduledDate = currentMode != TodoMode.TODAY,
+                                                index = childIndex,
+                                                totalItems = children.size,
+                                                isRecentlyCompleted = recentlyCompletedIds.contains(child.id),
+                                                onCheckedChange = { isChecked ->
+                                                    if (currentMode == TodoMode.PLANNING) {
+                                                        viewModel.updateItem(child.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
+                                                    } else {
+                                                        viewModel.toggleComplete(child, isChecked)
+                                                    }
+                                                },
+                                                onIntent = { intent ->
+                                                    when (intent) {
+                                                        is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
+                                                        is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
+                                                        is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
+                                                        is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
+                                                        is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
+                                                        is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
+                                                        is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
+                                                        is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
+                                                        is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -426,12 +598,12 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                 }
             }
         }
-        
-        if (parties.isNotEmpty()) {
-            KonfettiView(
-                modifier = Modifier.fillMaxSize(),
-                parties = parties,
-            )
-        }
+    }
+
+    if (parties.isNotEmpty()) {
+        KonfettiView(
+            modifier = Modifier.fillMaxSize(),
+            parties = parties,
+        )
     }
 }

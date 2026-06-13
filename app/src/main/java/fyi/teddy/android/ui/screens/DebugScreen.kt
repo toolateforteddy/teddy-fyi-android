@@ -45,6 +45,15 @@ fun DebugScreen(
     // Live reactive count of unsynced items + lists
     val unsyncedCount by db.todoDao().getUnsyncedCountFlow().collectAsState(initial = 0)
 
+    // Table Counts
+    val todoItemsCount by db.todoDao().getTodoItemsCountFlow().collectAsState(initial = 0)
+    val todoListsCount by db.todoDao().getTodoListsCountFlow().collectAsState(initial = 0)
+    val groceryItemsCount by db.groceryDao().getGroceryItemsCountFlow().collectAsState(initial = 0)
+    val groceryListsCount by db.groceryDao().getGroceryListsCountFlow().collectAsState(initial = 0)
+    val storesCount by db.groceryDao().getStoresCountFlow().collectAsState(initial = 0)
+    val categoriesCount by db.groceryDao().getCategoriesCountFlow().collectAsState(initial = 0)
+    val storeInfosCount by db.groceryDao().getStoreInfosCountFlow().collectAsState(initial = 0)
+
     // Authed Hello Check State
     var authedHelloBody by remember { mutableStateOf<String?>(null) }
     var isLoadingAuthedHello by remember { mutableStateOf(value = false) }
@@ -62,6 +71,7 @@ fun DebugScreen(
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
     var isSyncExpanded by remember { mutableStateOf(false) }
+    var isTablesExpanded by remember { mutableStateOf(false) }
 
     // Helper to reload shared preference metadata (e.g. server high-watermark)
     fun reloadSyncMetadata() {
@@ -422,6 +432,148 @@ fun DebugScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     recentLogs.forEach { log ->
                                         SyncLogItemRow(log = log)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ROW 3: Syncable Tables & Data Recovery
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isTablesExpanded = !isTablesExpanded },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161424)),
+                    border = BorderStroke(1.dp, Color(0xFF3700B3))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = Color.Cyan,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "Syncable Table Management",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = if (isTablesExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = "Toggle Expand",
+                                tint = Color.Gray
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = isTablesExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                Text(
+                                    "Force items in these tables to re-sync as new insertions.",
+                                    color = Color.Gray,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+
+                                val tables = listOf(
+                                    Triple("Todo Lists", todoListsCount) {
+                                        scope.launch {
+                                            val list = db.todoDao().getAllListsOneShot()
+                                            db.todoDao().insertLists(list.map { it.copy(syncState = "PENDING_INSERT") })
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    },
+                                    Triple("Todo Items", todoItemsCount) {
+                                        scope.launch {
+                                            val list = db.todoDao().getAllItemsOneShot()
+                                            db.todoDao().insertItems(list.map { it.copy(syncState = "PENDING_INSERT") })
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    },
+                                    Triple("Grocery Lists", groceryListsCount) {
+                                        scope.launch {
+                                            val list = db.groceryDao().getAllListsOneShot()
+                                            list.forEach { db.groceryDao().insertList(it.copy(syncState = "PENDING_INSERT")) }
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    },
+                                    Triple("Grocery Items", groceryItemsCount) {
+                                        scope.launch {
+                                            val list = db.groceryDao().getAllItemsOneShot()
+                                            list.forEach { db.groceryDao().insertItem(it.copy(syncState = "PENDING_INSERT")) }
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    },
+                                    Triple("Stores", storesCount) {
+                                        scope.launch {
+                                            val list = db.groceryDao().getAllStoresOneShot()
+                                            list.forEach { db.groceryDao().insertStore(it.copy(syncState = "PENDING_INSERT")) }
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    },
+                                    Triple("Categories", categoriesCount) {
+                                        scope.launch {
+                                            val list = db.groceryDao().getAllCategoriesOneShot()
+                                            list.forEach { db.groceryDao().insertCategory(it.copy(syncState = "PENDING_INSERT")) }
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    },
+                                    Triple("Store Info (Item Mappings)", storeInfosCount) {
+                                        scope.launch {
+                                            val list = db.groceryDao().getAllStoreInfosOneShot()
+                                            list.forEach { db.groceryDao().insertStoreInfo(it.copy(syncState = "PENDING_INSERT")) }
+                                            SyncWorker.enqueue(context)
+                                        }
+                                    }
+                                )
+
+                                tables.forEach { (name, count, action) ->
+                                    Button(
+                                        onClick = { action() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF232135)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, Color(0xFF3700B3))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "$name ($count rows)",
+                                                fontSize = 11.sp,
+                                                color = Color.Cyan
+                                            )
+                                            Text(
+                                                text = "FORCE PUSH",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        }
                                     }
                                 }
                             }

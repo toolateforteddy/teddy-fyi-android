@@ -131,7 +131,8 @@ class TodoViewModel(
         }.let { items ->
             if (showCompleted) items.sortedByDescending { it.scheduledAt }
             else items.sortedWith(
-                compareByDescending<TodoItem> { it.priority }
+                compareByDescending<TodoItem> { it.lastScheduledDate != null } // Rolled over items first in Backlog
+                    .thenByDescending { it.priority }
                     .thenBy { it.position }
                     .thenByDescending { it.createdAt }
             )
@@ -141,12 +142,18 @@ class TodoViewModel(
         val allChildren = filteredItems.filter { it.parentId != null }.groupBy { it.parentId }
 
         if (mode == TodoMode.TODAY || mode == TodoMode.SCHEDULED) {
-            allParents.filter { parent ->
-                parent.scheduledDate == (if (mode == TodoMode.TODAY) todayString else parent.scheduledDate) || 
-                        allChildren[parent.id]?.any { it.scheduledDate == (if (mode == TodoMode.TODAY) todayString else it.scheduledDate) } == true
-            }.map { parent ->
-                parent to (allChildren[parent.id] ?: emptyList())
+            val result = if (mode == TodoMode.SCHEDULED) {
+                // For scheduled, we keep them flat or grouped by date later in UI
+                allParents.map { it to (allChildren[it.id] ?: emptyList()) }
+            } else {
+                allParents.filter { parent ->
+                    parent.scheduledDate == (if (mode == TodoMode.TODAY) todayString else parent.scheduledDate) || 
+                            allChildren[parent.id]?.any { it.scheduledDate == (if (mode == TodoMode.TODAY) todayString else it.scheduledDate) } == true
+                }.map { parent ->
+                    parent to (allChildren[parent.id] ?: emptyList())
+                }
             }
+            result
         } else {
             allParents.map { it to (allChildren[it.id] ?: emptyList()) }
         }

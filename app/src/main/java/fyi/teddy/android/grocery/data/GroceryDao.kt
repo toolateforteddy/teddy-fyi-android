@@ -52,6 +52,9 @@ abstract class GroceryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertStoreInfo(info: GroceryItemStoreInfo)
 
+    @Delete
+    abstract suspend fun deleteStoreInfo(info: GroceryItemStoreInfo)
+
     @Query("SELECT * FROM categories WHERE userId = :userId ORDER BY position ASC, name ASC")
     abstract fun getAllCategories(userId: String): Flow<List<Category>>
 
@@ -243,4 +246,19 @@ abstract class GroceryDao {
 
     @Query("SELECT * FROM grocery_item_store_info WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedStoreInfos(): List<GroceryItemStoreInfo>
+
+    @Query("SELECT COUNT(*) FROM grocery_items")
+    abstract fun getGroceryItemsCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM grocery_lists")
+    abstract fun getGroceryListsCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM stores")
+    abstract fun getStoresCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM categories")
+    abstract fun getCategoriesCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM grocery_item_store_info")
+    abstract fun getStoreInfosCountFlow(): Flow<Int>
 }

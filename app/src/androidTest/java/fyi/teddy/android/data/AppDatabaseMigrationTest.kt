@@ -250,4 +250,45 @@ class AppDatabaseMigrationTest {
         assert(foundTask)
         cursor.close()
     }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate28To29() {
+        // Create database at version 28
+        val db = helper.createDatabase(testDb, 28)
+        
+        // Insert an item in version 28
+        db.execSQL("""
+            INSERT INTO `todo_items` (
+                `id`, `title`, `isCompleted`, `createdAt`, `position`, `scheduledAt`, 
+                `isDaily`, `sync_state`, `version`, `is_deleted`, `priority`, `scheduledDate`
+            ) VALUES (
+                'uuid-1', 'Rollover Task', 0, 1000, 0, 1000, 
+                0, 'SYNCED', 1, 0, 0, '2023-10-27'
+            )
+        """.trimIndent())
+        db.close()
+
+        // Run migration to 29
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 29, true, AppDatabase.MIGRATION_28_29)
+        
+        // Verify column lastScheduledDate exists and is null initially for the existing task
+        val cursor = migratedDb.query("SELECT * FROM `todo_items`")
+        var foundTask = false
+        while(cursor.moveToNext()) {
+            val id = cursor.getString(cursor.getColumnIndexOrThrow("id"))
+            val lastScheduledDateIndex = cursor.getColumnIndex("lastScheduledDate")
+            
+            assert(lastScheduledDateIndex != -1)
+            val lastScheduledDate = cursor.getString(lastScheduledDateIndex)
+            
+            if (id == "uuid-1") {
+                assert(lastScheduledDate == null)
+                foundTask = true
+            }
+        }
+        
+        assert(foundTask)
+        cursor.close()
+    }
 }

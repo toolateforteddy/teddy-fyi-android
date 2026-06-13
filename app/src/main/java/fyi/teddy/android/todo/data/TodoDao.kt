@@ -39,7 +39,7 @@ abstract class TodoDao {
     @Query("DELETE FROM todo_items WHERE userId = :userId")
     abstract suspend fun deleteAll(userId: String)
 
-    @Query("UPDATE todo_items SET scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0 AND (scheduledDate IS NOT NULL AND scheduledDate < :today)")
+    @Query("UPDATE todo_items SET lastScheduledDate = scheduledDate, scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0 AND (scheduledDate IS NOT NULL AND scheduledDate < :today)")
     abstract suspend fun resetPlannedItems(userId: String, today: String)
 
     suspend fun resetPlannedItems(userId: String) {
@@ -105,6 +105,12 @@ abstract class TodoDao {
 
     @Query("SELECT (SELECT COUNT(*) FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1) + (SELECT COUNT(*) FROM todo_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1)")
     abstract fun getUnsyncedCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM todo_items")
+    abstract fun getTodoItemsCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM todo_lists")
+    abstract fun getTodoListsCountFlow(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertItems(items: List<TodoItem>)

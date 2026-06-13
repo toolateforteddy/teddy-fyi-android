@@ -89,6 +89,11 @@ class GroceryRepository(
         groceryDao.insertStoreInfo(info)
         scheduleSync()
     }
+
+    suspend fun deleteStoreInfo(info: GroceryItemStoreInfo) {
+        groceryDao.deleteStoreInfo(info)
+        scheduleSync()
+    }
     
     suspend fun claimEverything(userId: String) {
         groceryDao.claimEverything(userId)

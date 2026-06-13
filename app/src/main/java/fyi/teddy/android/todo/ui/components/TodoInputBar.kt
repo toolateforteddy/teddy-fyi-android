@@ -1,6 +1,9 @@
 package fyi.teddy.android.todo.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -23,20 +26,33 @@ fun TodoInputBar(
     var newItemTitle by remember { mutableStateOf("") }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .background(Color(0xFF121214), RoundedCornerShape(24.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextField(
             value = newItemTitle,
             onValueChange = { newItemTitle = it },
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Add new task...", color = Color.Gray) },
+            placeholder = { 
+                Text(
+                    text = "Add task... @tomorrow #work", 
+                    color = Color.Gray.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodyMedium
+                ) 
+            },
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                focusedContainerColor = Color(0xFF1A1A1A),
-                unfocusedContainerColor = Color(0xFF1A1A1A),
-                cursorColor = Color.White
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                cursorColor = NeonTeal,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
             ),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
@@ -47,14 +63,19 @@ fun TodoInputBar(
                     onAddNewItem(newItemTitle)
                     newItemTitle = ""
                 }
-            )
+            ),
+            singleLine = true
         )
-        IconButton(onClick = {
-            onAddNewItem(newItemTitle)
-            newItemTitle = ""
-        }) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)
+        IconButton(
+            onClick = {
+                onAddNewItem(newItemTitle)
+                newItemTitle = ""
+            },
+            modifier = Modifier
+                .padding(4.dp)
+                .background(NeonTeal.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+        ) {
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = NeonTeal)
         }
     }
-    Spacer(modifier = Modifier.height(16.dp))
 }

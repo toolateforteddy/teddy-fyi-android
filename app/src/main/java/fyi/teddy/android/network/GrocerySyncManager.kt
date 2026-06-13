@@ -160,6 +160,8 @@ object GrocerySyncManager {
             }
             GroceryItemStoreInfoChangeDelta(
                 id = "${info.groceryItemId}_${info.storeId}",
+                groceryItemId = info.groceryItemId,
+                storeId = info.storeId,
                 operationType = operationType,
                 version = info.version,
                 data = data
@@ -384,9 +386,8 @@ object GrocerySyncManager {
 
         // Upsert incoming remote_grocery_item_store_info_changes into local Room DB
         remoteStoreInfoChanges.forEach { changeDelta ->
-            val parts = changeDelta.id.split('_', '-')
-            val groceryItemId = parts[0].toIntOrNull() ?: 0
-            val storeId = parts.getOrNull(1)?.toIntOrNull() ?: 0
+            val groceryItemId = changeDelta.groceryItemId
+            val storeId = changeDelta.storeId
 
             if (changeDelta.operationType == OperationType.DELETE) {
                 groceryDao.hardDeleteStoreInfo(groceryItemId, storeId)

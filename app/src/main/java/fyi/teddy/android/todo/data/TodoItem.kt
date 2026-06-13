@@ -39,6 +39,7 @@ data class TodoItem(
     val listId: String? = null,
     val priority: Int = 0,
     val icon: String? = null,
+    val lastScheduledDate: String? = null,
 
     // Cloud sync tracking columns
     @ColumnInfo(name = "sync_state")

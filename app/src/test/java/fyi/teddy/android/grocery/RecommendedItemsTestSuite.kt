@@ -8,7 +8,11 @@ import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.GroceryPhase
 import fyi.teddy.android.grocery.ui.GroceryViewModel
+import androidx.work.WorkManager
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filter
@@ -37,6 +41,10 @@ class RecommendedItemsTestSuite {
 
     @Before
     fun setup() {
+        mockkStatic(WorkManager::class)
+        val workManager = mockk<WorkManager>(relaxed = true)
+        every { WorkManager.getInstance(any()) } returns workManager
+
         Dispatchers.setMain(testDispatcher)
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
@@ -44,12 +52,13 @@ class RecommendedItemsTestSuite {
         ).allowMainThreadQueries().build()
         
         groceryDao = database.groceryDao()
-        repository = GroceryRepository(groceryDao)
-        viewModel = GroceryViewModel(repository, userId)
+        repository = GroceryRepository(groceryDao, ApplicationProvider.getApplicationContext())
+        viewModel = GroceryViewModel(repository, userId, ApplicationProvider.getApplicationContext())
     }
 
     @After
     fun teardown() {
+        unmockkStatic(WorkManager::class)
         Dispatchers.resetMain()
         database.close()
     }
