@@ -124,7 +124,8 @@ fun NeedItemTile(
                 onDelete()
                 true
             } else false
-        }
+        },
+        positionalThreshold = { it * 0.25f } // More sensitive threshold (25%)
     )
 
     SwipeToDismiss(
@@ -136,7 +137,8 @@ fun NeedItemTile(
                 Modifier
                     .fillMaxSize()
                     .background(color, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .clickable { onDelete() },
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)

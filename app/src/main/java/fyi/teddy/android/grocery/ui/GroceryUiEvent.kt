@@ -10,6 +10,7 @@ import fyi.teddy.android.grocery.data.Store
 sealed interface GroceryUiEvent {
     data class SetPhase(val phase: GroceryPhase) : GroceryUiEvent
     data class ToggleStoreSelection(val storeId: Int) : GroceryUiEvent
+    data class SetPlanningStoreContext(val storeId: Int?) : GroceryUiEvent
     data class SetShoppingStoreId(val storeId: Int?) : GroceryUiEvent
     data class SetEditMode(val enabled: Boolean) : GroceryUiEvent
     data class SetShowRecommendedDialog(val show: Boolean) : GroceryUiEvent

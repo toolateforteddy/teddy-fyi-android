@@ -1,9 +1,15 @@
 package fyi.teddy.android.grocery.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,7 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.grocery.data.GroceryItem
@@ -23,7 +30,7 @@ import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
 
 /**
- * Planning Phase: Multi-store mapping and smart recommendations.
+ * Planning Phase: Memory-jogging tool to build the global list.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -35,188 +42,238 @@ fun PlanningPhaseContent(
     recommendedItems: List<GroceryItem>,
     onEvent: (GroceryUiEvent) -> Unit
 ) {
+    var expandedItemId by remember { mutableStateOf<Int?>(null) }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        // Store Selector (Chip-based for multi-select)
+        // 1. The Top Store Bar: Horizontal chips for store context
+        Text(
+            text = "Where are you heading?",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
+            contentPadding = PaddingValues(vertical = 4.dp)
         ) {
             item {
                 FilterChip(
-                    selected = state.selectedStoreIds.isEmpty(),
-                    onClick = { onEvent(GroceryUiEvent.ToggleStoreSelection(-2)) }, // Special case to clear
-                    label = { Text("All Items") }
-                )
-            }
-            item {
-                FilterChip(
-                    selected = state.selectedStoreIds.contains(-1),
-                    onClick = { onEvent(GroceryUiEvent.ToggleStoreSelection(-1)) },
-                    label = { Text("Unassigned") }
+                    selected = state.planningStoreContextId == null,
+                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
+                    label = { Text("General") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
             items(stores) { store ->
                 FilterChip(
-                    selected = state.selectedStoreIds.contains(store.id),
-                    onClick = { onEvent(GroceryUiEvent.ToggleStoreSelection(store.id)) },
-                    label = { Text(store.name) }
+                    selected = state.planningStoreContextId == store.id,
+                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(store.id)) },
+                    label = { Text(store.name) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Recommendations Tray (Expandable)
-        var recommendationsExpanded by remember { mutableStateOf(false) }
-        val storeSpecificRecs = remember(state.selectedStoreIds, recommendedItems, storeInfos) {
-            if (state.selectedStoreIds.isEmpty()) {
-                // In Unassigned view, show recommendations that haven't been mapped anywhere yet
-                recommendedItems.filter { rec ->
-                    storeInfos.none { it.groceryItemId == rec.id && it.isAvailable }
-                }
+        // 2. The "Commonly Bought" Recommendation Tray
+        val storeSpecificRecs = remember(state.planningStoreContextId, recommendedItems, storeInfos) {
+            val storeId = state.planningStoreContextId
+            if (storeId == null) {
+                // General: items with high frequency
+                recommendedItems.take(8)
             } else {
-                val selectedIds = state.selectedStoreIds
-                recommendedItems.filter { rec ->
-                    val infos = storeInfos.filter { it.groceryItemId == rec.id }
-                    infos.any { it.storeId in selectedIds && it.isAvailable }
+                // Filter OUT items that are explicitly marked as unavailable for this store
+                // Items with NO mapping for this store are included by default
+                val filtered = recommendedItems.filter { rec ->
+                    val info = storeInfos.find { it.groceryItemId == rec.id && it.storeId == storeId }
+                    info?.isAvailable ?: true
                 }
+                
+                filtered.take(8)
             }
         }
 
         if (storeSpecificRecs.isNotEmpty()) {
-            Surface(
-                color = Color(0xFF1A1A1A),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { recommendationsExpanded = !recommendationsExpanded },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Commonly bought ${if (state.selectedStoreIds.size == 1) "here" else "items"}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
+            val selectedStoreName = stores.find { it.id == state.planningStoreContextId }?.name ?: "Commonly"
+            
+            Text(
+                text = "$selectedStoreName Recommendations",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            // Two-column grid of recommendations
+            Box(modifier = Modifier.heightIn(max = 200.dp)) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(storeSpecificRecs) { rec ->
+                        RecommendationTile(
+                            name = rec.name,
+                            onClick = { onEvent(GroceryUiEvent.AddRecommendedItems(listOf(rec.id))) }
                         )
-                        Icon(
-                            if (recommendationsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = Color.Gray
-                        )
-                    }
-                    if (recommendationsExpanded) {
-                        FlowRow(
-                            modifier = Modifier.padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            storeSpecificRecs.take(6).forEach { rec ->
-                                SuggestionChip(
-                                    onClick = { onEvent(GroceryUiEvent.AddRecommendedItems(listOf(rec.id))) },
-                                    label = { Text(rec.name) },
-                                    icon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                )
-                            }
-                        }
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        // 3. The Main List View
+        Text(
+            text = "Your List",
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             items(items) { item ->
-                PlanningItemRow(
+                PlanningItemTile(
                     item = item,
-                    stores = stores,
-                    itemStoreInfos = storeInfos.filter { it.groceryItemId == item.id },
-                    onToggleStore = { storeId ->
-                        val current = storeInfos.find { it.groceryItemId == item.id && it.storeId == storeId }
-                        val nextInfo = when (current?.isAvailable) {
-                            null -> GroceryItemStoreInfo(groceryItemId = item.id, storeId = storeId, isAvailable = true)
-                            true -> current.copy(isAvailable = false)
-                            false -> null // We'll handle deletion in the event
-                        }
-                        
-                        if (nextInfo != null) {
-                            onEvent(GroceryUiEvent.UpdateStoreInfo(nextInfo))
-                        } else if (current != null) {
-                            onEvent(GroceryUiEvent.DeleteStoreInfo(current))
+                    showControls = expandedItemId == item.id,
+                    onToggleControls = {
+                        expandedItemId = if (expandedItemId == item.id) null else item.id
+                    },
+                    onIncrement = {
+                        val current = item.quantity.toIntOrNull() ?: 1
+                        onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current + 1).toString())))
+                    },
+                    onDecrement = {
+                        val current = item.quantity.toIntOrNull() ?: 1
+                        if (current > 1) {
+                            onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                         }
                     }
                 )
+            }
+            
+            if (items.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "List is empty. Tap recommendations to add items.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.DarkGray
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun PlanningItemRow(
+fun RecommendationTile(name: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        color = Color(0xFF1A1A1A),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White,
+                modifier = Modifier.weight(1f),
+                maxLines = 1
+            )
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun PlanningItemTile(
     item: GroceryItem,
-    stores: List<Store>,
-    itemStoreInfos: List<GroceryItemStoreInfo>,
-    onToggleStore: (Int) -> Unit
+    showControls: Boolean,
+    onToggleControls: () -> Unit,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit
 ) {
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A))
+            .height(48.dp)
+            .clickable { onToggleControls() },
+        color = Color(0xFF0A0A0A),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = item.name, color = Color.White, style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                stores.forEach { store ->
-                    val info = itemStoreInfos.find { it.storeId == store.id }
-                    val isAvailable = info?.isAvailable
-                    
-                    AssistChip(
-                        onClick = { onToggleStore(store.id) },
-                        label = { 
-                            Text(
-                                text = store.name, 
-                                fontSize = 10.sp,
-                                style = if (isAvailable == false) {
-                                    MaterialTheme.typography.labelSmall.copy(
-                                        textDecoration = TextDecoration.LineThrough
-                                    )
-                                } else {
-                                    MaterialTheme.typography.labelSmall
-                                }
-                            ) 
-                        },
-                        leadingIcon = {
-                            if (isAvailable == true) {
-                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
-                            } else if (isAvailable == false) {
-                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(12.dp))
-                            }
-                        },
-                        colors = when (isAvailable) {
-                            true -> AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            false -> AssistChipDefaults.assistChipColors(
-                                containerColor = Color.DarkGray.copy(alpha = 0.2f),
-                                labelColor = Color.Gray,
-                                leadingIconContentColor = Color.Gray
-                            )
-                            else -> AssistChipDefaults.assistChipColors() // Unmapped
-                        },
-                        border = if (isAvailable == null) {
-                            AssistChipDefaults.assistChipBorder(borderColor = Color.DarkGray)
-                        } else {
-                            null
-                        }
+        AnimatedContent(
+            targetState = showControls,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "PlanningItemControls"
+        ) { isEditing ->
+            if (isEditing) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Remove, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                    Text(
+                        text = item.quantity,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (item.quantity.isNotBlank() && item.quantity != "1") {
+                        Text(
+                            text = item.quantity + (item.unit?.let { " $it" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
         }

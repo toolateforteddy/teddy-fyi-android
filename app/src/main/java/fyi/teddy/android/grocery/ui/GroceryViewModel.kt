@@ -30,6 +30,7 @@ class GroceryViewModel(
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
     private val _selectedStoreIds = MutableStateFlow(setOf<Int>())
+    private val _planningStoreContextId = MutableStateFlow<Int?>(null)
     private val _shoppingStoreId = MutableStateFlow<Int?>(
         prefs.getInt("last_shopping_store_id", -1).takeIf { it != -1 }
     )
@@ -47,6 +48,7 @@ class GroceryViewModel(
     val state: StateFlow<GroceryUiState> = combine(
         _currentPhase,
         _selectedStoreIds,
+        _planningStoreContextId,
         _shoppingStoreId,
         _isEditMode,
         _showRecommendedDialog,
@@ -62,16 +64,17 @@ class GroceryViewModel(
         GroceryUiState(
             currentPhase = args[0] as GroceryPhase,
             selectedStoreIds = args[1] as Set<Int>,
-            shoppingStoreId = args[2] as Int?,
-            isEditMode = args[3] as Boolean,
-            showRecommendedDialog = args[4] as Boolean,
-            newItemName = args[5] as String,
-            newItemQuantity = args[6] as String,
-            newItemUnit = args[7] as String?,
-            newItemInput = args[8] as String,
-            selectedCategoryId = args[9] as Int?,
-            recentlyCheckedIds = args[10] as Set<Int>,
-            selectedListId = args[11] as String?
+            planningStoreContextId = args[2] as Int?,
+            shoppingStoreId = args[3] as Int?,
+            isEditMode = args[4] as Boolean,
+            showRecommendedDialog = args[5] as Boolean,
+            newItemName = args[6] as String,
+            newItemQuantity = args[7] as String,
+            newItemUnit = args[8] as String?,
+            newItemInput = args[9] as String,
+            selectedCategoryId = args[10] as Int?,
+            recentlyCheckedIds = args[11] as Set<Int>,
+            selectedListId = args[12] as String?
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -83,6 +86,7 @@ class GroceryViewModel(
         when (event) {
             is GroceryUiEvent.SetPhase -> setPhase(event.phase)
             is GroceryUiEvent.ToggleStoreSelection -> toggleStoreSelection(event.storeId)
+            is GroceryUiEvent.SetPlanningStoreContext -> _planningStoreContextId.value = event.storeId
             is GroceryUiEvent.SetShoppingStoreId -> setShoppingStoreId(event.storeId)
             is GroceryUiEvent.SetEditMode -> setEditMode(event.enabled)
             is GroceryUiEvent.SetShowRecommendedDialog -> setShowRecommendedDialog(event.show)
@@ -134,20 +138,24 @@ class GroceryViewModel(
     // Sources from repository
     @OptIn(ExperimentalCoroutinesApi::class)
     val items = _selectedListId.flatMapLatest { listId ->
-        if (listId == null) {
+        val flow = if (listId == null) {
             repository.getItemsWithoutList(userId)
         } else {
             repository.getItemsForList(listId)
         }
+        flow.map { list -> list.filter { !it.isDeleted } }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val lists = repository.getAllLists(userId)
+        .map { list -> list.filter { !it.isDeleted } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val stores = repository.getAllStores(userId)
+        .map { list -> list.filter { !it.isDeleted } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val categories = repository.getAllCategories(userId)
+        .map { list -> list.filter { !it.isDeleted } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val storeInfos = repository.getAllStoreInfo(userId)

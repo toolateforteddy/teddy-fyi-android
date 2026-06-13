@@ -3,6 +3,7 @@ package fyi.teddy.android.grocery.ui
 data class GroceryUiState(
     val currentPhase: GroceryPhase = GroceryPhase.NEED,
     val selectedStoreIds: Set<Int> = emptySet(),
+    val planningStoreContextId: Int? = null,
     val shoppingStoreId: Int? = null,
     val isEditMode: Boolean = false,
     val showRecommendedDialog: Boolean = false,
