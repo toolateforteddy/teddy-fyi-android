@@ -41,6 +41,7 @@ sealed interface TodoItemIntent {
 fun TodoItemRow(
     item: TodoItem,
     isSubtask: Boolean = false,
+    subtasks: List<TodoItem> = emptyList(),
     subtaskCount: Int = 0,
     completedSubtaskCount: Int = 0,
     isExpanded: Boolean = false,
@@ -328,8 +329,10 @@ fun TodoItemRow(
                 Box {
                     TodoItemMenu(
                         item = item,
+                        subtasks = subtasks,
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
+                        context = TodoMenuContext.LIST_ROW,
                         onIntent = { intent ->
                             if (intent is TodoItemIntent.ToggleComplete) {
                                 onCheckedChange(intent.isChecked)

@@ -43,6 +43,7 @@ fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
 
     if (categoryToPickIconFor != null) {
         IconPickerDialog(
+            initialIcon = categoryToPickIconFor?.icon,
             onDismiss = { categoryToPickIconFor = null },
             onConfirm = { iconName ->
                 categoryToPickIconFor?.let { 

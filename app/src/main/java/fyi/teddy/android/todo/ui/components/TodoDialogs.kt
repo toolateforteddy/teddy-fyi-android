@@ -1,6 +1,7 @@
 package fyi.teddy.android.todo.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,8 +29,10 @@ import fyi.teddy.android.utils.getIconByName
 
 @Composable
 fun IconPickerDialog(
+    initialIcon: String? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String?) -> Unit
+    onConfirm: (String?) -> Unit,
+    onAutoAssign: (() -> Unit)? = null
 ) {
     val iconNames = listOf(
         "Build", "Home", "Plumbing", "ElectricalServices", "CleaningServices",
@@ -47,30 +50,64 @@ fun IconPickerDialog(
         title = { Text("Select Icon") },
         text = {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(48.dp),
+                columns = GridCells.Fixed(5),
                 modifier = Modifier.height(300.dp)
             ) {
-                item {
-                    IconButton(onClick = { onConfirm(null) }) {
-                        Icon(Icons.Default.Clear, contentDescription = "None", tint = Color.Gray)
-                    }
-                }
                 items(iconNames) { name ->
                     val icon = getIconByName(name)
+                    val isSelected = initialIcon == name
                     if (icon != null) {
-                        IconButton(onClick = { onConfirm(name) }) {
-                            Icon(icon, contentDescription = name, tint = Color.White)
+                        IconButton(
+                            onClick = { onConfirm(name) },
+                            modifier = if (isSelected) {
+                                Modifier.border(2.dp, NeonTeal, RoundedCornerShape(8.dp))
+                            } else Modifier
+                        ) {
+                            Icon(
+                                icon,
+                                contentDescription = name,
+                                tint = if (isSelected) NeonTeal else Color.White
+                            )
                         }
                     }
                 }
             }
         },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (onAutoAssign != null) {
+                    TextButton(
+                        onClick = onAutoAssign,
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Magic")
+                    }
+                }
+                TextButton(
+                    onClick = { onConfirm(null) },
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Clear")
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.cancel))
+                }
             }
-        }
+        },
+        dismissButton = null
     )
 }
 
@@ -263,7 +300,12 @@ fun AddSubtaskDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                if (subtaskTitle.isNotBlank()) {
+                    onAdd(subtaskTitle)
+                }
+                onDismiss()
+            }) {
                 Text("Finish")
             }
         }

@@ -418,6 +418,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                         val isExpanded = expandedParentIds.value.contains(parent.id)
                                         TodoItemRow(
                                             item = parent,
+                                            subtasks = children,
                                             subtaskCount = children.size,
                                             completedSubtaskCount = children.count { it.isCompleted },
                                             isExpanded = isExpanded,
@@ -505,6 +506,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                         val isExpanded = expandedParentIds.value.contains(parent.id)
                                         TodoItemRow(
                                             item = parent,
+                                            subtasks = children,
                                             subtaskCount = children.size,
                                             completedSubtaskCount = children.count { it.isCompleted },
                                             isExpanded = isExpanded,

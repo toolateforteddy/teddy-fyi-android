@@ -30,6 +30,7 @@ import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.repository.TodoRepository
 import fyi.teddy.android.todo.ui.components.TodoItemIntent
 import fyi.teddy.android.todo.ui.components.TodoItemMenu
+import fyi.teddy.android.todo.ui.components.TodoMenuContext
 import fyi.teddy.android.ui.components.BattleMapTodoGrid
 import fyi.teddy.android.ui.components.BronzeGroceryTile
 import kotlinx.coroutines.flow.flowOf
@@ -202,6 +203,7 @@ fun HomeScreen(
                             item = item,
                             expanded = true,
                             onDismissRequest = { selectedTodoForItemMenu = null },
+                            context = TodoMenuContext.DASHBOARD_HEX,
                             onIntent = { intent ->
                                 scope.launch {
                                     when (intent) {

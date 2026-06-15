@@ -2,8 +2,10 @@ package fyi.teddy.android.grocery.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,9 +30,22 @@ import fyi.teddy.android.grocery.ui.GroceryUiEvent
 fun NeedPhaseContent(
     items: List<GroceryItem>,
     categories: List<Category>,
-    onEvent: (GroceryUiEvent) -> Unit
+    onEvent: (GroceryUiEvent) -> Unit,
 ) {
     var expandedItemId by remember { mutableStateOf<Int?>(null) }
+    var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
+
+    if (itemToEditCategory != null) {
+        CategorySelectionDialog(
+            item = itemToEditCategory!!,
+            categories = categories,
+            onDismiss = { itemToEditCategory = null },
+            onConfirm = { categoryId ->
+                onEvent(GroceryUiEvent.UpdateItem(itemToEditCategory!!.copy(categoryId = categoryId)))
+                itemToEditCategory = null
+            }
+        )
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -68,7 +83,8 @@ fun NeedPhaseContent(
                             if (current > 1) {
                                 onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                             }
-                        }
+                        },
+                        onEditCategory = { itemToEditCategory = item }
                     )
                 }
             }
@@ -101,14 +117,15 @@ fun NeedPhaseContent(
                         if (current > 1) {
                             onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                         }
-                    }
+                    },
+                    onEditCategory = { itemToEditCategory = item }
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NeedItemTile(
     item: GroceryItem,
@@ -116,7 +133,8 @@ fun NeedItemTile(
     onToggleControls: () -> Unit,
     onDelete: () -> Unit,
     onIncrement: () -> Unit,
-    onDecrement: () -> Unit
+    onDecrement: () -> Unit,
+    onEditCategory: () -> Unit
 ) {
     val dismissState = rememberDismissState(
         confirmValueChange = {
@@ -149,7 +167,10 @@ fun NeedItemTile(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .clickable { onToggleControls() },
+                    .combinedClickable(
+                        onClick = onToggleControls,
+                        onLongClick = onEditCategory
+                    ),
                 color = Color(0xFF1A1A1A),
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
@@ -177,6 +198,9 @@ fun NeedItemTile(
                             IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
                                 Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             }
+                            IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Category, contentDescription = "Change Category", tint = Color.LightGray, modifier = Modifier.size(18.dp))
+                            }
                         }
                     } else {
                         Row(
@@ -193,7 +217,7 @@ fun NeedItemTile(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
                             )
-                            if (item.quantity.isNotBlank() && item.quantity != "1") {
+                            if ((item.quantity.isNotBlank()) && (item.quantity != "1")) {
                                 Spacer(Modifier.width(4.dp))
                                 Text(
                                     text = "x${item.quantity}",

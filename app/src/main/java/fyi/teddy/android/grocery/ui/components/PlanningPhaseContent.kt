@@ -2,8 +2,8 @@ package fyi.teddy.android.grocery.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
@@ -40,9 +41,23 @@ fun PlanningPhaseContent(
     stores: List<Store>,
     storeInfos: List<GroceryItemStoreInfo>,
     recommendedItems: List<GroceryItem>,
-    onEvent: (GroceryUiEvent) -> Unit
+    categories: List<Category>,
+    onEvent: (GroceryUiEvent) -> Unit,
 ) {
     var expandedItemId by remember { mutableStateOf<Int?>(null) }
+    var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
+
+    if (itemToEditCategory != null) {
+        CategorySelectionDialog(
+            item = itemToEditCategory!!,
+            categories = categories,
+            onDismiss = { itemToEditCategory = null },
+            onConfirm = { categoryId ->
+                onEvent(GroceryUiEvent.UpdateItem(itemToEditCategory!!.copy(categoryId = categoryId)))
+                itemToEditCategory = null
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 1. The Top Store Bar: Horizontal chips for store context
@@ -93,7 +108,7 @@ fun PlanningPhaseContent(
                 // Filter OUT items that are explicitly marked as unavailable for this store
                 // Items with NO mapping for this store are included by default
                 val filtered = recommendedItems.filter { rec ->
-                    val info = storeInfos.find { it.groceryItemId == rec.id && it.storeId == storeId }
+                    val info = storeInfos.find { (it.groceryItemId == rec.id) && (it.storeId == storeId) }
                     info?.isAvailable ?: true
                 }
                 
@@ -159,7 +174,8 @@ fun PlanningPhaseContent(
                         if (current > 1) {
                             onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                         }
-                    }
+                    },
+                    onEditCategory = { itemToEditCategory = item }
                 )
             }
             
@@ -211,19 +227,24 @@ fun RecommendationTile(name: String, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlanningItemTile(
     item: GroceryItem,
     showControls: Boolean,
     onToggleControls: () -> Unit,
     onIncrement: () -> Unit,
-    onDecrement: () -> Unit
+    onDecrement: () -> Unit,
+    onEditCategory: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .clickable { onToggleControls() },
+            .combinedClickable(
+                onClick = onToggleControls,
+                onLongClick = onEditCategory
+            ),
         color = Color(0xFF0A0A0A),
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
@@ -250,6 +271,9 @@ fun PlanningItemTile(
                     )
                     IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = Color.LightGray, modifier = Modifier.size(18.dp))
                     }
                 }
             } else {

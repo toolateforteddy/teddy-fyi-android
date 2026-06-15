@@ -323,6 +323,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             stores = stores,
                             storeInfos = storeInfos,
                             recommendedItems = recommendedItems,
+                            categories = categories,
                             onEvent = viewModel::onEvent
                         )
                     }

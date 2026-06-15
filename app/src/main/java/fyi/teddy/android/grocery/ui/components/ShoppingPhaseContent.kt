@@ -2,7 +2,9 @@ package fyi.teddy.android.grocery.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -36,10 +38,23 @@ fun ShoppingPhaseContent(
     inCartItems: List<GroceryItem>,
     stores: List<Store>,
     categories: List<Category>,
-    onEvent: (GroceryUiEvent) -> Unit
+    onEvent: (GroceryUiEvent) -> Unit,
 ) {
     val activeStore = stores.find { it.id == state.shoppingStoreId }
     val expandedCategories = remember { mutableStateMapOf<Int?, Boolean>() }
+    var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
+
+    if (itemToEditCategory != null) {
+        CategorySelectionDialog(
+            item = itemToEditCategory!!,
+            categories = categories,
+            onDismiss = { itemToEditCategory = null },
+            onConfirm = { categoryId ->
+                onEvent(GroceryUiEvent.UpdateItem(itemToEditCategory!!.copy(categoryId = categoryId)))
+                itemToEditCategory = null
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Heads-up Store Isolation
@@ -89,7 +104,7 @@ fun ShoppingPhaseContent(
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
-                    var showStoreSwitcher by remember { mutableStateOf(false) }
+                    var showStoreSwitcher by remember { mutableStateOf(value = false) }
                     TextButton(onClick = { showStoreSwitcher = true }) {
                         Text("Switch")
                     }
@@ -147,7 +162,8 @@ fun ShoppingPhaseContent(
                             items(categoryItems, key = { it.id }) { item ->
                                 ShoppingItemTile(
                                     item = item,
-                                    onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, it)) }
+                                    onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, it)) },
+                                    onEditCategory = { itemToEditCategory = item }
                                 )
                             }
                         }
@@ -169,7 +185,8 @@ fun ShoppingPhaseContent(
                         items(uncategorized, key = { it.id }) { item ->
                             ShoppingItemTile(
                                 item = item,
-                                onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, it)) }
+                                onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, it)) },
+                                onEditCategory = { itemToEditCategory = item }
                             )
                         }
                     }
@@ -187,7 +204,8 @@ fun ShoppingPhaseContent(
                     items(inCartItems, key = { it.id }) { item ->
                         ShoppingItemTile(
                             item = item,
-                            onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, false)) }
+                            onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, false)) },
+                            onEditCategory = { itemToEditCategory = item }
                         )
                     }
                 }
@@ -232,10 +250,12 @@ fun ShoppingCategoryHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ShoppingItemTile(
     item: GroceryItem,
-    onToggleBought: (Boolean) -> Unit
+    onToggleBought: (Boolean) -> Unit,
+    onEditCategory: () -> Unit
 ) {
     val alpha by animateFloatAsState(targetValue = if (item.isBought) 0.3f else 1f, label = "alpha")
 
@@ -243,7 +263,10 @@ fun ShoppingItemTile(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .clickable { onToggleBought(!item.isBought) },
+            .combinedClickable(
+                onClick = { onToggleBought(!item.isBought) },
+                onLongClick = onEditCategory
+            ),
         color = Color(0xFF1A1A1A),
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
@@ -264,7 +287,7 @@ fun ShoppingItemTile(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (item.quantity.isNotBlank() && item.quantity != "1") {
+            if ((item.quantity.isNotBlank()) && (item.quantity != "1")) {
                 Text(
                     text = "x${item.quantity}",
                     style = MaterialTheme.typography.labelSmall,
