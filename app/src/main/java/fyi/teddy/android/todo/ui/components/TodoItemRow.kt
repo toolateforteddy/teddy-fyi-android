@@ -1,6 +1,7 @@
 package fyi.teddy.android.todo.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,14 +15,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.utils.getIconByName
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 
 sealed interface TodoItemIntent {
@@ -58,30 +63,52 @@ fun TodoItemRow(
 ) {
     var showMenu by remember { mutableStateOf(value = false) }
     var dragOffsetY by remember { mutableStateOf(value = 0f) }
+    var isConfirmed by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
     val today = LocalDate.now().toString()
     val isScheduledForToday = item.scheduledDate == today
     val isScheduled = item.scheduledDate != null
 
     val dismissState = rememberDismissState(
-        confirmValueChange = {
-            when (it) {
-                DismissValue.DismissedToEnd -> {
-                    if (!isScheduledForToday) {
-                        onIntent(TodoItemIntent.Update(item.copy(scheduledDate = today)))
-                    }
-                    false
-                }
-                DismissValue.DismissedToStart -> {
-                    if (isScheduled) {
-                        onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
-                    }
-                    false
-                }
-                else -> false
-            }
-        }
+        confirmValueChange = { true }
     )
+
+    LaunchedEffect(dismissState.targetValue) {
+        if (dismissState.targetValue != DismissValue.Default) {
+            delay(1000)
+            if (dismissState.targetValue != DismissValue.Default) {
+                isConfirmed = true
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        } else {
+            isConfirmed = false
+        }
+    }
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != DismissValue.Default) {
+            if (isConfirmed) {
+                when (dismissState.currentValue) {
+                    DismissValue.DismissedToEnd -> {
+                        if (!isScheduledForToday) {
+                            onIntent(TodoItemIntent.Update(item.copy(scheduledDate = today)))
+                        }
+                    }
+                    DismissValue.DismissedToStart -> {
+                        if (isScheduled) {
+                            onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
+                        }
+                    }
+                    else -> {}
+                }
+            }
+            dismissState.reset()
+            isConfirmed = false
+        }
+    }
+
+    val iconScale by animateFloatAsState(if (isConfirmed) 1.3f else 1.0f, label = "iconScale")
 
     SwipeToDismiss(
         state = dismissState,
@@ -89,10 +116,15 @@ fun TodoItemRow(
             val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
             val color by animateColorAsState(
                 when (dismissState.targetValue) {
-                    DismissValue.DismissedToEnd -> if (!isScheduledForToday) NeonTeal.copy(alpha = 0.5f) else Color.Transparent
-                    DismissValue.DismissedToStart -> if (isScheduled) Color.Red.copy(alpha = 0.5f) else Color.Transparent
+                    DismissValue.DismissedToEnd -> if (!isScheduledForToday) {
+                        if (isConfirmed) NeonTeal.copy(alpha = 0.6f) else NeonTeal.copy(alpha = 0.15f)
+                    } else Color.Transparent
+                    DismissValue.DismissedToStart -> if (isScheduled) {
+                        if (isConfirmed) Color.Red.copy(alpha = 0.6f) else Color.Red.copy(alpha = 0.15f)
+                    } else Color.Transparent
                     else -> Color.Transparent
-                }
+                },
+                label = "backgroundColor"
             )
             Box(
                 Modifier
@@ -111,7 +143,8 @@ fun TodoItemRow(
                             Icon(
                                 Icons.Default.Today,
                                 contentDescription = "Schedule for Today",
-                                tint = Color.White
+                                tint = if (isConfirmed) Color.White else Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier.scale(iconScale)
                             )
                         }
                     }
@@ -120,7 +153,8 @@ fun TodoItemRow(
                             Icon(
                                 Icons.Default.EventBusy,
                                 contentDescription = "Unschedule",
-                                tint = Color.White
+                                tint = if (isConfirmed) Color.White else Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier.scale(iconScale)
                             )
                         }
                     }
