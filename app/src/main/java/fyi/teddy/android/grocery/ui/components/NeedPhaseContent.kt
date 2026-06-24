@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
+import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 
 /**
@@ -30,10 +32,13 @@ import fyi.teddy.android.grocery.ui.GroceryUiEvent
 fun NeedPhaseContent(
     items: List<GroceryItem>,
     categories: List<Category>,
+    stores: List<Store>,
+    storeInfos: List<GroceryItemStoreInfo>,
     onEvent: (GroceryUiEvent) -> Unit,
 ) {
     var expandedItemId by remember { mutableStateOf<Int?>(null) }
     var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
+    var itemToTagStores by remember { mutableStateOf<GroceryItem?>(null) }
 
     if (itemToEditCategory != null) {
         CategorySelectionDialog(
@@ -43,6 +48,21 @@ fun NeedPhaseContent(
             onConfirm = { categoryId ->
                 onEvent(GroceryUiEvent.UpdateItem(itemToEditCategory!!.copy(categoryId = categoryId)))
                 itemToEditCategory = null
+            }
+        )
+    }
+
+    itemToTagStores?.let { item ->
+        StoreTaggingDialog(
+            stores = stores,
+            itemStoreInfos = storeInfos.filter { it.groceryItemId == item.id },
+            onDismiss = { itemToTagStores = null },
+            onToggleAvailability = { storeId, isAvailable ->
+                val currentInfo = storeInfos.find { it.groceryItemId == item.id && it.storeId == storeId }
+                onEvent(GroceryUiEvent.UpdateStoreInfo(
+                    currentInfo?.copy(isAvailable = isAvailable)
+                        ?: GroceryItemStoreInfo(groceryItemId = item.id, storeId = storeId, isAvailable = isAvailable)
+                ))
             }
         )
     }
@@ -84,7 +104,8 @@ fun NeedPhaseContent(
                                 onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                             }
                         },
-                        onEditCategory = { itemToEditCategory = item }
+                        onEditCategory = { itemToEditCategory = item },
+                        onTagStores = { itemToTagStores = item }
                     )
                 }
             }
@@ -118,7 +139,8 @@ fun NeedPhaseContent(
                             onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                         }
                     },
-                    onEditCategory = { itemToEditCategory = item }
+                    onEditCategory = { itemToEditCategory = item },
+                    onTagStores = { itemToTagStores = item }
                 )
             }
         }
@@ -134,7 +156,8 @@ fun NeedItemTile(
     onDelete: () -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
-    onEditCategory: () -> Unit
+    onEditCategory: () -> Unit,
+    onTagStores: () -> Unit
 ) {
     val dismissState = rememberDismissState(
         confirmValueChange = {
@@ -169,7 +192,7 @@ fun NeedItemTile(
                     .height(48.dp)
                     .combinedClickable(
                         onClick = onToggleControls,
-                        onLongClick = onEditCategory
+                        onLongClick = onTagStores
                     ),
                 color = Color(0xFF1A1A1A),
                 shape = RoundedCornerShape(8.dp),

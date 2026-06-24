@@ -313,6 +313,8 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                         NeedPhaseContent(
                             items = standardCategoryItems,
                             categories = categories,
+                            stores = stores,
+                            storeInfos = storeInfos,
                             onEvent = viewModel::onEvent
                         )
                     }

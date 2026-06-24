@@ -46,6 +46,7 @@ fun PlanningPhaseContent(
 ) {
     var expandedItemId by remember { mutableStateOf<Int?>(null) }
     var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
+    var itemToTagStores by remember { mutableStateOf<GroceryItem?>(null) }
 
     if (itemToEditCategory != null) {
         CategorySelectionDialog(
@@ -55,6 +56,21 @@ fun PlanningPhaseContent(
             onConfirm = { categoryId ->
                 onEvent(GroceryUiEvent.UpdateItem(itemToEditCategory!!.copy(categoryId = categoryId)))
                 itemToEditCategory = null
+            }
+        )
+    }
+
+    itemToTagStores?.let { item ->
+        StoreTaggingDialog(
+            stores = stores,
+            itemStoreInfos = storeInfos.filter { it.groceryItemId == item.id },
+            onDismiss = { itemToTagStores = null },
+            onToggleAvailability = { storeId, isAvailable ->
+                val currentInfo = storeInfos.find { it.groceryItemId == item.id && it.storeId == storeId }
+                onEvent(GroceryUiEvent.UpdateStoreInfo(
+                    currentInfo?.copy(isAvailable = isAvailable)
+                        ?: GroceryItemStoreInfo(groceryItemId = item.id, storeId = storeId, isAvailable = isAvailable)
+                ))
             }
         )
     }
@@ -175,7 +191,8 @@ fun PlanningPhaseContent(
                             onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                         }
                     },
-                    onEditCategory = { itemToEditCategory = item }
+                    onEditCategory = { itemToEditCategory = item },
+                    onTagStores = { itemToTagStores = item }
                 )
             }
             
@@ -235,7 +252,8 @@ fun PlanningItemTile(
     onToggleControls: () -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
-    onEditCategory: () -> Unit
+    onEditCategory: () -> Unit,
+    onTagStores: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -243,7 +261,7 @@ fun PlanningItemTile(
             .height(48.dp)
             .combinedClickable(
                 onClick = onToggleControls,
-                onLongClick = onEditCategory
+                onLongClick = onTagStores
             ),
         color = Color(0xFF0A0A0A),
         shape = RoundedCornerShape(8.dp),
