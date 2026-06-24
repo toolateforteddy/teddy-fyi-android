@@ -256,7 +256,8 @@ fun EditTitleDialog(
 @Composable
 fun AddSubtaskDialog(
     onDismiss: () -> Unit,
-    onAdd: (String) -> Unit
+    onAdd: (String) -> Unit,
+    onFinish: (String) -> Unit
 ) {
     var subtaskTitle by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -301,10 +302,7 @@ fun AddSubtaskDialog(
         },
         dismissButton = {
             TextButton(onClick = {
-                if (subtaskTitle.isNotBlank()) {
-                    onAdd(subtaskTitle)
-                }
-                onDismiss()
+                onFinish(subtaskTitle)
             }) {
                 Text("Finish")
             }

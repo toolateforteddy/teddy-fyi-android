@@ -413,7 +413,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             )
                                         }
                                     }
-                                    items(itemsForDate.size) { index ->
+                                    items(itemsForDate.size, key = { index -> itemsForDate[index].first.id }) { index ->
                                         val (parent, children) = itemsForDate[index]
                                         val isExpanded = expandedParentIds.value.contains(parent.id)
                                         TodoItemRow(

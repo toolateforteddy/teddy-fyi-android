@@ -222,10 +222,16 @@ fun TodoItemMenu(
         AddSubtaskDialog(
             onDismiss = {
                 activeOverlay = null
-                onDismissRequest()
             },
             onAdd = { title ->
                 onIntent(TodoItemIntent.AddSubtask(item.id, title))
+            },
+            onFinish = { title ->
+                if (title.isNotBlank()) {
+                    onIntent(TodoItemIntent.AddSubtask(item.id, title))
+                }
+                activeOverlay = null
+                onDismissRequest()
             }
         )
     }

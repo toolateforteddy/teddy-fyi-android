@@ -207,9 +207,18 @@ fun HomeScreen(
                             onIntent = { intent ->
                                 scope.launch {
                                     when (intent) {
-                                        is TodoItemIntent.Update -> todoRepository.updateItem(intent.item)
-                                        is TodoItemIntent.Delete -> todoRepository.deleteItem(intent.item)
-                                        is TodoItemIntent.ToggleComplete -> todoRepository.updateItem(intent.item.copy(isCompleted = intent.isChecked))
+                                        is TodoItemIntent.Update -> {
+                                            todoRepository.updateItem(intent.item)
+                                            selectedTodoForItemMenu = null
+                                        }
+                                        is TodoItemIntent.Delete -> {
+                                            todoRepository.deleteItem(intent.item)
+                                            selectedTodoForItemMenu = null
+                                        }
+                                        is TodoItemIntent.ToggleComplete -> {
+                                            todoRepository.updateItem(intent.item.copy(isCompleted = intent.isChecked))
+                                            selectedTodoForItemMenu = null
+                                        }
                                         is TodoItemIntent.AssignIcon -> {
                                             val session = fyi.teddy.android.auth.UserSession()
                                             session.load(context)
@@ -217,6 +226,7 @@ fun HomeScreen(
                                             if (token != null) {
                                                 todoRepository.assignIcon(intent.item, token)
                                             }
+                                            selectedTodoForItemMenu = null
                                         }
                                         is TodoItemIntent.AddSubtask -> {
                                             todoRepository.insertItem(TodoItem(
@@ -225,13 +235,11 @@ fun HomeScreen(
                                                 parentId = intent.parentId,
                                                 listId = item.listId
                                             ))
+                                            // Don't close menu when adding subtask
                                         }
-                                        // Movement intents might be harder without the full list, 
-                                        // but we can try basic implementations if needed.
                                         else -> { /* Not implemented on home screen yet */ }
                                     }
                                 }
-                                selectedTodoForItemMenu = null
                             }
                         )
                     }
