@@ -1,0 +1,60 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class, kotlinx.serialization.InternalSerializationApi::class)
+package fyi.teddy.android.network
+
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class InviteResponse(
+    @SerialName("code") val code: String
+)
+
+@Serializable
+data class JoinRequest(
+    @SerialName("code") val code: String
+)
+
+@Serializable
+data class JoinResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("list_id") val listId: String? = null
+)
+
+object GroceryNetworkRepository {
+    private const val BASE_URL = "https://api-rust.teddy.fyi/api/lists"
+
+    suspend fun createInvite(listId: String): String? {
+        return try {
+            val response = NetworkClient.client.post("$BASE_URL/invite") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("list_id" to listId))
+            }
+            if (response.status.isSuccess()) {
+                response.body<InviteResponse>().code
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun joinList(code: String): String? {
+        return try {
+            val response = NetworkClient.client.post("$BASE_URL/join") {
+                contentType(ContentType.Application.Json)
+                setBody(JoinRequest(code))
+            }
+            if (response.status.isSuccess()) {
+                response.body<JoinResponse>().listId
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+}

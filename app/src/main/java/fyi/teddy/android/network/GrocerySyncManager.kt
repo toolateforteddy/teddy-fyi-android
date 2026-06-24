@@ -1,6 +1,8 @@
 package fyi.teddy.android.network
 
 import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.grocery.data.GroceryDao
+import fyi.teddy.android.grocery.data.GroceryList
 import kotlinx.serialization.json.Json
 
 object GrocerySyncManager {
@@ -169,6 +171,21 @@ object GrocerySyncManager {
         }
     }
 
+    private suspend fun ensureListExists(dao: GroceryDao, listId: String?) {
+        if (listId == null) return
+        val existing = dao.getListByIdOneShot(listId)
+        if (existing == null) {
+            dao.insertList(
+                GroceryList(
+                    id = listId,
+                    name = "Syncing List...",
+                    syncState = "SYNCED",
+                    version = 0
+                )
+            )
+        }
+    }
+
     suspend fun handleSyncSuccess(
         db: AppDatabase,
         successIds: List<String>,
@@ -212,21 +229,7 @@ object GrocerySyncManager {
             groceryDao.getUnsyncedStoreInfos()
         }
 
-        // Transition successfully uploaded grocery items back to sync_state = SYNCED
-        unsyncedGroceryItems.forEach { localGroceryItem ->
-            val stringId = localGroceryItem.id.toString()
-            if (localGroceryItem.isDeleted) {
-                if (successIds.contains(stringId)) {
-                    groceryDao.hardDeleteItem(localGroceryItem.id)
-                }
-            } else {
-                if (successIds.contains(stringId)) {
-                    groceryDao.insertItem(localGroceryItem.copy(syncState = "SYNCED"))
-                }
-            }
-        }
-
-        // Transition successfully uploaded grocery lists back to sync_state = SYNCED
+        // 1. Transition successfully uploaded grocery lists back to sync_state = SYNCED
         unsyncedGroceryLists.forEach { localGroceryList ->
             if (localGroceryList.isDeleted) {
                 if (successIds.contains(localGroceryList.id)) {
@@ -239,7 +242,7 @@ object GrocerySyncManager {
             }
         }
 
-        // Transition successfully uploaded grocery list members back to sync_state = SYNCED
+        // 2. Transition successfully uploaded grocery list members back to sync_state = SYNCED
         unsyncedListMembers.forEach { localMember ->
             if (localMember.isDeleted) {
                 if (successIds.contains(localMember.id)) {
@@ -252,7 +255,7 @@ object GrocerySyncManager {
             }
         }
 
-        // Transition successfully uploaded stores back to sync_state = SYNCED
+        // 3. Transition successfully uploaded stores back to sync_state = SYNCED
         unsyncedStores.forEach { localStore ->
             val stringId = localStore.id.toString()
             if (localStore.isDeleted) {
@@ -266,7 +269,7 @@ object GrocerySyncManager {
             }
         }
 
-        // Transition successfully uploaded categories back to sync_state = SYNCED
+        // 4. Transition successfully uploaded categories back to sync_state = SYNCED
         unsyncedCategories.forEach { localCategory ->
             val stringId = localCategory.id.toString()
             if (localCategory.isDeleted) {
@@ -280,7 +283,21 @@ object GrocerySyncManager {
             }
         }
 
-        // Transition successfully uploaded store infos back to sync_state = SYNCED
+        // 5. Transition successfully uploaded grocery items back to sync_state = SYNCED
+        unsyncedGroceryItems.forEach { localGroceryItem ->
+            val stringId = localGroceryItem.id.toString()
+            if (localGroceryItem.isDeleted) {
+                if (successIds.contains(stringId)) {
+                    groceryDao.hardDeleteItem(localGroceryItem.id)
+                }
+            } else {
+                if (successIds.contains(stringId)) {
+                    groceryDao.insertItem(localGroceryItem.copy(syncState = "SYNCED"))
+                }
+            }
+        }
+
+        // 6. Transition successfully uploaded store infos back to sync_state = SYNCED
         unsyncedStoreInfos.forEach { localInfo ->
             val compositeId = "${localInfo.groceryItemId}_${localInfo.storeId}"
             if (localInfo.isDeleted) {
@@ -294,25 +311,7 @@ object GrocerySyncManager {
             }
         }
 
-        // Upsert incoming remote_grocery_changes into local Room DB
-        remoteChanges.forEach { changeDelta ->
-            if (changeDelta.operationType == OperationType.DELETE) {
-                groceryDao.hardDeleteItem(changeDelta.id)
-            } else {
-                val groceryDto = changeDelta.data?.let {
-                    try {
-                        Json.decodeFromJsonElement(GroceryItemDto.serializer(), it)
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                if (groceryDto != null) {
-                    groceryDao.insertItem(groceryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
-                }
-            }
-        }
-
-        // Upsert incoming remote_grocery_list_changes into local Room DB
+        // 1. Upsert incoming remote_grocery_list_changes into local Room DB (Parent of most)
         remoteListChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 groceryDao.hardDeleteList(changeDelta.id)
@@ -330,7 +329,7 @@ object GrocerySyncManager {
             }
         }
 
-        // Upsert incoming remote_grocery_list_member_changes into local Room DB
+        // 2. Upsert incoming remote_grocery_list_member_changes into local Room DB (Depends on List)
         remoteListMemberChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 groceryDao.hardDeleteListMember(changeDelta.id)
@@ -343,12 +342,13 @@ object GrocerySyncManager {
                     }
                 }
                 if (memberDto != null) {
+                    ensureListExists(groceryDao, memberDto.listId)
                     groceryDao.insertListMember(memberDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
 
-        // Upsert incoming remote_store_changes into local Room DB
+        // 3. Upsert incoming remote_store_changes into local Room DB (Depends on List)
         remoteStoreChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 groceryDao.hardDeleteStore(changeDelta.id)
@@ -361,12 +361,13 @@ object GrocerySyncManager {
                     }
                 }
                 if (storeDto != null) {
+                    ensureListExists(groceryDao, storeDto.listId)
                     groceryDao.insertStore(storeDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
 
-        // Upsert incoming remote_category_changes into local Room DB
+        // 4. Upsert incoming remote_category_changes into local Room DB (Depends on List)
         remoteCategoryChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 groceryDao.hardDeleteCategory(changeDelta.id)
@@ -379,12 +380,32 @@ object GrocerySyncManager {
                     }
                 }
                 if (categoryDto != null) {
+                    ensureListExists(groceryDao, categoryDto.listId)
                     groceryDao.insertCategory(categoryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
 
-        // Upsert incoming remote_grocery_item_store_info_changes into local Room DB
+        // 5. Upsert incoming remote_grocery_changes into local Room DB (Depends on List and Category)
+        remoteChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                groceryDao.hardDeleteItem(changeDelta.id)
+            } else {
+                val groceryDto = changeDelta.data?.let {
+                    try {
+                        Json.decodeFromJsonElement(GroceryItemDto.serializer(), it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (groceryDto != null) {
+                    ensureListExists(groceryDao, groceryDto.listId)
+                    groceryDao.insertItem(groceryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+
+        // 6. Upsert incoming remote_grocery_item_store_info_changes into local Room DB (Depends on Item and Store)
         remoteStoreInfoChanges.forEach { changeDelta ->
             val groceryItemId = changeDelta.groceryItemId
             val storeId = changeDelta.storeId

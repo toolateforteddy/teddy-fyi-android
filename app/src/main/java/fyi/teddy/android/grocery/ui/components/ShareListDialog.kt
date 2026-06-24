@@ -18,28 +18,53 @@ import kotlinx.coroutines.flow.Flow
 fun ShareListDialog(
     listName: String,
     membersFlow: Flow<List<GroceryListMember>>,
+    activeInviteCode: String?,
     onDismiss: () -> Unit,
-    onShare: (String) -> Unit,
+    onCreateInvite: () -> Unit,
     onRemoveMember: (GroceryListMember) -> Unit
 ) {
     val members by membersFlow.collectAsState(initial = emptyList())
-    var inviteUserId by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Share '$listName'") },
         text = {
             Column {
-                Text("Share this list with another user by entering their User ID:")
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = inviteUserId,
-                    onValueChange = { inviteUserId = it },
-                    label = { Text("User ID") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Text("Invite someone to this list by sharing a code:")
                 Spacer(modifier = Modifier.height(16.dp))
+                
+                if (activeInviteCode != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = activeInviteCode,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "Expires in 24 hours",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onCreateInvite,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Generate Invite Code")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
                 Text("Current Members:", style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 if (members.isEmpty()) {
@@ -52,7 +77,7 @@ fun ShareListDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(member.userId, modifier = Modifier.weight(1f))
+                                Text(member.userId, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                 IconButton(onClick = { onRemoveMember(member) }) {
                                     Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red)
                                 }
@@ -63,17 +88,7 @@ fun ShareListDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    if (inviteUserId.isNotBlank()) {
-                        onShare(inviteUserId)
-                        inviteUserId = ""
-                    }
-                }
-            ) { Text("Share") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text("Done") }
         }
     )
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.ui.components.AddListDialog
+import fyi.teddy.android.grocery.ui.components.JoinListDialog
 import fyi.teddy.android.grocery.ui.components.GroceryItemRowContainer
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
 import fyi.teddy.android.grocery.ui.components.PlanningPhaseContent
@@ -50,6 +51,14 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     )
     
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.snackbarMessage) {
+        state.snackbarMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg.message)
+            viewModel.onEvent(GroceryUiEvent.DismissSnackbar(msg.id))
+        }
+    }
     
     val items by viewModel.items.collectAsState()
     val stores by viewModel.stores.collectAsState()
@@ -67,6 +76,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     
     var showListSelectorMenu by remember { mutableStateOf(value = false) }
     var showAddListDialog by remember { mutableStateOf(value = false) }
+    var showJoinListDialog by remember { mutableStateOf(value = false) }
     var showShareListDialog by remember { mutableStateOf(value = false) }
     
     val nameFocusRequester = remember { FocusRequester() }
@@ -81,6 +91,16 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                val isError = state.snackbarMessage?.isError == true
+                Snackbar(
+                    containerColor = if (isError) Color(0xFFD32F2F) else Color(0xFF388E3C),
+                    contentColor = Color.White,
+                    snackbarData = data
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text("Grocery: ${state.currentPhase.displayName}") },
@@ -251,6 +271,13 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { showJoinListDialog = true }) {
+                                Icon(
+                                    Icons.Default.GroupAdd,
+                                    contentDescription = "Join List",
+                                    tint = Color.White
+                                )
+                            }
                             IconButton(onClick = { showAddListDialog = true }) {
                                 Icon(
                                     Icons.Default.Create,
@@ -291,14 +318,25 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                     )
                 }
 
+                // Join List Dialog
+                if (showJoinListDialog) {
+                    JoinListDialog(
+                        onDismiss = { showJoinListDialog = false },
+                        onJoin = { code ->
+                            viewModel.onEvent(GroceryUiEvent.JoinList(code))
+                        }
+                    )
+                }
+
                 // Share List Dialog
                 if (showShareListDialog && (state.selectedListId != null)) {
                     ShareListDialog(
                         listName = activeListName,
                         membersFlow = remember(state.selectedListId) { viewModel.getListMembers(state.selectedListId!!) },
+                        activeInviteCode = state.activeInviteCode,
                         onDismiss = { showShareListDialog = false },
-                        onShare = { userId ->
-                            viewModel.onEvent(GroceryUiEvent.ShareList(state.selectedListId!!, userId))
+                        onCreateInvite = {
+                            viewModel.onEvent(GroceryUiEvent.CreateInvite(state.selectedListId!!))
                         },
                         onRemoveMember = { member ->
                             viewModel.onEvent(GroceryUiEvent.RemoveListMember(member))

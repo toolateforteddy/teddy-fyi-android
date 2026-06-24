@@ -13,5 +13,7 @@ data class GroceryUiState(
     val newItemInput: String = "",
     val selectedCategoryId: Int? = null,
     val recentlyCheckedIds: Set<Int> = emptySet(),
-    val selectedListId: String? = null
+    val selectedListId: String? = null,
+    val activeInviteCode: String? = null,
+    val snackbarMessage: GrocerySnackbarMessage? = null
 )

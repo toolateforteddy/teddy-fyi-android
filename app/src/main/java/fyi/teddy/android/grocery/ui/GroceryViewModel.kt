@@ -13,6 +13,8 @@ import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.domain.MoveGroceryItemDownUseCase
 import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
 import fyi.teddy.android.grocery.repository.GroceryRepository
+import fyi.teddy.android.network.GroceryNetworkRepository
+import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -43,6 +45,8 @@ class GroceryViewModel(
     private val _selectedCategoryId = MutableStateFlow<Int?>(null)
     private val _recentlyCheckedIds = MutableStateFlow(setOf<Int>())
     private val _selectedListId = MutableStateFlow<String?>(null)
+    private val _activeInviteCode = MutableStateFlow<String?>(null)
+    private val _snackbarMessage = MutableStateFlow<GrocerySnackbarMessage?>(null)
 
     // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
@@ -58,7 +62,9 @@ class GroceryViewModel(
         _newItemInput,
         _selectedCategoryId,
         _recentlyCheckedIds,
-        _selectedListId
+        _selectedListId,
+        _activeInviteCode,
+        _snackbarMessage
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         GroceryUiState(
@@ -74,7 +80,9 @@ class GroceryViewModel(
             newItemInput = args[9] as String,
             selectedCategoryId = args[10] as Int?,
             recentlyCheckedIds = args[11] as Set<Int>,
-            selectedListId = args[12] as String?
+            selectedListId = args[12] as String?,
+            activeInviteCode = args[13] as String?,
+            snackbarMessage = args[14] as GrocerySnackbarMessage?
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -130,6 +138,13 @@ class GroceryViewModel(
             is GroceryUiEvent.DeleteList -> deleteList(event.list)
             is GroceryUiEvent.UpdateList -> updateList(event.list)
             is GroceryUiEvent.ShareList -> shareListWithUser(event.listId, event.userId)
+            is GroceryUiEvent.CreateInvite -> createInvite(event.listId)
+            is GroceryUiEvent.JoinList -> joinList(event.code)
+            is GroceryUiEvent.DismissSnackbar -> {
+                if (_snackbarMessage.value?.id == event.messageId) {
+                    _snackbarMessage.value = null
+                }
+            }
             is GroceryUiEvent.RemoveListMember -> removeListMember(event.member)
             is GroceryUiEvent.AddRecommendedItems -> addRecommendedItems(event.selectedIds)
         }
@@ -560,6 +575,40 @@ class GroceryViewModel(
                         listId = listId,
                         userId = memberUserId
                     )
+                )
+            }
+        }
+    }
+
+    fun createInvite(listId: String) {
+        viewModelScope.launch {
+            val code = GroceryNetworkRepository.createInvite(listId)
+            _activeInviteCode.value = code
+        }
+    }
+
+    fun joinList(code: String) {
+        viewModelScope.launch {
+            val listId = GroceryNetworkRepository.joinList(code)
+            if (listId != null) {
+                // Clear last_synced_at to force a full resync from the server.
+                // This ensures we get the metadata (name, owner) for the new list.
+                application.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
+                    .edit()
+                    .remove("last_synced_at")
+                    .apply()
+                
+                // Trigger sync immediately
+                SyncWorker.enqueue(application)
+                _selectedListId.value = listId
+                _snackbarMessage.value = GrocerySnackbarMessage(
+                    message = "Successfully joined the list!",
+                    isError = false
+                )
+            } else {
+                _snackbarMessage.value = GrocerySnackbarMessage(
+                    message = "Failed to join list. Check the code and try again.",
+                    isError = true
                 )
             }
         }

@@ -179,6 +179,9 @@ abstract class GroceryDao {
     """)
     abstract fun getAllLists(userId: String): Flow<List<GroceryList>>
 
+    @Query("SELECT * FROM grocery_lists WHERE id = :id")
+    abstract suspend fun getListByIdOneShot(id: String): GroceryList?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertList(list: GroceryList)
 

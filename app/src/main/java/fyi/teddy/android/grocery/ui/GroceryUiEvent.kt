@@ -50,6 +50,9 @@ sealed interface GroceryUiEvent {
     data class DeleteList(val list: GroceryList) : GroceryUiEvent
     data class UpdateList(val list: GroceryList) : GroceryUiEvent
     data class ShareList(val listId: String, val userId: String) : GroceryUiEvent
+    data class CreateInvite(val listId: String) : GroceryUiEvent
+    data class JoinList(val code: String) : GroceryUiEvent
+    data class DismissSnackbar(val messageId: Long) : GroceryUiEvent
     data class RemoveListMember(val member: GroceryListMember) : GroceryUiEvent
     data class AddRecommendedItems(val selectedIds: List<Int>) : GroceryUiEvent
 }
