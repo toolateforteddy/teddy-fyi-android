@@ -19,6 +19,7 @@ abstract class TodoDao {
             OR (isDaily = 1 OR recurrenceRule IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
             OR id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId)
             OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId))
+            OR parentId IN (SELECT id FROM todo_items WHERE scheduledDate = :today AND userId = :userId)
         )
         ORDER BY (CASE WHEN scheduledDate = :today THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC
     """)
@@ -123,6 +124,9 @@ abstract class TodoDao {
 
     @Query("DELETE FROM todo_lists WHERE id = :id")
     abstract suspend fun hardDeleteList(id: String)
+
+    @Query("UPDATE todo_items SET scheduledDate = :scheduledDate, sync_state = 'PENDING_UPDATE' WHERE parentId = :parentId AND userId = :userId AND isCompleted = 0 AND (scheduledDate IS NULL OR scheduledDate = '')")
+    abstract suspend fun scheduleIncompleteUnscheduledChildren(parentId: String, userId: String, scheduledDate: String)
 
     @Query("SELECT * FROM todo_items")
     abstract suspend fun getAllItemsOneShot(): List<TodoItem>

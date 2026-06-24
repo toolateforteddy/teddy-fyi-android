@@ -68,6 +68,12 @@ class TodoRepository(
     suspend fun updateItem(item: TodoItem) {
         val nextSyncState = if (item.syncState == "SYNCED") "PENDING_UPDATE" else item.syncState
         todoDao.updateItem(item.copy(syncState = nextSyncState))
+        
+        // If this is a parent task being scheduled, apply the same scheduling to children
+        if (item.parentId == null && item.scheduledDate != null && item.userId != null) {
+            todoDao.scheduleIncompleteUnscheduledChildren(item.id, item.userId, item.scheduledDate)
+        }
+
         scheduleSync()
     }
 

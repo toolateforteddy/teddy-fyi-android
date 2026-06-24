@@ -527,11 +527,6 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             onCheckedChange = { isChecked ->
                                                 if (currentMode == TodoMode.PLANNING) {
                                                     viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
-                                                    if (isChecked) {
-                                                        children.forEach { 
-                                                            viewModel.updateItem(it.copy(scheduledDate = selectedPlanningDate))
-                                                        }
-                                                    }
                                                 } else {
                                                     viewModel.toggleComplete(parent, isChecked)
                                                 }
@@ -554,12 +549,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                     
                                     val isExpanded = expandedParentIds.value.contains(parent.id)
                                     if (isExpanded) {
-                                        val childrenToShow = if (currentMode == TodoMode.TODAY || currentMode == TodoMode.SCHEDULED) {
-                                            children.filter { it.scheduledDate != null || it.isCompleted }
-                                        } else {
-                                            children
-                                        }
-                                        itemsIndexed(childrenToShow, key = { _, it -> it.id }) { childIndex, child ->
+                                        itemsIndexed(children, key = { _, it -> it.id }) { childIndex, child ->
                                             TodoItemRow(
                                                 item = child,
                                                 isSubtask = true,
