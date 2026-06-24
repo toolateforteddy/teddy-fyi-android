@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 import fyi.teddy.android.auth.UserSession
 
 object NetworkClient {
-    lateinit var session: UserSession
+    val session = UserSession()
 
     var client = HttpClient(OkHttp) {
         engine {

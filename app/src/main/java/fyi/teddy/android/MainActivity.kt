@@ -18,6 +18,7 @@ import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
 import fyi.teddy.android.network.SyncWorker
+import fyi.teddy.android.network.NetworkClient
 import fyi.teddy.android.todo.ui.TodoScreen
 import fyi.teddy.android.ui.navigation.Screen
 import fyi.teddy.android.ui.screens.AuthedHelloScreen
@@ -32,12 +33,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             TeddyTheme {
                 val navController = rememberNavController()
-                val session = remember { UserSession() }
+                val session = NetworkClient.session
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
 
                 LaunchedEffect(Unit) {
-                    fyi.teddy.android.network.NetworkClient.session = session
                     session.load(context)
                     if (session.idToken != null) {
                         if (session.userId == null) {
@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                     )
                     if (session.idToken != null) {
                         SyncWorker.enqueueIfNecessary(context)
+                        SyncWorker.schedulePeriodicSync(context)
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
                                 val success = fyi.teddy.android.network.AuthRepository.login(context, session, result.idToken)
                                 if (success) {
                                     SyncWorker.enqueueIfNecessary(context)
+                                    SyncWorker.schedulePeriodicSync(context)
                                     navController.navigate(Screen.Home.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }

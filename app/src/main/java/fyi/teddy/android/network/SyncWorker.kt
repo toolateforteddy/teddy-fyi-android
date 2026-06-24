@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
 import androidx.work.*
-import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLog
 import io.ktor.client.call.*
@@ -56,8 +55,9 @@ class SyncWorker(
         Log.d(TAG, "Starting synchronization worker...")
 
         // 1. Load authenticated user session
-        val session = UserSession()
+        val session = NetworkClient.session
         session.load(applicationContext)
+
         val idToken = session.idToken
         if (idToken == null) {
             val errorMsg = "No auth token found."
@@ -118,7 +118,7 @@ class SyncWorker(
         // 4. Execute the network transaction
         val response = try {
             NetworkClient.client.post("https://api-rust.teddy.fyi/api/sync") {
-                header(HttpHeaders.Authorization, "Bearer $idToken")
+                // Remove manual Authorization header; Ktor's Auth plugin will handle it
                 contentType(ContentType.Application.Json)
                 setBody(syncRequest)
             }
@@ -180,6 +180,7 @@ class SyncWorker(
                     }
                 }
                 Log.d(TAG, "Local database transaction successfully completed.")
+                session.save(applicationContext)
                 recordSyncLog(
                     status = "SUCCESS",
                     startTime = startTime,
@@ -259,7 +260,7 @@ class SyncWorker(
         }
 
         /**
-         * Enqueues a sync with a 1-hour debounce delay.
+         * Enqueues a sync with a short debounce delay (30 seconds).
          * Subsequent calls will replace the existing work, effectively pushing back the timer.
          */
         fun enqueueDebounced(context: Context) {
@@ -269,7 +270,7 @@ class SyncWorker(
 
             val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(constraints)
-                .setInitialDelay(1, TimeUnit.HOURS)
+                .setInitialDelay(30, TimeUnit.SECONDS)
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
                     WorkRequest.MIN_BACKOFF_MILLIS,
@@ -281,6 +282,32 @@ class SyncWorker(
                 WORK_NAME,
                 ExistingWorkPolicy.REPLACE,
                 syncWorkRequest
+            )
+        }
+
+        /**
+         * Schedules a periodic sync to ensure remote changes are pulled even if no local changes occur.
+         */
+        fun schedulePeriodicSync(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val periodicSyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
+                1, TimeUnit.HOURS
+            )
+                .setConstraints(constraints)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    TimeUnit.MILLISECONDS
+                )
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "PeriodicSyncWorker",
+                ExistingPeriodicWorkPolicy.KEEP,
+                periodicSyncRequest
             )
         }
 
