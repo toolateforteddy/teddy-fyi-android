@@ -23,7 +23,12 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_items WHERE timesBought >= 2 AND userId = :userId AND isActive = 0 ORDER BY timesBought DESC")
     abstract fun getRecommendedItems(userId: String): Flow<List<GroceryItem>>
 
-    @Query("SELECT * FROM stores WHERE userId = :userId ORDER BY position ASC, name ASC")
+    @Query("""
+        SELECT DISTINCT s.* FROM stores s
+        LEFT JOIN grocery_list_members m ON s.listId = m.listId
+        WHERE s.userId = :userId OR m.userId = :userId
+        ORDER BY s.position ASC, s.name ASC
+    """)
     abstract fun getAllStores(userId: String): Flow<List<Store>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -55,7 +60,12 @@ abstract class GroceryDao {
     @Delete
     abstract suspend fun deleteStoreInfo(info: GroceryItemStoreInfo)
 
-    @Query("SELECT * FROM categories WHERE userId = :userId ORDER BY position ASC, name ASC")
+    @Query("""
+        SELECT DISTINCT c.* FROM categories c
+        LEFT JOIN grocery_list_members m ON c.listId = m.listId
+        WHERE c.userId = :userId OR m.userId = :userId
+        ORDER BY c.position ASC, c.name ASC
+    """)
     abstract fun getAllCategories(userId: String): Flow<List<Category>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -78,30 +88,30 @@ abstract class GroceryDao {
 
     @Transaction
     open suspend fun insertItemWithNextPosition(item: GroceryItem): Long {
-        val maxPos = getMaxItemPosition(item.userId ?: "") ?: -1
+        val maxPos = getMaxItemPosition(item.userId ?: "", item.listId) ?: -1
         return insertItem(item.copy(position = maxPos + 1))
     }
 
-    @Query("SELECT MAX(position) FROM grocery_items WHERE userId = :userId")
-    protected abstract suspend fun getMaxItemPosition(userId: String): Int?
+    @Query("SELECT MAX(position) FROM grocery_items WHERE (userId = :userId AND listId IS NULL) OR (listId = :listId AND listId IS NOT NULL)")
+    protected abstract suspend fun getMaxItemPosition(userId: String, listId: String?): Int?
 
     @Transaction
     open suspend fun insertStoreWithNextPosition(store: Store) {
-        val maxPos = getMaxStorePosition(store.userId ?: "") ?: -1
+        val maxPos = getMaxStorePosition(store.userId ?: "", store.listId) ?: -1
         insertStore(store.copy(position = maxPos + 1))
     }
 
-    @Query("SELECT MAX(position) FROM stores WHERE userId = :userId")
-    protected abstract suspend fun getMaxStorePosition(userId: String): Int?
+    @Query("SELECT MAX(position) FROM stores WHERE (userId = :userId AND listId IS NULL) OR (listId = :listId AND listId IS NOT NULL)")
+    protected abstract suspend fun getMaxStorePosition(userId: String, listId: String?): Int?
 
     @Transaction
     open suspend fun insertCategoryWithNextPosition(category: Category) {
-        val maxPos = getMaxCategoryPosition(category.userId ?: "") ?: -1
+        val maxPos = getMaxCategoryPosition(category.userId ?: "", category.listId) ?: -1
         insertCategory(category.copy(position = maxPos + 1))
     }
 
-    @Query("SELECT MAX(position) FROM categories WHERE userId = :userId")
-    protected abstract suspend fun getMaxCategoryPosition(userId: String): Int?
+    @Query("SELECT MAX(position) FROM categories WHERE (userId = :userId AND listId IS NULL) OR (listId = :listId AND listId IS NOT NULL)")
+    protected abstract suspend fun getMaxCategoryPosition(userId: String, listId: String?): Int?
 
     @Transaction
     open suspend fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) {

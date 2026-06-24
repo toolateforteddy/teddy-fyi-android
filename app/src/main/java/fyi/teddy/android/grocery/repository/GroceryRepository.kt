@@ -51,12 +51,17 @@ class GroceryRepository(
     }
 
     suspend fun updateStore(store: Store) {
-        groceryDao.updateStore(store)
+        val nextSyncState = if (store.syncState == "SYNCED") "PENDING_UPDATE" else store.syncState
+        groceryDao.updateStore(store.copy(syncState = nextSyncState))
         scheduleSync()
     }
 
     suspend fun deleteStore(store: Store) {
-        groceryDao.deleteStore(store)
+        if (store.syncState == "PENDING_INSERT") {
+            groceryDao.deleteStore(store)
+        } else {
+            groceryDao.updateStore(store.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
         scheduleSync()
     }
 
@@ -71,12 +76,17 @@ class GroceryRepository(
     }
 
     suspend fun updateCategory(category: Category) {
-        groceryDao.updateCategory(category)
+        val nextSyncState = if (category.syncState == "SYNCED") "PENDING_UPDATE" else category.syncState
+        groceryDao.updateCategory(category.copy(syncState = nextSyncState))
         scheduleSync()
     }
 
     suspend fun deleteCategory(category: Category) {
-        groceryDao.deleteCategoryAndCleanup(category)
+        if (category.syncState == "PENDING_INSERT") {
+            groceryDao.deleteCategoryAndCleanup(category)
+        } else {
+            groceryDao.updateCategory(category.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
         scheduleSync()
     }
 

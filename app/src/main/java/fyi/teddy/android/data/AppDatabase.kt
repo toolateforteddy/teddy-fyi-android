@@ -30,7 +30,7 @@ import fyi.teddy.android.todo.data.TodoList
         GroceryListMember::class,
         SyncLog::class,
     ], 
-    version = 29,
+    version = 30,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -531,6 +531,60 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Recreate 'stores' to add Foreign Key and listId column
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `stores_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `isDefaultSupported` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `listId` TEXT, 
+                        `sync_state` TEXT NOT NULL, 
+                        `version` INTEGER NOT NULL, 
+                        `is_deleted` INTEGER NOT NULL, 
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL 
+                    )
+                """.trimIndent())
+                
+                db.execSQL("""
+                    INSERT INTO `stores_new` (`id`, `name`, `position`, `isDefaultSupported`, `userId`, `listId`, `sync_state`, `version`, `is_deleted`)
+                    SELECT `id`, `name`, `position`, `isDefaultSupported`, `userId`, NULL, `sync_state`, `version`, `is_deleted` FROM `stores`
+                """.trimIndent())
+                
+                db.execSQL("DROP TABLE `stores`")
+                db.execSQL("ALTER TABLE `stores_new` RENAME TO `stores`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_stores_listId` ON `stores` (`listId`)")
+
+                // 2. Recreate 'categories' to add Foreign Key and listId column
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `categories_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `listId` TEXT, 
+                        `icon` TEXT, 
+                        `sync_state` TEXT NOT NULL, 
+                        `version` INTEGER NOT NULL, 
+                        `is_deleted` INTEGER NOT NULL, 
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL 
+                    )
+                """.trimIndent())
+                
+                db.execSQL("""
+                    INSERT INTO `categories_new` (`id`, `name`, `position`, `userId`, `listId`, `icon`, `sync_state`, `version`, `is_deleted`)
+                    SELECT `id`, `name`, `position`, `userId`, NULL, `icon`, `sync_state`, `version`, `is_deleted` FROM `categories`
+                """.trimIndent())
+                
+                db.execSQL("DROP TABLE `categories`")
+                db.execSQL("ALTER TABLE `categories_new` RENAME TO `categories`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_categories_listId` ON `categories` (`listId`)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -541,7 +595,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
                         MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-                        MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29
+                        MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30
                     )
                     .build()
                     .also { Instance = it }

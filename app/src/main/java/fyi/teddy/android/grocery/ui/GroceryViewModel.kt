@@ -459,7 +459,13 @@ class GroceryViewModel(
         if (name.isNotBlank()) {
             val capitalized = formatName(name)
             viewModelScope.launch {
-                repository.insertStore(Store(name = capitalized, userId = userId))
+                repository.insertStore(
+                    Store(
+                        name = capitalized, 
+                        userId = userId,
+                        listId = _selectedListId.value
+                    )
+                )
             }
         }
     }
@@ -481,7 +487,13 @@ class GroceryViewModel(
         if (name.isNotBlank()) {
             val capitalized = formatName(name)
             viewModelScope.launch {
-                repository.insertCategory(Category(name = capitalized, userId = userId))
+                repository.insertCategory(
+                    Category(
+                        name = capitalized, 
+                        userId = userId,
+                        listId = _selectedListId.value
+                    )
+                )
             }
         }
     }
