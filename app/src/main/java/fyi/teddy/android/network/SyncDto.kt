@@ -140,7 +140,7 @@ data class TodoItemDto(
     @SerialName("list_id") val listId: String?,
     val priority: Int,
     val icon: String?,
-    @SerialName("last_scheduled_date") val lastScheduledDate: String?,
+    @SerialName("last_scheduled_date") val lastScheduledDate: String? = null,
     @SerialName("sync_state") val syncState: String = "SYNCED",
     val version: Int = 1,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
@@ -476,7 +476,7 @@ fun GroceryItemStoreInfo.toDto(): GroceryItemStoreInfoDto {
         syncState = syncState,
         version = version,
         isDeleted = isDeleted,
-        id=null,
+        id = "${groceryItemId}_${storeId}"
     )
 }
 

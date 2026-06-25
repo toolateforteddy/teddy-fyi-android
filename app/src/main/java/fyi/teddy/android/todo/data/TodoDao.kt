@@ -86,6 +86,9 @@ abstract class TodoDao {
     @Query("SELECT * FROM todo_lists WHERE userId = :userId AND is_deleted = 0 ORDER BY createdAt ASC")
     abstract fun getAllLists(userId: String): Flow<List<TodoList>>
 
+    @Query("SELECT * FROM todo_lists WHERE id = :id")
+    abstract suspend fun getListByIdOneShot(id: String): TodoList?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertList(list: TodoList)
 

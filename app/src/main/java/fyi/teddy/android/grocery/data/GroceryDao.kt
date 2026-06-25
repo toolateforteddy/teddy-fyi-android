@@ -208,6 +208,12 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_lists WHERE id = :id")
     abstract suspend fun getListByIdOneShot(id: String): GroceryList?
 
+    @Query("SELECT * FROM grocery_items WHERE id = :id")
+    abstract suspend fun getItemByIdOneShot(id: String): GroceryItem?
+
+    @Query("SELECT * FROM stores WHERE id = :id")
+    abstract suspend fun getStoreByIdOneShot(id: String): Store?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertList(list: GroceryList)
 

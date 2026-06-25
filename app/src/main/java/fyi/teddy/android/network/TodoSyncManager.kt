@@ -1,6 +1,9 @@
 package fyi.teddy.android.network
 
 import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.todo.data.TodoDao
+import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.data.TodoList
 
 object TodoSyncManager {
     
@@ -103,26 +106,7 @@ object TodoSyncManager {
             }
         }
 
-        // Upsert incoming remote_todo_changes into local Room DB
-        remoteChanges.forEach { changeDelta ->
-            if (changeDelta.operationType == OperationType.DELETE) {
-                todoDao.hardDeleteItem(changeDelta.id)
-            } else {
-                val itemDto = changeDelta.data?.let {
-                    try {
-                        NetworkClient.syncJson.decodeFromJsonElement(TodoItemDto.serializer(), it)
-                    } catch (e: Exception) {
-                        android.util.Log.e("TodoSyncManager", "Failed to decode TodoItemDto: ${e.message}", e)
-                        null
-                    }
-                }
-                if (itemDto != null) {
-                    todoDao.upsertItem(itemDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
-                }
-            }
-        }
-
-        // Upsert incoming remote_todo_list_changes into local Room DB
+        // 1. Upsert incoming remote_todo_list_changes into local Room DB (Parent)
         remoteListChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 todoDao.hardDeleteList(changeDelta.id)
@@ -139,6 +123,41 @@ object TodoSyncManager {
                     todoDao.upsertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
+        }
+
+        // 2. Upsert incoming remote_todo_changes into local Room DB (Child)
+        remoteChanges.forEach { changeDelta ->
+            if (changeDelta.operationType == OperationType.DELETE) {
+                todoDao.hardDeleteItem(changeDelta.id)
+            } else {
+                val itemDto = changeDelta.data?.let {
+                    try {
+                        NetworkClient.syncJson.decodeFromJsonElement(TodoItemDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("TodoSyncManager", "Failed to decode TodoItemDto: ${e.message}", e)
+                        null
+                    }
+                }
+                if (itemDto != null) {
+                    ensureListExists(todoDao, itemDto.listId)
+                    todoDao.upsertItem(itemDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                }
+            }
+        }
+    }
+
+    private suspend fun ensureListExists(dao: TodoDao, listId: String?) {
+        if (listId == null) return
+        val existing = dao.getListByIdOneShot(listId)
+        if (existing == null) {
+            dao.upsertList(
+                TodoList(
+                    id = listId,
+                    name = "Syncing List...",
+                    syncState = "SYNCED",
+                    version = 0
+                )
+            )
         }
     }
 }

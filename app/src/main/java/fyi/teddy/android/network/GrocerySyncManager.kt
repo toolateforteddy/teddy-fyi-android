@@ -3,6 +3,8 @@ package fyi.teddy.android.network
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.GroceryDao
 import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.data.Store
 
 object GrocerySyncManager {
 
@@ -174,10 +176,38 @@ object GrocerySyncManager {
         if (listId == null) return
         val existing = dao.getListByIdOneShot(listId)
         if (existing == null) {
-            dao.insertList(
+            dao.upsertList(
                 GroceryList(
                     id = listId,
                     name = "Syncing List...",
+                    syncState = "SYNCED",
+                    version = 0
+                )
+            )
+        }
+    }
+
+    private suspend fun ensureItemExists(dao: GroceryDao, itemId: String) {
+        val existing = dao.getItemByIdOneShot(itemId)
+        if (existing == null) {
+            dao.upsertItem(
+                GroceryItem(
+                    id = itemId,
+                    name = "Syncing Item...",
+                    syncState = "SYNCED",
+                    version = 0
+                )
+            )
+        }
+    }
+
+    private suspend fun ensureStoreExists(dao: GroceryDao, storeId: String) {
+        val existing = dao.getStoreByIdOneShot(storeId)
+        if (existing == null) {
+            dao.upsertStore(
+                Store(
+                    id = storeId,
+                    name = "Syncing Store...",
                     syncState = "SYNCED",
                     version = 0
                 )
@@ -423,6 +453,8 @@ object GrocerySyncManager {
                     }
                 }
                 if (infoDto != null) {
+                    ensureItemExists(groceryDao, groceryItemId)
+                    ensureStoreExists(groceryDao, storeId)
                     groceryDao.upsertStoreInfo(infoDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
