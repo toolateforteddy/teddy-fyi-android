@@ -141,9 +141,9 @@ data class TodoItemDto(
     val priority: Int,
     val icon: String?,
     @SerialName("last_scheduled_date") val lastScheduledDate: String?,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -153,9 +153,9 @@ data class TodoListDto(
     @SerialName("color_hex") val colorHex: String,
     @SerialName("user_id") val userId: String?,
     @SerialName("created_at") val createdAt: Long,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -173,9 +173,9 @@ data class GroceryItemDto(
     @SerialName("list_id") val listId: String?,
     val unit: String?,
     val notes: String?,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -184,9 +184,9 @@ data class GroceryListDto(
     val name: String,
     @SerialName("owner_id") val ownerId: String?,
     @SerialName("created_at") val createdAt: Long,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -197,9 +197,9 @@ data class StoreDto(
     @SerialName("is_default_supported") val isDefaultSupported: Boolean,
     @SerialName("user_id") val userId: String?,
     @SerialName("list_id") val listId: String?,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -210,9 +210,9 @@ data class CategoryDto(
     @SerialName("user_id") val userId: String?,
     @SerialName("list_id") val listId: String?,
     val icon: String?,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -222,9 +222,9 @@ data class GroceryListMemberDto(
     @SerialName("user_id") val userId: String,
     val role: String,
     @SerialName("joined_at") val joinedAt: Long,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
 
 @Serializable
@@ -234,9 +234,10 @@ data class GroceryItemStoreInfoDto(
     val price: Double?,
     @SerialName("is_available") val isAvailable: Boolean,
     @SerialName("user_id") val userId: String?,
-    @SerialName("sync_state") val syncState: String,
-    val version: Int,
-    @SerialName("is_deleted") val isDeleted: Boolean,
+    @SerialName("sync_state") val syncState: String = "SYNCED",
+    val version: Int = 1,
+    @SerialName("is_deleted") val isDeleted: Boolean = false,
+    val id: String?, // Ignored
 )
 
 // Helper mapping extensions
@@ -474,7 +475,8 @@ fun GroceryItemStoreInfo.toDto(): GroceryItemStoreInfoDto {
         userId = userId,
         syncState = syncState,
         version = version,
-        isDeleted = isDeleted
+        isDeleted = isDeleted,
+        id=null,
     )
 }
 

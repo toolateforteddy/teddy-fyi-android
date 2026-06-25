@@ -3,7 +3,6 @@ package fyi.teddy.android.network
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.GroceryDao
 import fyi.teddy.android.grocery.data.GroceryList
-import kotlinx.serialization.json.Json
 
 object GrocerySyncManager {
 
@@ -23,7 +22,7 @@ object GrocerySyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(GroceryItemDto.serializer(), item.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(GroceryItemDto.serializer(), item.toDto())
             }
             GroceryChangeDelta(
                 id = item.id,
@@ -50,7 +49,7 @@ object GrocerySyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(GroceryListDto.serializer(), list.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(GroceryListDto.serializer(), list.toDto())
             }
             GroceryListChangeDelta(
                 id = list.id,
@@ -77,7 +76,7 @@ object GrocerySyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(GroceryListMemberDto.serializer(), member.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(GroceryListMemberDto.serializer(), member.toDto())
             }
             GroceryListMemberChangeDelta(
                 id = member.id,
@@ -104,7 +103,7 @@ object GrocerySyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(StoreDto.serializer(), store.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(StoreDto.serializer(), store.toDto())
             }
             StoreChangeDelta(
                 id = store.id,
@@ -131,7 +130,7 @@ object GrocerySyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(CategoryDto.serializer(), category.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(CategoryDto.serializer(), category.toDto())
             }
             CategoryChangeDelta(
                 id = category.id,
@@ -158,7 +157,7 @@ object GrocerySyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(GroceryItemStoreInfoDto.serializer(), info.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(GroceryItemStoreInfoDto.serializer(), info.toDto())
             }
             GroceryItemStoreInfoChangeDelta(
                 id = "${info.groceryItemId}_${info.storeId}",
@@ -315,8 +314,9 @@ object GrocerySyncManager {
             } else {
                 val listDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(GroceryListDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(GroceryListDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("GrocerySyncManager", "Failed to decode GroceryListDto: ${e.message}", e)
                         null
                     }
                 }
@@ -333,8 +333,9 @@ object GrocerySyncManager {
             } else {
                 val memberDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(GroceryListMemberDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(GroceryListMemberDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("GrocerySyncManager", "Failed to decode GroceryListMemberDto: ${e.message}", e)
                         null
                     }
                 }
@@ -352,8 +353,9 @@ object GrocerySyncManager {
             } else {
                 val storeDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(StoreDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(StoreDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("GrocerySyncManager", "Failed to decode StoreDto: ${e.message}", e)
                         null
                     }
                 }
@@ -371,8 +373,9 @@ object GrocerySyncManager {
             } else {
                 val categoryDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(CategoryDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(CategoryDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("GrocerySyncManager", "Failed to decode CategoryDto: ${e.message}", e)
                         null
                     }
                 }
@@ -390,8 +393,9 @@ object GrocerySyncManager {
             } else {
                 val groceryDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(GroceryItemDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(GroceryItemDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("GrocerySyncManager", "Failed to decode GroceryItemDto: ${e.message}", e)
                         null
                     }
                 }
@@ -412,8 +416,9 @@ object GrocerySyncManager {
             } else {
                 val infoDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(GroceryItemStoreInfoDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(GroceryItemStoreInfoDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("GrocerySyncManager", "Failed to decode GroceryItemStoreInfoDto: ${e.message}", e)
                         null
                     }
                 }

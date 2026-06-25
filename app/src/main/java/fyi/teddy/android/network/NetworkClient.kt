@@ -22,7 +22,19 @@ import fyi.teddy.android.auth.UserSession
 object NetworkClient {
     val session = UserSession()
 
-    var client = HttpClient(OkHttp) {
+    val syncJson = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
+
+    var client = createClient()
+
+    fun resetClient() {
+        client.close()
+        client = createClient()
+    }
+
+    private fun createClient() = HttpClient(OkHttp) {
         engine {
             config {
                 connectTimeout(60, TimeUnit.SECONDS)
@@ -36,9 +48,7 @@ object NetworkClient {
             socketTimeoutMillis = 60000L
         }
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-            })
+            json(syncJson)
         }
         install(Auth) {
             bearer {

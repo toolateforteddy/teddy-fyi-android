@@ -69,10 +69,24 @@ class SyncWorker(
         // 2. Fetch last synced timestamp and client ID
         val sharedPrefs = applicationContext.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
         val lastSyncedAt = sharedPrefs.getString("last_synced_at", null)
-        var clientId = sharedPrefs.getString("client_id", null)
-        if (clientId == null) {
-            clientId = java.util.UUID.randomUUID().toString()
-            sharedPrefs.edit { putString("client_id", clientId) }
+        
+        // Use the clientUuid from the session as the primary identifier.
+        // This ensures the X-Client-UUID header and the body client_id match.
+        val clientId = session.clientUuid ?: run {
+            // Fallback to shared prefs if session is missing it for some reason, 
+            // though login should have set it.
+            val legacyId = sharedPrefs.getString("client_id", null)
+            if (legacyId != null) {
+                session.clientUuid = legacyId
+                session.save(applicationContext)
+                legacyId
+            } else {
+                val newId = java.util.UUID.randomUUID().toString()
+                session.clientUuid = newId
+                session.save(applicationContext)
+                sharedPrefs.edit { putString("client_id", newId) }
+                newId
+            }
         }
 
         val db = AppDatabase.getDatabase(applicationContext)
@@ -336,6 +350,12 @@ class SyncWorker(
             } else {
                 Log.d(TAG, "No unsynced changes detected on startup.")
             }
+        }
+
+        fun cancelAllSyncWork(context: Context) {
+            val wm = WorkManager.getInstance(context)
+            wm.cancelUniqueWork(WORK_NAME)
+            wm.cancelUniqueWork("PeriodicSyncWorker")
         }
     }
 }

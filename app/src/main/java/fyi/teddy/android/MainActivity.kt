@@ -100,6 +100,8 @@ class MainActivity : ComponentActivity() {
                             onLogout = {
                                 scope.launch { 
                                     session.clear(context)
+                                    NetworkClient.resetClient()
+                                    SyncWorker.cancelAllSyncWork(context)
                                     navController.navigate(Screen.Login.route) {
                                         popUpTo(Screen.Home.route) { inclusive = true }
                                     }

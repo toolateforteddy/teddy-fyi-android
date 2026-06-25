@@ -39,6 +39,9 @@ class UserSession {
 
     suspend fun clear(context: Context) {
         context.dataStore.edit { it.clear() }
+        // Also clear sync metadata which might contain old client IDs or timestamps
+        context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE).edit().clear().apply()
+
         userId = null
         userName = null
         idToken = null

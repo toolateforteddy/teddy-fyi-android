@@ -1,7 +1,6 @@
 package fyi.teddy.android.network
 
 import fyi.teddy.android.data.AppDatabase
-import kotlinx.serialization.json.Json
 
 object TodoSyncManager {
     
@@ -21,7 +20,7 @@ object TodoSyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(TodoItemDto.serializer(), item.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(TodoItemDto.serializer(), item.toDto())
             }
             TodoChangeDelta(
                 id = item.id,
@@ -48,7 +47,7 @@ object TodoSyncManager {
                 else -> OperationType.UPDATE
             }
             val data = if (operationType == OperationType.DELETE) null else {
-                Json.encodeToJsonElement(TodoListDto.serializer(), list.toDto())
+                NetworkClient.syncJson.encodeToJsonElement(TodoListDto.serializer(), list.toDto())
             }
             TodoListChangeDelta(
                 id = list.id,
@@ -111,8 +110,9 @@ object TodoSyncManager {
             } else {
                 val itemDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(TodoItemDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(TodoItemDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("TodoSyncManager", "Failed to decode TodoItemDto: ${e.message}", e)
                         null
                     }
                 }
@@ -129,8 +129,9 @@ object TodoSyncManager {
             } else {
                 val listDto = changeDelta.data?.let {
                     try {
-                        Json.decodeFromJsonElement(TodoListDto.serializer(), it)
-                    } catch (_: Exception) {
+                        NetworkClient.syncJson.decodeFromJsonElement(TodoListDto.serializer(), it)
+                    } catch (e: Exception) {
+                        android.util.Log.e("TodoSyncManager", "Failed to decode TodoListDto: ${e.message}", e)
                         null
                     }
                 }
