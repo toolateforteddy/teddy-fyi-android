@@ -109,7 +109,12 @@ class GroceryRepository(
         groceryDao.claimEverything(userId)
         scheduleSync()
     }
-    
+
+    suspend fun ensureDefaultListAndClaimOrphanedItems(userId: String) {
+        groceryDao.ensureDefaultListAndClaimOrphanedItems(userId)
+        scheduleSync()
+    }
+
     suspend fun markDoneForTrip(userId: String) {
         groceryDao.markDoneForTrip(userId)
         scheduleSync()

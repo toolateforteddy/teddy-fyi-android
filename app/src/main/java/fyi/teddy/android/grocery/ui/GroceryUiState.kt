@@ -17,5 +17,6 @@ data class GroceryUiState(
     val activeInviteCode: String? = null,
     val snackbarMessage: GrocerySnackbarMessage? = null,
     val isAiReady: Boolean = false,
-    val isCategorizing: Boolean = false
+    val isCategorizing: Boolean = false,
+    val hasItemsInDefaultList: Boolean = false
 )

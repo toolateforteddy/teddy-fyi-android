@@ -258,13 +258,15 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                                 expanded = showListSelectorMenu,
                                 onDismissRequest = { showListSelectorMenu = false }
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Default List") },
-                                    onClick = {
-                                        viewModel.onEvent(GroceryUiEvent.SetSelectedListId(null))
-                                        showListSelectorMenu = false
-                                    }
-                                )
+                                if (state.hasItemsInDefaultList) {
+                                    DropdownMenuItem(
+                                        text = { Text("Default List") },
+                                        onClick = {
+                                            viewModel.onEvent(GroceryUiEvent.SetSelectedListId(null))
+                                            showListSelectorMenu = false
+                                        }
+                                    )
+                                }
                                 lists.forEach { list ->
                                     DropdownMenuItem(
                                         text = { Text(list.name) },

@@ -4,8 +4,12 @@ import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
+import android.util.Log
+import kotlinx.serialization.json.JsonElement
 
 object TodoSyncManager {
+
+    private const val TAG = "TodoSyncManager"
     
     suspend fun collectLocalChanges(db: AppDatabase, isFirstSync: Boolean): List<TodoChangeDelta> {
         val todoDao = db.todoDao()
@@ -69,6 +73,8 @@ object TodoSyncManager {
         isFirstSync: Boolean
     ) {
         val todoDao = db.todoDao()
+        Log.d(TAG, "handleSyncSuccess: processing ${remoteListChanges.size} remote lists and ${remoteChanges.size} remote items")
+
         val unsyncedItems = if (isFirstSync) {
             todoDao.getAllItemsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
         } else {
@@ -81,67 +87,76 @@ object TodoSyncManager {
         }
 
         // Transition successfully uploaded items back to sync_state = SYNCED
+        var itemsUploaded = 0
         unsyncedItems.forEach { localItem ->
-            if (localItem.isDeleted) {
-                if (successIds.contains(localItem.id)) {
+            if (successIds.contains(localItem.id)) {
+                if (localItem.isDeleted) {
                     todoDao.hardDeleteItem(localItem.id)
-                }
-            } else {
-                if (successIds.contains(localItem.id)) {
+                } else {
                     todoDao.upsertItem(localItem.copy(syncState = "SYNCED"))
                 }
+                itemsUploaded++
             }
         }
+        if (itemsUploaded > 0) Log.d(TAG, "Marked $itemsUploaded local items as SYNCED")
 
         // Transition successfully uploaded lists back to sync_state = SYNCED
+        var listsUploaded = 0
         unsyncedLists.forEach { localList ->
-            if (localList.isDeleted) {
-                if (successIds.contains(localList.id)) {
+            if (successIds.contains(localList.id)) {
+                if (localList.isDeleted) {
                     todoDao.hardDeleteList(localList.id)
-                }
-            } else {
-                if (successIds.contains(localList.id)) {
+                } else {
                     todoDao.upsertList(localList.copy(syncState = "SYNCED"))
                 }
+                listsUploaded++
             }
         }
+        if (listsUploaded > 0) Log.d(TAG, "Marked $listsUploaded local lists as SYNCED")
 
         // 1. Upsert incoming remote_todo_list_changes into local Room DB (Parent)
+        var remoteListsUpserted = 0
+        var remoteListsDeleted = 0
         remoteListChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 todoDao.hardDeleteList(changeDelta.id)
+                remoteListsDeleted++
             } else {
-                val listDto = changeDelta.data?.let {
-                    try {
-                        NetworkClient.syncJson.decodeFromJsonElement(TodoListDto.serializer(), it)
-                    } catch (e: Exception) {
-                        android.util.Log.e("TodoSyncManager", "Failed to decode TodoListDto: ${e.message}", e)
-                        null
-                    }
-                }
-                if (listDto != null) {
-                    todoDao.upsertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                decodeDto(changeDelta.data, TodoListDto.serializer())?.let { dto ->
+                    todoDao.upsertList(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    remoteListsUpserted++
                 }
             }
         }
+        if (remoteListsUpserted > 0 || remoteListsDeleted > 0) {
+            Log.d(TAG, "Applied remote list changes: upserted=$remoteListsUpserted, deleted=$remoteListsDeleted")
+        }
 
         // 2. Upsert incoming remote_todo_changes into local Room DB (Child)
+        var remoteItemsUpserted = 0
+        var remoteItemsDeleted = 0
         remoteChanges.forEach { changeDelta ->
             if (changeDelta.operationType == OperationType.DELETE) {
                 todoDao.hardDeleteItem(changeDelta.id)
+                remoteItemsDeleted++
             } else {
-                val itemDto = changeDelta.data?.let {
-                    try {
-                        NetworkClient.syncJson.decodeFromJsonElement(TodoItemDto.serializer(), it)
-                    } catch (e: Exception) {
-                        android.util.Log.e("TodoSyncManager", "Failed to decode TodoItemDto: ${e.message}", e)
-                        null
-                    }
+                decodeDto(changeDelta.data, TodoItemDto.serializer())?.let { dto ->
+                    ensureListExists(todoDao, dto.listId)
+                    todoDao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    remoteItemsUpserted++
                 }
-                if (itemDto != null) {
-                    ensureListExists(todoDao, itemDto.listId)
-                    todoDao.upsertItem(itemDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
-                }
+            }
+        }
+        Log.d(TAG, "Applied remote item changes: upserted=$remoteItemsUpserted, deleted=$remoteItemsDeleted (out of ${remoteChanges.size})")
+    }
+
+    private fun <T> decodeDto(data: JsonElement?, serializer: kotlinx.serialization.KSerializer<T>): T? {
+        return data?.let {
+            try {
+                NetworkClient.syncJson.decodeFromJsonElement(serializer, it)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
+                null
             }
         }
     }
@@ -150,6 +165,7 @@ object TodoSyncManager {
         if (listId == null) return
         val existing = dao.getListByIdOneShot(listId)
         if (existing == null) {
+            Log.d(TAG, "ensureListExists: Creating placeholder list for $listId")
             dao.upsertList(
                 TodoList(
                     id = listId,

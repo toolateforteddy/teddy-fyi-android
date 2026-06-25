@@ -210,73 +210,104 @@ object GrocerySyncManager {
         remoteMembers: List<GroceryListMemberChangeDelta>,
         remoteStoreInfos: List<GroceryItemStoreInfoChangeDelta>
     ) {
+        Log.d(TAG, "applyRemoteChanges: lists=${remoteLists.size}, items=${remoteItems.size}, stores=${remoteStores.size}, categories=${remoteCategories.size}")
         // Order matches dependency hierarchy: Lists -> (Members, Stores, Categories) -> Items -> StoreInfos
         
+        var listsUpserted = 0
+        var listsDeleted = 0
         remoteLists.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteList(change.id)
+                listsDeleted++
             } else {
                 decodeDto(change.data, GroceryListDto.serializer())?.let { dto ->
                     dao.upsertList(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    listsUpserted++
                 }
             }
         }
+        if (listsUpserted > 0 || listsDeleted > 0) Log.d(TAG, "Applied remote grocery lists: upserted=$listsUpserted, deleted=$listsDeleted")
 
+        var membersUpserted = 0
+        var membersDeleted = 0
         remoteMembers.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteListMember(change.id)
+                membersDeleted++
             } else {
                 decodeDto(change.data, GroceryListMemberDto.serializer())?.let { dto ->
                     ensureListExists(dao, dto.listId)
                     dao.upsertListMember(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    membersUpserted++
                 }
             }
         }
+        if (membersUpserted > 0 || membersDeleted > 0) Log.d(TAG, "Applied remote grocery members: upserted=$membersUpserted, deleted=$membersDeleted")
 
+        var storesUpserted = 0
+        var storesDeleted = 0
         remoteStores.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteStore(change.id)
+                storesDeleted++
             } else {
                 decodeDto(change.data, StoreDto.serializer())?.let { dto ->
                     ensureListExists(dao, dto.listId)
                     dao.upsertStore(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    storesUpserted++
                 }
             }
         }
+        if (storesUpserted > 0 || storesDeleted > 0) Log.d(TAG, "Applied remote stores: upserted=$storesUpserted, deleted=$storesDeleted")
 
+        var categoriesUpserted = 0
+        var categoriesDeleted = 0
         remoteCategories.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteCategory(change.id)
+                categoriesDeleted++
             } else {
                 decodeDto(change.data, CategoryDto.serializer())?.let { dto ->
                     ensureListExists(dao, dto.listId)
                     dao.upsertCategory(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    categoriesUpserted++
                 }
             }
         }
+        if (categoriesUpserted > 0 || categoriesDeleted > 0) Log.d(TAG, "Applied remote categories: upserted=$categoriesUpserted, deleted=$categoriesDeleted")
 
+        var itemsUpserted = 0
+        var itemsDeleted = 0
         remoteItems.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteItem(change.id)
+                itemsDeleted++
             } else {
                 decodeDto(change.data, GroceryItemDto.serializer())?.let { dto ->
                     ensureListExists(dao, dto.listId)
                     dao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    itemsUpserted++
                 }
             }
         }
+        if (itemsUpserted > 0 || itemsDeleted > 0) Log.d(TAG, "Applied remote grocery items: upserted=$itemsUpserted, deleted=$itemsDeleted")
 
+        var storeInfosUpserted = 0
+        var storeInfosDeleted = 0
         remoteStoreInfos.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteStoreInfo(change.groceryItemId, change.storeId)
+                storeInfosDeleted++
             } else {
                 decodeDto(change.data, GroceryItemStoreInfoDto.serializer())?.let { dto ->
                     ensureItemExists(dao, change.groceryItemId)
                     ensureStoreExists(dao, change.storeId)
                     dao.upsertStoreInfo(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    storeInfosUpserted++
                 }
             }
         }
+        if (storeInfosUpserted > 0 || storeInfosDeleted > 0) Log.d(TAG, "Applied remote store infos: upserted=$storeInfosUpserted, deleted=$storeInfosDeleted")
     }
 
     // --- HELPERS ---

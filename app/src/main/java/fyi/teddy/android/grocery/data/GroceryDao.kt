@@ -292,7 +292,58 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_item_store_info WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedStoreInfos(): List<GroceryItemStoreInfo>
 
+    @Query("SELECT COUNT(*) FROM grocery_lists WHERE (ownerId = :userId OR ownerId IS NULL) AND is_deleted = 0")
+    abstract suspend fun getGroceryListsCountOneShot(userId: String): Int
+
+    @Query("SELECT * FROM grocery_lists WHERE (ownerId = :userId OR ownerId IS NULL) AND name = :name AND is_deleted = 0 LIMIT 1")
+    abstract suspend fun getListByNameOneShot(userId: String, name: String): GroceryList?
+
+    @Query("SELECT EXISTS(SELECT 1 FROM grocery_items WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0)")
+    abstract suspend fun hasOrphanedItems(userId: String): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM stores WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0)")
+    abstract suspend fun hasOrphanedStores(userId: String): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM categories WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0)")
+    abstract suspend fun hasOrphanedCategories(userId: String): Boolean
+
+    @Query("UPDATE grocery_items SET listId = :listId, sync_state = 'PENDING_UPDATE' WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0")
+    abstract suspend fun moveOrphanedItemsToList(userId: String, listId: String)
+
+    @Query("UPDATE stores SET listId = :listId, sync_state = 'PENDING_UPDATE' WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0")
+    abstract suspend fun moveOrphanedStoresToList(userId: String, listId: String)
+
+    @Query("UPDATE categories SET listId = :listId, sync_state = 'PENDING_UPDATE' WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0")
+    abstract suspend fun moveOrphanedCategoriesToList(userId: String, listId: String)
+
+    @Transaction
+    open suspend fun ensureDefaultListAndClaimOrphanedItems(userId: String) {
+        val listCount = getGroceryListsCountOneShot(userId)
+        val orphanedItems = hasOrphanedItems(userId)
+        val orphanedStores = hasOrphanedStores(userId)
+        val orphanedCategories = hasOrphanedCategories(userId)
+
+        if (listCount == 0 || orphanedItems || orphanedStores || orphanedCategories) {
+            var defaultList = getListByNameOneShot(userId, "My List")
+            val defaultListId = if (defaultList == null) {
+                val newList = GroceryList(name = "My List", ownerId = userId)
+                insertList(newList)
+                newList.id
+            } else {
+                defaultList.id
+            }
+
+            if (orphanedItems) moveOrphanedItemsToList(userId, defaultListId)
+            if (orphanedStores) moveOrphanedStoresToList(userId, defaultListId)
+            if (orphanedCategories) moveOrphanedCategoriesToList(userId, defaultListId)
+            
+            // Re-claim everything to be sure IDs match
+            claimEverything(userId)
+        }
+    }
+
     @Query("SELECT COUNT(*) FROM grocery_items")
+
     abstract fun getGroceryItemsCountFlow(): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM grocery_lists")

@@ -66,6 +66,14 @@ class GroceryViewModel(
 
     private val categorizer = GroceryCategorizer(application)
 
+    private val _hasDefaultItems = combine(
+        repository.getItemsWithoutList(userId),
+        repository.getAllStores(userId).map { all -> all.any { it.listId == null && !it.isDeleted } },
+        repository.getAllCategories(userId).map { all -> all.any { it.listId == null && !it.isDeleted } }
+    ) { orphans, storesOrphaned, catsOrphaned ->
+        orphans.isNotEmpty() || storesOrphaned || catsOrphaned
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
         _currentPhase,
@@ -84,7 +92,8 @@ class GroceryViewModel(
         _activeInviteCode,
         _snackbarMessage,
         categorizer.isReady,
-        _isCategorizing
+        _isCategorizing,
+        _hasDefaultItems
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         GroceryUiState(
@@ -104,7 +113,8 @@ class GroceryViewModel(
             activeInviteCode = args[13] as String?,
             snackbarMessage = args[14] as GrocerySnackbarMessage?,
             isAiReady = args[15] as Boolean,
-            isCategorizing = args[16] as Boolean
+            isCategorizing = args[16] as Boolean,
+            hasItemsInDefaultList = args[17] as Boolean
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -203,8 +213,16 @@ class GroceryViewModel(
 
     init {
         viewModelScope.launch {
+            repository.ensureDefaultListAndClaimOrphanedItems(userId)
             repository.claimEverything(userId)
             categorizer.initialize()
+
+            // If we're on the "Default List" (null) but it's empty, and we have other lists, switch to the first one.
+            combine(lists, _hasDefaultItems) { availableLists, hasDefault ->
+                if (_selectedListId.value == null && !hasDefault && availableLists.isNotEmpty()) {
+                    setSelectedListId(availableLists.first().id)
+                }
+            }.collect()
         }
     }
 
