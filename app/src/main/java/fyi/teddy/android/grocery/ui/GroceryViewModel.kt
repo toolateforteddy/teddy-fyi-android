@@ -12,6 +12,7 @@ import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.domain.MoveGroceryItemDownUseCase
 import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
+import fyi.teddy.android.grocery.domain.ai.GroceryCategorizer
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.network.GroceryNetworkRepository
 import fyi.teddy.android.network.SyncWorker
@@ -61,6 +62,9 @@ class GroceryViewModel(
     )
     private val _activeInviteCode = MutableStateFlow<String?>(null)
     private val _snackbarMessage = MutableStateFlow<GrocerySnackbarMessage?>(null)
+    private val _isCategorizing = MutableStateFlow(false)
+
+    private val categorizer = GroceryCategorizer(application)
 
     // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
@@ -78,7 +82,9 @@ class GroceryViewModel(
         _recentlyCheckedIds,
         _selectedListId,
         _activeInviteCode,
-        _snackbarMessage
+        _snackbarMessage,
+        categorizer.isReady,
+        _isCategorizing
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         GroceryUiState(
@@ -96,7 +102,9 @@ class GroceryViewModel(
             recentlyCheckedIds = args[11] as Set<String>,
             selectedListId = args[12] as String?,
             activeInviteCode = args[13] as String?,
-            snackbarMessage = args[14] as GrocerySnackbarMessage?
+            snackbarMessage = args[14] as GrocerySnackbarMessage?,
+            isAiReady = args[15] as Boolean,
+            isCategorizing = args[16] as Boolean
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -179,13 +187,13 @@ class GroceryViewModel(
         .map { list -> list.filter { !it.isDeleted } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val stores = repository.getAllStores(userId)
-        .map { list -> list.filter { !it.isDeleted } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val stores = combine(repository.getAllStores(userId), _selectedListId) { allStores, listId ->
+        allStores.filter { it.listId == listId && !it.isDeleted }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val categories = repository.getAllCategories(userId)
-        .map { list -> list.filter { !it.isDeleted } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val categories = combine(repository.getAllCategories(userId), _selectedListId) { allCats, listId ->
+        allCats.filter { it.listId == listId && !it.isDeleted }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val storeInfos = repository.getAllStoreInfo(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -196,6 +204,7 @@ class GroceryViewModel(
     init {
         viewModelScope.launch {
             repository.claimEverything(userId)
+            categorizer.initialize()
         }
     }
 
@@ -346,7 +355,23 @@ class GroceryViewModel(
     fun insertItemFromInput(input: String) {
         if (input.isBlank()) return
         val (name, quantity, unit) = parseNaturalLanguage(input)
-        insertItem(name, quantity, _selectedCategoryId.value, unit)
+        
+        viewModelScope.launch {
+            var catId = _selectedCategoryId.value
+            
+            // Auto-categorize if no category is selected and AI is ready
+            if (catId == null && categorizer.isReady.value) {
+                _isCategorizing.value = true
+                val catNames = categories.value.map { it.name }
+                val suggestedName = categorizer.categorize(name, catNames)
+                if (suggestedName != null) {
+                    catId = categories.value.find { it.name == suggestedName }?.id
+                }
+                _isCategorizing.value = false
+            }
+            
+            insertItem(name, quantity, catId, unit)
+        }
         _newItemInput.value = ""
     }
 
@@ -437,6 +462,18 @@ class GroceryViewModel(
                         unit = unit
                     )
                     repository.insertItem(item)
+
+                    // Auto-map to stores that are supported by default
+                    stores.value.filter { it.isDefaultSupported }.forEach { store ->
+                        repository.insertStoreInfo(
+                            GroceryItemStoreInfo(
+                                groceryItemId = item.id,
+                                storeId = store.id,
+                                userId = userId,
+                                isAvailable = true
+                            )
+                        )
+                    }
                 }
             }
         }

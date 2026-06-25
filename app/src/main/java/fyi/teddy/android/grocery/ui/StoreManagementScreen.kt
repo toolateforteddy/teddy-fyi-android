@@ -23,12 +23,17 @@ import fyi.teddy.android.grocery.data.Store
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StoreManagementScreen(userId: String, onBack: () -> Unit) {
+fun StoreManagementScreen(userId: String, listId: String? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
         factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
     )
     
+    // Ensure the view model is using the correct list context
+    LaunchedEffect(listId) {
+        viewModel.onEvent(GroceryUiEvent.SetSelectedListId(listId))
+    }
+
     val stores by viewModel.stores.collectAsState()
     var newStoreName by remember { mutableStateOf("") }
 

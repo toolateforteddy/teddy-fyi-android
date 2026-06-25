@@ -96,6 +96,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("nl.dionsegijn:konfetti-compose:2.0.5")
     
+    // On-device AI (SLM)
+    implementation "com.google.mediapipe:tasks-genai:0.10.35"
+    
     // Room
     def room_version = "2.6.1"
     implementation "androidx.room:room-runtime:$room_version"

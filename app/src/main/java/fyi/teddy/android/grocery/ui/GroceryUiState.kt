@@ -15,5 +15,7 @@ data class GroceryUiState(
     val recentlyCheckedIds: Set<String> = emptySet(),
     val selectedListId: String? = null,
     val activeInviteCode: String? = null,
-    val snackbarMessage: GrocerySnackbarMessage? = null
+    val snackbarMessage: GrocerySnackbarMessage? = null,
+    val isAiReady: Boolean = false,
+    val isCategorizing: Boolean = false
 )

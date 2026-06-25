@@ -7,9 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import fyi.teddy.android.auth.AuthUtils
 import fyi.teddy.android.auth.LoginScreen
 import fyi.teddy.android.auth.UserSession
@@ -138,20 +140,43 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(Screen.GroceryConfig.route) {
                         GroceryConfigScreen(
+                            userId = session.userId ?: "unauthed",
                             onBack = { navController.popBackStack() },
-                            onManageStores = { navController.navigate(Screen.Stores.route) },
-                            onManageCategories = { navController.navigate(Screen.Categories.route) }
+                            onManageStores = { listId -> navController.navigate(Screen.Stores.createRoute(listId)) },
+                            onManageCategories = { listId -> navController.navigate(Screen.Categories.createRoute(listId)) }
                         )
                     }
-                    composable(Screen.Stores.route) {
+                    composable(
+                        route = Screen.Stores.route,
+                        arguments = listOf(
+                            navArgument("listId") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val listId = backStackEntry.arguments?.getString("listId")
                         StoreManagementScreen(
                             userId = session.userId ?: "unauthed",
+                            listId = listId,
                             onBack = { navController.popBackStack() }
                         )
                     }
-                    composable(Screen.Categories.route) {
+                    composable(
+                        route = Screen.Categories.route,
+                        arguments = listOf(
+                            navArgument("listId") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val listId = backStackEntry.arguments?.getString("listId")
                         CategoryManagementScreen(
                             userId = session.userId ?: "unauthed",
+                            listId = listId,
                             onBack = { navController.popBackStack() }
                         )
                     }

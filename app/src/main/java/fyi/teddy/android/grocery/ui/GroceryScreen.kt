@@ -471,6 +471,26 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             }
                         }
                     }
+                    
+                    if (state.isAiReady) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 16.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = Color(0xFFBB86FC),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "AI Smart Categorization Active",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFBB86FC)
+                            )
+                        }
+                    }
 
                     Button(
                         onClick = {

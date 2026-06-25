@@ -24,12 +24,17 @@ import fyi.teddy.android.todo.ui.components.IconPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryManagementScreen(userId: String, onBack: () -> Unit) {
+fun CategoryManagementScreen(userId: String, listId: String? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
         factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
     )
     
+    // Ensure the view model is using the correct list context
+    LaunchedEffect(listId) {
+        viewModel.onEvent(GroceryUiEvent.SetSelectedListId(listId))
+    }
+
     val categories by viewModel.categories.collectAsState()
     var newCategoryName by remember { mutableStateOf("") }
     var categoryToPickIconFor by remember { mutableStateOf<Category?>(null) }

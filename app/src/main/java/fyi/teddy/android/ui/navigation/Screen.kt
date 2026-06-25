@@ -12,7 +12,15 @@ sealed class Screen(val route: String) {
     }
     object Grocery : Screen("grocery")
     object GroceryConfig : Screen("grocery_config")
-    object Stores : Screen("stores")
-    object Categories : Screen("categories")
+    object Stores : Screen("stores?listId={listId}") {
+        fun createRoute(listId: String? = null): String {
+            return if (listId != null) "stores?listId=$listId" else "stores"
+        }
+    }
+    object Categories : Screen("categories?listId={listId}") {
+        fun createRoute(listId: String? = null): String {
+            return if (listId != null) "categories?listId=$listId" else "categories"
+        }
+    }
     object Debug : Screen("debug")
 }
