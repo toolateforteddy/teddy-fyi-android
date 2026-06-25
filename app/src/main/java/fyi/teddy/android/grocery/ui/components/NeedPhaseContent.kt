@@ -75,6 +75,8 @@ fun NeedPhaseContent(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         val grouped = items.groupBy { it.categoryId }
+        val knownCategoryIds = categories.map { it.id }.toSet()
+
         categories.forEach { category ->
             val categoryItems = grouped[category.id] ?: emptyList()
             if (categoryItems.isNotEmpty()) {
@@ -111,8 +113,9 @@ fun NeedPhaseContent(
             }
         }
 
-        val uncategorized = grouped[null] ?: emptyList()
-        if (uncategorized.isNotEmpty()) {
+        // Show items that have no category OR a category that is not in the current list
+        val otherItems = items.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
+        if (otherItems.isNotEmpty()) {
             item(span = { GridItemSpan(2) }) {
                 Text(
                     text = "UNCATEGORIZED",
@@ -121,7 +124,7 @@ fun NeedPhaseContent(
                     modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                 )
             }
-            items(uncategorized, key = { it.id }) { item ->
+            items(otherItems, key = { it.id }) { item ->
                 NeedItemTile(
                     item = item,
                     showControls = expandedItemId == item.id,

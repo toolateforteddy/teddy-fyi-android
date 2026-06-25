@@ -598,12 +598,12 @@ class GroceryViewModel(
         if (name.isNotBlank()) {
             val capitalized = formatName(name)
             viewModelScope.launch {
-                repository.insertList(
-                    GroceryList(
-                        name = capitalized,
-                        ownerId = userId
-                    )
+                val newList = GroceryList(
+                    name = capitalized,
+                    ownerId = userId
                 )
+                repository.insertList(newList)
+                setSelectedListId(newList.id)
             }
         }
     }

@@ -146,6 +146,8 @@ fun ShoppingPhaseContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val grouped = items.groupBy { it.categoryId }
+                val knownCategoryIds = categories.map { it.id }.toSet()
+
                 categories.forEach { category ->
                     val categoryItems = grouped[category.id] ?: emptyList()
                     if (categoryItems.isNotEmpty()) {
@@ -170,19 +172,19 @@ fun ShoppingPhaseContent(
                     }
                 }
 
-                val uncategorized = grouped[null] ?: emptyList()
-                if (uncategorized.isNotEmpty()) {
+                val otherItems = items.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
+                if (otherItems.isNotEmpty()) {
                     val isExpanded = expandedCategories[null] ?: true
                     item(span = { GridItemSpan(2) }) {
                         ShoppingCategoryHeader(
                             categoryName = "Uncategorized",
-                            count = "${uncategorized.count { it.isBought }} / ${uncategorized.size}",
+                            count = "${otherItems.count { it.isBought }} / ${otherItems.size}",
                             isExpanded = isExpanded,
                             onToggle = { expandedCategories[null] = !isExpanded }
                         )
                     }
                     if (isExpanded) {
-                        items(uncategorized, key = { it.id }) { item ->
+                        items(otherItems, key = { it.id }) { item ->
                             ShoppingItemTile(
                                 item = item,
                                 onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, it)) },
