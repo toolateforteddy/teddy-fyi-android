@@ -25,8 +25,8 @@ import androidx.room.Index
     indices = [Index("groceryItemId"), Index("storeId")]
 )
 data class GroceryItemStoreInfo(
-    val groceryItemId: Int,
-    val storeId: Int,
+    val groceryItemId: String,
+    val storeId: String,
     val price: Double? = null,
     val isAvailable: Boolean = true,
     val userId: String? = null,

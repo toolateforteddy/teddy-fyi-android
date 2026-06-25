@@ -8,6 +8,24 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_items WHERE userId = :userId ORDER BY position ASC, createdAt DESC")
     abstract fun getAllItems(userId: String): Flow<List<GroceryItem>>
 
+    @Upsert
+    abstract suspend fun upsertItem(item: GroceryItem)
+
+    @Upsert
+    abstract suspend fun upsertList(list: GroceryList)
+
+    @Upsert
+    abstract suspend fun upsertStore(store: Store)
+
+    @Upsert
+    abstract suspend fun upsertCategory(category: Category)
+
+    @Upsert
+    abstract suspend fun upsertListMember(member: GroceryListMember)
+
+    @Upsert
+    abstract suspend fun upsertStoreInfo(info: GroceryItemStoreInfo)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertItem(item: GroceryItem): Long
 
@@ -52,7 +70,7 @@ abstract class GroceryDao {
         JOIN grocery_items g ON i.groceryItemId = g.id
         WHERE i.groceryItemId = :itemId AND g.userId = :userId
     """)
-    abstract fun getStoreInfoForItem(itemId: Int, userId: String): Flow<List<GroceryItemStoreInfo>>
+    abstract fun getStoreInfoForItem(itemId: String, userId: String): Flow<List<GroceryItemStoreInfo>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertStoreInfo(info: GroceryItemStoreInfo)
@@ -84,7 +102,7 @@ abstract class GroceryDao {
     protected abstract suspend fun deleteCategory(category: Category)
 
     @Query("UPDATE grocery_items SET categoryId = NULL WHERE categoryId = :categoryId")
-    protected abstract suspend fun clearItemCategories(categoryId: Int)
+    protected abstract suspend fun clearItemCategories(categoryId: String)
 
     @Transaction
     open suspend fun insertItemWithNextPosition(item: GroceryItem): Long {
@@ -137,27 +155,35 @@ abstract class GroceryDao {
         updateCategory(cat2.copy(position = pos1))
     }
 
-    @Query("UPDATE grocery_items SET userId = :userId WHERE userId IS NULL")
+    @Query("UPDATE grocery_lists SET ownerId = :userId WHERE ownerId IS NULL OR ownerId = 'unauthed'")
+    abstract suspend fun claimUnownedLists(userId: String)
+
+    @Query("UPDATE grocery_items SET userId = :userId WHERE userId IS NULL OR userId = 'unauthed'")
     abstract suspend fun claimUnownedItems(userId: String)
 
-    @Query("UPDATE stores SET userId = :userId WHERE userId IS NULL")
+    @Query("UPDATE stores SET userId = :userId WHERE userId IS NULL OR userId = 'unauthed'")
     abstract suspend fun claimUnownedStores(userId: String)
 
-    @Query("UPDATE categories SET userId = :userId WHERE userId IS NULL")
+    @Query("UPDATE categories SET userId = :userId WHERE userId IS NULL OR userId = 'unauthed'")
     abstract suspend fun claimUnownedCategories(userId: String)
+
+    @Query("UPDATE grocery_list_members SET userId = :userId WHERE userId = 'unauthed'")
+    abstract suspend fun claimUnownedMembers(userId: String)
 
     @Transaction
     open suspend fun claimEverything(userId: String) {
+        claimUnownedLists(userId)
         claimUnownedItems(userId)
         claimUnownedStores(userId)
         claimUnownedCategories(userId)
         claimUnownedStoreInfo(userId)
+        claimUnownedMembers(userId)
     }
 
     @Query("""
         UPDATE grocery_item_store_info 
         SET userId = :userId 
-        WHERE userId IS NULL 
+        WHERE (userId IS NULL OR userId = 'unauthed')
         AND groceryItemId IN (SELECT id FROM grocery_items WHERE userId = :userId)
     """)
     abstract suspend fun claimUnownedStoreInfo(userId: String)
@@ -219,22 +245,22 @@ abstract class GroceryDao {
     abstract suspend fun getUnsyncedCategories(): List<Category>
 
     @Query("DELETE FROM grocery_items WHERE id = :id")
-    abstract suspend fun hardDeleteItem(id: Int)
+    abstract suspend fun hardDeleteItem(id: String)
 
     @Query("DELETE FROM grocery_lists WHERE id = :id")
     abstract suspend fun hardDeleteList(id: String)
 
     @Query("DELETE FROM stores WHERE id = :id")
-    abstract suspend fun hardDeleteStore(id: Int)
+    abstract suspend fun hardDeleteStore(id: String)
 
     @Query("DELETE FROM categories WHERE id = :id")
-    abstract suspend fun hardDeleteCategory(id: Int)
+    abstract suspend fun hardDeleteCategory(id: String)
 
     @Query("DELETE FROM grocery_list_members WHERE id = :id")
     abstract suspend fun hardDeleteListMember(id: String)
 
     @Query("DELETE FROM grocery_item_store_info WHERE groceryItemId = :groceryItemId AND storeId = :storeId")
-    abstract suspend fun hardDeleteStoreInfo(groceryItemId: Int, storeId: Int)
+    abstract suspend fun hardDeleteStoreInfo(groceryItemId: String, storeId: String)
 
     @Query("SELECT * FROM grocery_items")
     abstract suspend fun getAllItemsOneShot(): List<GroceryItem>

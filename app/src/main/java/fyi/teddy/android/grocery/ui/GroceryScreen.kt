@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.ui.components.AddListDialog
+import fyi.teddy.android.grocery.ui.components.RenameListDialog
 import fyi.teddy.android.grocery.ui.components.JoinListDialog
 import fyi.teddy.android.grocery.ui.components.GroceryItemRowContainer
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
@@ -76,6 +77,7 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
     
     var showListSelectorMenu by remember { mutableStateOf(value = false) }
     var showAddListDialog by remember { mutableStateOf(value = false) }
+    var showRenameListDialog by remember { mutableStateOf(value = false) }
     var showJoinListDialog by remember { mutableStateOf(value = false) }
     var showShareListDialog by remember { mutableStateOf(value = false) }
     
@@ -107,7 +109,12 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                 actions = {
                     if (state.currentPhase == GroceryPhase.NEED) {
                         val sharedPrefs = context.getSharedPreferences("sync_metadata", android.content.Context.MODE_PRIVATE)
-                        val lastSyncedAtString = sharedPrefs.getString("last_synced_at", null)
+                        val lastSyncedAtString = try {
+                            sharedPrefs.getString("last_synced_at", null)
+                        } catch (_: ClassCastException) {
+                            sharedPrefs.edit().remove("last_synced_at").apply()
+                            null
+                        }
                         val isStale = remember(lastSyncedAtString) {
                             if (lastSyncedAtString == null) true
                             else {
@@ -270,37 +277,46 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                             }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { showJoinListDialog = true }) {
-                                Icon(
-                                    Icons.Default.GroupAdd,
-                                    contentDescription = "Join List",
-                                    tint = Color.White
-                                )
-                            }
-                            IconButton(onClick = { showAddListDialog = true }) {
-                                Icon(
-                                    Icons.Default.Create,
-                                    contentDescription = "New List",
-                                    tint = Color.White
-                                )
-                            }
-                            if (state.selectedListId != null) {
-                                IconButton(onClick = { showShareListDialog = true }) {
+                        if (state.isEditMode) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { showJoinListDialog = true }) {
                                     Icon(
-                                        Icons.Default.Share,
-                                        contentDescription = "Share List",
+                                        Icons.Default.GroupAdd,
+                                        contentDescription = "Join List",
                                         tint = Color.White
                                     )
                                 }
-                                IconButton(onClick = {
-                                    viewModel.onEvent(GroceryUiEvent.DeleteList(activeList!!))
-                                }) {
+                                IconButton(onClick = { showAddListDialog = true }) {
                                     Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Delete List",
-                                        tint = Color.Red
+                                        Icons.Default.Create,
+                                        contentDescription = "New List",
+                                        tint = Color.White
                                     )
+                                }
+                                if (state.selectedListId != null) {
+                                    IconButton(onClick = { showRenameListDialog = true }) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Rename List",
+                                            tint = Color.White
+                                        )
+                                    }
+                                    IconButton(onClick = { showShareListDialog = true }) {
+                                        Icon(
+                                            Icons.Default.Share,
+                                            contentDescription = "Share List",
+                                            tint = Color.White
+                                        )
+                                    }
+                                    IconButton(onClick = {
+                                        viewModel.onEvent(GroceryUiEvent.DeleteList(activeList!!))
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Delete List",
+                                            tint = Color.Red
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -314,6 +330,18 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                         onConfirm = { name ->
                             viewModel.onEvent(GroceryUiEvent.InsertList(name))
                             showAddListDialog = false
+                        }
+                    )
+                }
+
+                // Rename List Dialog
+                if (showRenameListDialog && activeList != null) {
+                    RenameListDialog(
+                        initialName = activeList.name,
+                        onDismiss = { showRenameListDialog = false },
+                        onConfirm = { newName ->
+                            viewModel.onEvent(GroceryUiEvent.UpdateList(activeList.copy(name = newName)))
+                            showRenameListDialog = false
                         }
                     )
                 }

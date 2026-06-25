@@ -44,7 +44,7 @@ fun PlanningPhaseContent(
     categories: List<Category>,
     onEvent: (GroceryUiEvent) -> Unit,
 ) {
-    var expandedItemId by remember { mutableStateOf<Int?>(null) }
+    var expandedItemId by remember { mutableStateOf<String?>(null) }
     var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
     var itemToTagStores by remember { mutableStateOf<GroceryItem?>(null) }
 

@@ -19,11 +19,11 @@ fun RecommendedItemsDialog(
     recommendedItems: List<GroceryItem>,
     activeItems: List<GroceryItem>,
     onDismiss: () -> Unit,
-    onAddItems: (List<Int>) -> Unit
+    onAddItems: (List<String>) -> Unit
 ) {
     val unboughtNames = activeItems.filter { it.isActive && !it.isBought }.map { it.name }.toSet()
     val availableRecommendations = recommendedItems.filter { !unboughtNames.contains(it.name) }
-    val selectedItemIds = remember { mutableStateListOf<Int>() }
+    val selectedItemIds = remember { mutableStateListOf<String>() }
 
     AlertDialog(
         onDismissRequest = onDismiss,

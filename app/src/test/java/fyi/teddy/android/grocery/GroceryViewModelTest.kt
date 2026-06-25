@@ -77,7 +77,7 @@ class GroceryViewModelTest {
         val viewModel = GroceryViewModel(repository, userId, application)
         val nameInput = "organic bananas"
         val qtyInput = "3 bunches"
-        val categoryId = 4
+        val categoryId = "4"
 
         viewModel.insertItem(nameInput, qtyInput, categoryId)
         testScheduler.advanceUntilIdle()
@@ -108,7 +108,7 @@ class GroceryViewModelTest {
     @Test
     fun `test toggleBought standard updates item immediately`() = runTest {
         val viewModel = GroceryViewModel(repository, userId, application)
-        val item = GroceryItem(id = 1, name = "Bananas", isBought = false, userId = userId)
+        val item = GroceryItem(id = "1", name = "Bananas", isBought = false, userId = userId)
 
         viewModel.toggleBought(item, isChecked = true)
         testScheduler.advanceUntilIdle()
@@ -137,7 +137,7 @@ class GroceryViewModelTest {
         }
 
         // Verify it's present in recentlyCheckedIds (which prevents it from disappearing immediately)
-        assertTrue(viewModel.state.value.recentlyCheckedIds.contains(99))
+        assertTrue(viewModel.state.value.recentlyCheckedIds.contains("99"))
 
         // Advance 2 seconds
         testScheduler.advanceTimeBy(2000)
@@ -197,7 +197,7 @@ class GroceryViewModelTest {
         val viewModel = GroceryViewModel(repository, userId, application)
         val nameInput = "organic bananas"
         val qtyInput = "1.5"
-        val categoryId = 4
+        val categoryId = "4"
         val unitInput = "lbs"
 
         // Set listId

@@ -9,7 +9,7 @@ data class GroceryItemWithPriceDetails(
     companion object {
         fun from(
             item: GroceryItem,
-            shoppingStoreId: Int?,
+            shoppingStoreId: String?,
             itemStoreInfos: List<GroceryItemStoreInfo>,
             stores: List<Store>
         ): GroceryItemWithPriceDetails {

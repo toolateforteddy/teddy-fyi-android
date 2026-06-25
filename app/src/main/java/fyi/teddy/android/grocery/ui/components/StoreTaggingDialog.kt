@@ -21,7 +21,7 @@ fun StoreTaggingDialog(
     stores: List<Store>,
     itemStoreInfos: List<GroceryItemStoreInfo>,
     onDismiss: () -> Unit,
-    onToggleAvailability: (Int, Boolean) -> Unit
+    onToggleAvailability: (String, Boolean) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,

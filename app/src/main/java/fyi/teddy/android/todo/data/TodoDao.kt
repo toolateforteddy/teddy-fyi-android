@@ -28,6 +28,12 @@ abstract class TodoDao {
     @Query("SELECT * FROM todo_items WHERE userId = :userId AND scheduledDate > :today AND isCompleted = 0 ORDER BY scheduledDate ASC")
     abstract fun getScheduledItems(userId: String, today: String): Flow<List<TodoItem>>
 
+    @Upsert
+    abstract suspend fun upsertItem(item: TodoItem)
+
+    @Upsert
+    abstract suspend fun upsertList(list: TodoList)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertItem(item: TodoItem)
 

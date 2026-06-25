@@ -58,7 +58,7 @@ data class GroceryListMemberChangeDelta(
 
 @Serializable
 data class StoreChangeDelta(
-    val id: Int,
+    val id: String,
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
@@ -67,7 +67,7 @@ data class StoreChangeDelta(
 
 @Serializable
 data class CategoryChangeDelta(
-    val id: Int,
+    val id: String,
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
@@ -76,7 +76,7 @@ data class CategoryChangeDelta(
 
 @Serializable
 data class GroceryChangeDelta(
-    val id: Int,
+    val id: String,
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
@@ -86,8 +86,8 @@ data class GroceryChangeDelta(
 @Serializable
 data class GroceryItemStoreInfoChangeDelta(
     val id: String,
-    @SerialName("groceryItemId") val groceryItemId: Int,
-    @SerialName("storeId") val storeId: Int,
+    @SerialName("grocery_item_id") val groceryItemId: String,
+    @SerialName("store_id") val storeId: String,
     @SerialName("type")
     val operationType: OperationType,
     val version: Int,
@@ -126,21 +126,21 @@ data class SyncResponse(
 data class TodoItemDto(
     val id: String,
     val title: String,
-    val isCompleted: Boolean,
-    val createdAt: Long,
+    @SerialName("is_completed") val isCompleted: Boolean,
+    @SerialName("created_at") val createdAt: Long,
     val position: Int,
-    val scheduledDate: String?,
-    val recurrenceRule: String?,
-    val scheduledAt: Long,
-    val userId: String?,
-    val parentId: String?,
-    val isDaily: Boolean,
-    val dueDate: Long?,
+    @SerialName("scheduled_date") val scheduledDate: String?,
+    @SerialName("recurrence_rule") val recurrenceRule: String?,
+    @SerialName("scheduled_at") val scheduledAt: Long,
+    @SerialName("user_id") val userId: String?,
+    @SerialName("parent_id") val parentId: String?,
+    @SerialName("is_daily") val isDaily: Boolean,
+    @SerialName("due_date") val dueDate: Long?,
     val description: String?,
-    val listId: String?,
+    @SerialName("list_id") val listId: String?,
     val priority: Int,
     val icon: String?,
-    @SerialName("lastScheduledDate") val lastScheduledDate: String?,
+    @SerialName("last_scheduled_date") val lastScheduledDate: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -150,9 +150,9 @@ data class TodoItemDto(
 data class TodoListDto(
     val id: String,
     val name: String,
-    val colorHex: String,
-    val userId: String?,
-    val createdAt: Long,
+    @SerialName("color_hex") val colorHex: String,
+    @SerialName("user_id") val userId: String?,
+    @SerialName("created_at") val createdAt: Long,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -160,17 +160,17 @@ data class TodoListDto(
 
 @Serializable
 data class GroceryItemDto(
-    val id: Int,
+    val id: String,
     val name: String,
     val quantity: String,
-    @SerialName("isBought") val isBought: Boolean,
-    @SerialName("createdAt") val createdAt: Long,
+    @SerialName("is_bought") val isBought: Boolean,
+    @SerialName("created_at") val createdAt: Long,
     val position: Int,
-    @SerialName("categoryId") val categoryId: Int?,
-    @SerialName("timesBought") val timesBought: Int,
-    @SerialName("userId") val userId: String?,
-    @SerialName("isActive") val isActive: Boolean,
-    @SerialName("listId") val listId: String?,
+    @SerialName("category_id") val categoryId: String?,
+    @SerialName("times_bought") val timesBought: Int,
+    @SerialName("user_id") val userId: String?,
+    @SerialName("is_active") val isActive: Boolean,
+    @SerialName("list_id") val listId: String?,
     val unit: String?,
     val notes: String?,
     @SerialName("sync_state") val syncState: String,
@@ -182,8 +182,8 @@ data class GroceryItemDto(
 data class GroceryListDto(
     val id: String,
     val name: String,
-    @SerialName("ownerId") val ownerId: String?,
-    @SerialName("createdAt") val createdAt: Long,
+    @SerialName("owner_id") val ownerId: String?,
+    @SerialName("created_at") val createdAt: Long,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -191,12 +191,12 @@ data class GroceryListDto(
 
 @Serializable
 data class StoreDto(
-    val id: Int,
+    val id: String,
     val name: String,
     val position: Int,
-    @SerialName("isDefaultSupported") val isDefaultSupported: Boolean,
-    @SerialName("userId") val userId: String?,
-    @SerialName("listId") val listId: String?,
+    @SerialName("is_default_supported") val isDefaultSupported: Boolean,
+    @SerialName("user_id") val userId: String?,
+    @SerialName("list_id") val listId: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -204,11 +204,11 @@ data class StoreDto(
 
 @Serializable
 data class CategoryDto(
-    val id: Int,
+    val id: String,
     val name: String,
     val position: Int,
-    @SerialName("userId") val userId: String?,
-    @SerialName("listId") val listId: String?,
+    @SerialName("user_id") val userId: String?,
+    @SerialName("list_id") val listId: String?,
     val icon: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
@@ -218,10 +218,10 @@ data class CategoryDto(
 @Serializable
 data class GroceryListMemberDto(
     val id: String,
-    @SerialName("listId") val listId: String,
-    @SerialName("userId") val userId: String,
+    @SerialName("list_id") val listId: String,
+    @SerialName("user_id") val userId: String,
     val role: String,
-    @SerialName("joinedAt") val joinedAt: Long,
+    @SerialName("joined_at") val joinedAt: Long,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
@@ -229,11 +229,11 @@ data class GroceryListMemberDto(
 
 @Serializable
 data class GroceryItemStoreInfoDto(
-    @SerialName("groceryItemId") val groceryItemId: Int,
-    @SerialName("storeId") val storeId: Int,
+    @SerialName("grocery_item_id") val groceryItemId: String,
+    @SerialName("store_id") val storeId: String,
     val price: Double?,
-    @SerialName("isAvailable") val isAvailable: Boolean,
-    @SerialName("userId") val userId: String?,
+    @SerialName("is_available") val isAvailable: Boolean,
+    @SerialName("user_id") val userId: String?,
     @SerialName("sync_state") val syncState: String,
     val version: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,

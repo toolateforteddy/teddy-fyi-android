@@ -31,10 +31,16 @@ class GroceryViewModel(
 
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
-    private val _selectedStoreIds = MutableStateFlow(setOf<Int>())
-    private val _planningStoreContextId = MutableStateFlow<Int?>(null)
-    private val _shoppingStoreId = MutableStateFlow<Int?>(
-        prefs.getInt("last_shopping_store_id", -1).takeIf { it != -1 }
+    private val _selectedStoreIds = MutableStateFlow(setOf<String>())
+    private val _planningStoreContextId = MutableStateFlow<String?>(null)
+    private val _shoppingStoreId = MutableStateFlow<String?>(
+        try {
+            prefs.getString("last_shopping_store_id", null)
+        } catch (_: ClassCastException) {
+            // Handle legacy Int values by clearing them
+            prefs.edit().remove("last_shopping_store_id").apply()
+            null
+        }
     )
     private val _isEditMode = MutableStateFlow(false)
     private val _showRecommendedDialog = MutableStateFlow(false)
@@ -42,9 +48,17 @@ class GroceryViewModel(
     private val _newItemQuantity = MutableStateFlow("1")
     private val _newItemUnit = MutableStateFlow<String?>(null)
     private val _newItemInput = MutableStateFlow("")
-    private val _selectedCategoryId = MutableStateFlow<Int?>(null)
-    private val _recentlyCheckedIds = MutableStateFlow(setOf<Int>())
-    private val _selectedListId = MutableStateFlow<String?>(null)
+    private val _selectedCategoryId = MutableStateFlow<String?>(null)
+    private val _recentlyCheckedIds = MutableStateFlow(setOf<String>())
+    private val _selectedListId = MutableStateFlow<String?>(
+        try {
+            prefs.getString("selected_list_id", null)
+        } catch (_: ClassCastException) {
+            // Handle legacy Int values by clearing them
+            prefs.edit().remove("selected_list_id").apply()
+            null
+        }
+    )
     private val _activeInviteCode = MutableStateFlow<String?>(null)
     private val _snackbarMessage = MutableStateFlow<GrocerySnackbarMessage?>(null)
 
@@ -69,17 +83,17 @@ class GroceryViewModel(
         @Suppress("UNCHECKED_CAST")
         GroceryUiState(
             currentPhase = args[0] as GroceryPhase,
-            selectedStoreIds = args[1] as Set<Int>,
-            planningStoreContextId = args[2] as Int?,
-            shoppingStoreId = args[3] as Int?,
+            selectedStoreIds = args[1] as Set<String>,
+            planningStoreContextId = args[2] as String?,
+            shoppingStoreId = args[3] as String?,
             isEditMode = args[4] as Boolean,
             showRecommendedDialog = args[5] as Boolean,
             newItemName = args[6] as String,
             newItemQuantity = args[7] as String,
             newItemUnit = args[8] as String?,
             newItemInput = args[9] as String,
-            selectedCategoryId = args[10] as Int?,
-            recentlyCheckedIds = args[11] as Set<Int>,
+            selectedCategoryId = args[10] as String?,
+            recentlyCheckedIds = args[11] as Set<String>,
             selectedListId = args[12] as String?,
             activeInviteCode = args[13] as String?,
             snackbarMessage = args[14] as GrocerySnackbarMessage?
@@ -203,16 +217,16 @@ class GroceryViewModel(
         }
     }
 
-    fun toggleStoreSelection(storeId: Int) {
+    fun toggleStoreSelection(storeId: String) {
         _selectedStoreIds.update { current ->
             if (current.contains(storeId)) current - storeId else current + storeId
         }
     }
 
-    fun setShoppingStoreId(storeId: Int?) {
+    fun setShoppingStoreId(storeId: String?) {
         _shoppingStoreId.value = storeId
         if (storeId != null) {
-            prefs.edit().putInt("last_shopping_store_id", storeId).apply()
+            prefs.edit().putString("last_shopping_store_id", storeId).apply()
         } else {
             prefs.edit().remove("last_shopping_store_id").apply()
         }
@@ -242,7 +256,7 @@ class GroceryViewModel(
         _newItemInput.value = input
     }
 
-    fun setSelectedCategoryId(categoryId: Int?) {
+    fun setSelectedCategoryId(categoryId: String?) {
         _selectedCategoryId.value = categoryId
     }
 
@@ -259,8 +273,8 @@ class GroceryViewModel(
         val infos = args[1] as List<GroceryItemStoreInfo>
         val allStores = args[2] as List<Store>
         val phase = args[3] as GroceryPhase
-        val selectedStores = args[4] as Set<Int>
-        val shoppingStore = args[5] as Int?
+        val selectedStores = args[4] as Set<String>
+        val shoppingStore = args[5] as String?
 
         val activeItems = itemsList.filter { it.isActive }
         when (phase) {
@@ -269,7 +283,7 @@ class GroceryViewModel(
                 if (selectedStores.isEmpty()) {
                     // Show everything in planning by default
                     activeItems
-                } else if (selectedStores.contains(-1)) {
+                } else if (selectedStores.contains("-1")) {
                     // "Unassigned" filter: items that have NO store mappings at all
                     activeItems.filter { item ->
                         val itemInfos = infos.filter { it.groceryItemId == item.id }
@@ -396,7 +410,7 @@ class GroceryViewModel(
         return Triple(remainingWords.joinToString(" "), quantity, null)
     }
 
-    fun insertItem(name: String, quantity: String?, categoryId: Int?, unit: String? = null) {
+    fun insertItem(name: String, quantity: String?, categoryId: String?, unit: String? = null) {
         if (name.isNotBlank()) {
             val capitalizedName = formatName(name)
             viewModelScope.launch {
@@ -422,7 +436,7 @@ class GroceryViewModel(
                         listId = _selectedListId.value,
                         unit = unit
                     )
-                    repository.insertItem(item).toInt()
+                    repository.insertItem(item)
                 }
             }
         }
@@ -525,7 +539,7 @@ class GroceryViewModel(
         viewModelScope.launch { repository.swapCategoryPositions(cat1, cat2) }
     }
 
-    fun addRecommendedItems(selectedItemIds: List<Int>) {
+    fun addRecommendedItems(selectedItemIds: List<String>) {
         viewModelScope.launch {
             recommendedItems.value.filter { selectedItemIds.contains(it.id) }.forEach { item ->
                 repository.updateItem(item.copy(isBought = false, isActive = true))
@@ -536,6 +550,11 @@ class GroceryViewModel(
     // List and Collaboration operations
     fun setSelectedListId(listId: String?) {
         _selectedListId.value = listId
+        if (listId != null) {
+            prefs.edit().putString("selected_list_id", listId).apply()
+        } else {
+            prefs.edit().remove("selected_list_id").apply()
+        }
     }
 
     fun insertList(name: String) {
@@ -556,7 +575,7 @@ class GroceryViewModel(
         viewModelScope.launch {
             repository.deleteList(list)
             if (_selectedListId.value == list.id) {
-                _selectedListId.value = null
+                setSelectedListId(null)
             }
         }
     }
@@ -600,7 +619,7 @@ class GroceryViewModel(
                 
                 // Trigger sync immediately
                 SyncWorker.enqueue(application)
-                _selectedListId.value = listId
+                setSelectedListId(listId)
                 _snackbarMessage.value = GrocerySnackbarMessage(
                     message = "Successfully joined the list!",
                     isError = false

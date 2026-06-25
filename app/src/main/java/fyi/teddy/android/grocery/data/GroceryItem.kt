@@ -6,6 +6,8 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+import java.util.UUID
+
 @Entity(
     tableName = "grocery_items",
     foreignKeys = [
@@ -13,19 +15,20 @@ import androidx.room.PrimaryKey
             entity = GroceryList::class,
             parentColumns = ["id"],
             childColumns = ["listId"],
-            onDelete = ForeignKey.SET_NULL
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [Index(value = ["listId"])]
 )
 data class GroceryItem(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val quantity: String = "1",
     val isBought: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val position: Int = 0,
-    val categoryId: Int? = null,
+    val categoryId: String? = null,
     val timesBought: Int = 0,
     val userId: String? = null,
     val isActive: Boolean = true,

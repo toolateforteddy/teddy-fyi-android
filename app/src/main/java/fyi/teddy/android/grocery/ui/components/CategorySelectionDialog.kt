@@ -17,7 +17,7 @@ fun CategorySelectionDialog(
     item: GroceryItem,
     categories: List<Category>,
     onDismiss: () -> Unit,
-    onConfirm: (Int?) -> Unit
+    onConfirm: (String?) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,

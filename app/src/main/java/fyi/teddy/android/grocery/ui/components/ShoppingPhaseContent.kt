@@ -41,7 +41,7 @@ fun ShoppingPhaseContent(
     onEvent: (GroceryUiEvent) -> Unit,
 ) {
     val activeStore = stores.find { it.id == state.shoppingStoreId }
-    val expandedCategories = remember { mutableStateMapOf<Int?, Boolean>() }
+    val expandedCategories = remember { mutableStateMapOf<String?, Boolean>() }
     var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
 
     if (itemToEditCategory != null) {

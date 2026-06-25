@@ -9,21 +9,21 @@ import fyi.teddy.android.grocery.data.Store
 
 sealed interface GroceryUiEvent {
     data class SetPhase(val phase: GroceryPhase) : GroceryUiEvent
-    data class ToggleStoreSelection(val storeId: Int) : GroceryUiEvent
-    data class SetPlanningStoreContext(val storeId: Int?) : GroceryUiEvent
-    data class SetShoppingStoreId(val storeId: Int?) : GroceryUiEvent
+    data class ToggleStoreSelection(val storeId: String) : GroceryUiEvent
+    data class SetPlanningStoreContext(val storeId: String?) : GroceryUiEvent
+    data class SetShoppingStoreId(val storeId: String?) : GroceryUiEvent
     data class SetEditMode(val enabled: Boolean) : GroceryUiEvent
     data class SetShowRecommendedDialog(val show: Boolean) : GroceryUiEvent
     data class SetNewItemName(val name: String) : GroceryUiEvent
     data class SetNewItemQuantity(val qty: String) : GroceryUiEvent
     data class SetNewItemUnit(val unit: String?) : GroceryUiEvent
     data class SetNewItemInput(val input: String) : GroceryUiEvent
-    data class SetSelectedCategoryId(val categoryId: Int?) : GroceryUiEvent
+    data class SetSelectedCategoryId(val categoryId: String?) : GroceryUiEvent
     data class SetSelectedListId(val listId: String?) : GroceryUiEvent
     data class InsertItemFromInput(val input: String) : GroceryUiEvent
     
     // Mutators
-    data class InsertItem(val name: String, val quantity: String? = null, val categoryId: Int?, val unit: String? = null) : GroceryUiEvent
+    data class InsertItem(val name: String, val quantity: String? = null, val categoryId: String?, val unit: String? = null) : GroceryUiEvent
     data class UpdateItem(val item: GroceryItem) : GroceryUiEvent
     data class DeleteItem(val item: GroceryItem) : GroceryUiEvent
     data class MoveItemUp(val item: GroceryItem, val siblings: List<GroceryItem>) : GroceryUiEvent
@@ -54,5 +54,5 @@ sealed interface GroceryUiEvent {
     data class JoinList(val code: String) : GroceryUiEvent
     data class DismissSnackbar(val messageId: Long) : GroceryUiEvent
     data class RemoveListMember(val member: GroceryListMember) : GroceryUiEvent
-    data class AddRecommendedItems(val selectedIds: List<Int>) : GroceryUiEvent
+    data class AddRecommendedItems(val selectedIds: List<String>) : GroceryUiEvent
 }

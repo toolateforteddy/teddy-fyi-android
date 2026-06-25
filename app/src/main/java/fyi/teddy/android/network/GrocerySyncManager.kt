@@ -237,7 +237,7 @@ object GrocerySyncManager {
                 }
             } else {
                 if (successIds.contains(localGroceryList.id)) {
-                    groceryDao.insertList(localGroceryList.copy(syncState = "SYNCED"))
+                    groceryDao.upsertList(localGroceryList.copy(syncState = "SYNCED"))
                 }
             }
         }
@@ -250,49 +250,46 @@ object GrocerySyncManager {
                 }
             } else {
                 if (successIds.contains(localMember.id)) {
-                    groceryDao.insertListMember(localMember.copy(syncState = "SYNCED"))
+                    groceryDao.upsertListMember(localMember.copy(syncState = "SYNCED"))
                 }
             }
         }
 
         // 3. Transition successfully uploaded stores back to sync_state = SYNCED
         unsyncedStores.forEach { localStore ->
-            val stringId = localStore.id.toString()
             if (localStore.isDeleted) {
-                if (successIds.contains(stringId)) {
+                if (successIds.contains(localStore.id)) {
                     groceryDao.hardDeleteStore(localStore.id)
                 }
             } else {
-                if (successIds.contains(stringId)) {
-                    groceryDao.insertStore(localStore.copy(syncState = "SYNCED"))
+                if (successIds.contains(localStore.id)) {
+                    groceryDao.upsertStore(localStore.copy(syncState = "SYNCED"))
                 }
             }
         }
 
         // 4. Transition successfully uploaded categories back to sync_state = SYNCED
         unsyncedCategories.forEach { localCategory ->
-            val stringId = localCategory.id.toString()
             if (localCategory.isDeleted) {
-                if (successIds.contains(stringId)) {
+                if (successIds.contains(localCategory.id)) {
                     groceryDao.hardDeleteCategory(localCategory.id)
                 }
             } else {
-                if (successIds.contains(stringId)) {
-                    groceryDao.insertCategory(localCategory.copy(syncState = "SYNCED"))
+                if (successIds.contains(localCategory.id)) {
+                    groceryDao.upsertCategory(localCategory.copy(syncState = "SYNCED"))
                 }
             }
         }
 
         // 5. Transition successfully uploaded grocery items back to sync_state = SYNCED
         unsyncedGroceryItems.forEach { localGroceryItem ->
-            val stringId = localGroceryItem.id.toString()
             if (localGroceryItem.isDeleted) {
-                if (successIds.contains(stringId)) {
+                if (successIds.contains(localGroceryItem.id)) {
                     groceryDao.hardDeleteItem(localGroceryItem.id)
                 }
             } else {
-                if (successIds.contains(stringId)) {
-                    groceryDao.insertItem(localGroceryItem.copy(syncState = "SYNCED"))
+                if (successIds.contains(localGroceryItem.id)) {
+                    groceryDao.upsertItem(localGroceryItem.copy(syncState = "SYNCED"))
                 }
             }
         }
@@ -306,7 +303,7 @@ object GrocerySyncManager {
                 }
             } else {
                 if (successIds.contains(compositeId)) {
-                    groceryDao.insertStoreInfo(localInfo.copy(syncState = "SYNCED"))
+                    groceryDao.upsertStoreInfo(localInfo.copy(syncState = "SYNCED"))
                 }
             }
         }
@@ -324,7 +321,7 @@ object GrocerySyncManager {
                     }
                 }
                 if (listDto != null) {
-                    groceryDao.insertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    groceryDao.upsertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
@@ -343,7 +340,7 @@ object GrocerySyncManager {
                 }
                 if (memberDto != null) {
                     ensureListExists(groceryDao, memberDto.listId)
-                    groceryDao.insertListMember(memberDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    groceryDao.upsertListMember(memberDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
@@ -362,7 +359,7 @@ object GrocerySyncManager {
                 }
                 if (storeDto != null) {
                     ensureListExists(groceryDao, storeDto.listId)
-                    groceryDao.insertStore(storeDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    groceryDao.upsertStore(storeDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
@@ -381,7 +378,7 @@ object GrocerySyncManager {
                 }
                 if (categoryDto != null) {
                     ensureListExists(groceryDao, categoryDto.listId)
-                    groceryDao.insertCategory(categoryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    groceryDao.upsertCategory(categoryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
@@ -400,7 +397,7 @@ object GrocerySyncManager {
                 }
                 if (groceryDto != null) {
                     ensureListExists(groceryDao, groceryDto.listId)
-                    groceryDao.insertItem(groceryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    groceryDao.upsertItem(groceryDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
@@ -421,7 +418,7 @@ object GrocerySyncManager {
                     }
                 }
                 if (infoDto != null) {
-                    groceryDao.insertStoreInfo(infoDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    groceryDao.upsertStoreInfo(infoDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }

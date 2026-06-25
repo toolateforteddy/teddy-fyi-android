@@ -86,7 +86,7 @@ object TodoSyncManager {
                 }
             } else {
                 if (successIds.contains(localItem.id)) {
-                    todoDao.insertItem(localItem.copy(syncState = "SYNCED"))
+                    todoDao.upsertItem(localItem.copy(syncState = "SYNCED"))
                 }
             }
         }
@@ -99,7 +99,7 @@ object TodoSyncManager {
                 }
             } else {
                 if (successIds.contains(localList.id)) {
-                    todoDao.insertList(localList.copy(syncState = "SYNCED"))
+                    todoDao.upsertList(localList.copy(syncState = "SYNCED"))
                 }
             }
         }
@@ -117,7 +117,7 @@ object TodoSyncManager {
                     }
                 }
                 if (itemDto != null) {
-                    todoDao.insertItem(itemDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    todoDao.upsertItem(itemDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }
@@ -135,7 +135,7 @@ object TodoSyncManager {
                     }
                 }
                 if (listDto != null) {
-                    todoDao.insertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    todoDao.upsertList(listDto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
                 }
             }
         }

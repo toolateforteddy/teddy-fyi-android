@@ -27,7 +27,7 @@ import fyi.teddy.android.grocery.ui.GroceryPhase
 fun GroceryItemRowContainer(
     item: GroceryItem,
     currentPhase: GroceryPhase,
-    shoppingStoreId: Int?,
+    shoppingStoreId: String?,
     itemStoreInfos: List<GroceryItemStoreInfo>,
     stores: List<Store>,
     categories: List<Category>,
@@ -136,7 +136,7 @@ fun GroceryItemRowContainer(
 fun GroceryItemRow(
     item: GroceryItem,
     currentPhase: GroceryPhase,
-    shoppingStoreId: Int?,
+    shoppingStoreId: String?,
     itemStoreInfos: List<GroceryItemStoreInfo>,
     stores: List<Store>,
     isEditMode: Boolean,
@@ -145,7 +145,7 @@ fun GroceryItemRow(
     onTagStores: () -> Unit,
     onEditQuantity: () -> Unit,
     onEditCategory: () -> Unit,
-    onUpdatePrice: (Int, Double) -> Unit,
+    onUpdatePrice: (String, Double) -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {

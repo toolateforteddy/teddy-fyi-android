@@ -30,7 +30,7 @@ import fyi.teddy.android.todo.data.TodoList
         GroceryListMember::class,
         SyncLog::class,
     ], 
-    version = 30,
+    version = 31,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -585,6 +585,121 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Recreate 'stores'
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `stores_new` (
+                        `id` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `isDefaultSupported` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `listId` TEXT, 
+                        `sync_state` TEXT NOT NULL DEFAULT 'PENDING_INSERT', 
+                        `version` INTEGER NOT NULL DEFAULT 1, 
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0, 
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO `stores_new` (`id`, `name`, `position`, `isDefaultSupported`, `userId`, `listId`, `sync_state`, `version`, `is_deleted`)
+                    SELECT CAST(`id` AS TEXT), `name`, `position`, `isDefaultSupported`, `userId`, `listId`, `sync_state`, `version`, `is_deleted` FROM `stores`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `stores`")
+                db.execSQL("ALTER TABLE `stores_new` RENAME TO `stores`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_stores_listId` ON `stores` (`listId`)")
+
+                // 2. Recreate 'categories'
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `categories_new` (
+                        `id` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `listId` TEXT, 
+                        `icon` TEXT, 
+                        `sync_state` TEXT NOT NULL DEFAULT 'PENDING_INSERT', 
+                        `version` INTEGER NOT NULL DEFAULT 1, 
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0, 
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO `categories_new` (`id`, `name`, `position`, `userId`, `listId`, `icon`, `sync_state`, `version`, `is_deleted`)
+                    SELECT CAST(`id` AS TEXT), `name`, `position`, `userId`, `listId`, `icon`, `sync_state`, `version`, `is_deleted` FROM `categories`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `categories`")
+                db.execSQL("ALTER TABLE `categories_new` RENAME TO `categories`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_categories_listId` ON `categories` (`listId`)")
+
+                // 3. Recreate 'grocery_items'
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `grocery_items_new` (
+                        `id` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `quantity` TEXT NOT NULL, 
+                        `isBought` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `position` INTEGER NOT NULL, 
+                        `categoryId` TEXT, 
+                        `timesBought` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `isActive` INTEGER NOT NULL, 
+                        `listId` TEXT, 
+                        `unit` TEXT, 
+                        `notes` TEXT, 
+                        `sync_state` TEXT NOT NULL DEFAULT 'PENDING_INSERT', 
+                        `version` INTEGER NOT NULL DEFAULT 1, 
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0, 
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`listId`) REFERENCES `grocery_lists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO `grocery_items_new` (
+                        `id`, `name`, `quantity`, `isBought`, `createdAt`, `position`, `categoryId`, 
+                        `timesBought`, `userId`, `isActive`, `listId`, `unit`, `notes`, `sync_state`, `version`, `is_deleted`
+                    ) 
+                    SELECT 
+                        CAST(`id` AS TEXT), `name`, `quantity`, `isBought`, `createdAt`, `position`, 
+                        CASE WHEN `categoryId` IS NOT NULL THEN CAST(`categoryId` AS TEXT) ELSE NULL END, 
+                        `timesBought`, `userId`, `isActive`, `listId`, `unit`, `notes`, `sync_state`, `version`, `is_deleted`
+                    FROM `grocery_items`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `grocery_items`")
+                db.execSQL("ALTER TABLE `grocery_items_new` RENAME TO `grocery_items`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_items_listId` ON `grocery_items` (`listId`)")
+
+                // 4. Recreate 'grocery_item_store_info'
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `grocery_item_store_info_new` (
+                        `groceryItemId` TEXT NOT NULL, 
+                        `storeId` TEXT NOT NULL, 
+                        `price` REAL, 
+                        `isAvailable` INTEGER NOT NULL, 
+                        `userId` TEXT, 
+                        `sync_state` TEXT NOT NULL DEFAULT 'PENDING_INSERT', 
+                        `version` INTEGER NOT NULL DEFAULT 1, 
+                        `is_deleted` INTEGER NOT NULL DEFAULT 0, 
+                        PRIMARY KEY(`groceryItemId`, `storeId`),
+                        FOREIGN KEY(`groceryItemId`) REFERENCES `grocery_items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, 
+                        FOREIGN KEY(`storeId`) REFERENCES `stores`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE 
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO `grocery_item_store_info_new` (`groceryItemId`, `storeId`, `price`, `isAvailable`, `userId`, `sync_state`, `version`, `is_deleted`)
+                    SELECT CAST(`groceryItemId` AS TEXT), CAST(`storeId` AS TEXT), `price`, `isAvailable`, `userId`, `sync_state`, `version`, `is_deleted` FROM `grocery_item_store_info`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `grocery_item_store_info`")
+                db.execSQL("ALTER TABLE `grocery_item_store_info_new` RENAME TO `grocery_item_store_info`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_item_store_info_groceryItemId` ON `grocery_item_store_info` (`groceryItemId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_grocery_item_store_info_storeId` ON `grocery_item_store_info` (`storeId`)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
@@ -595,11 +710,12 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
                         MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-                        MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30
+                        MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31
                     )
                     .build()
                     .also { Instance = it }
             }
         }
+
     }
 }

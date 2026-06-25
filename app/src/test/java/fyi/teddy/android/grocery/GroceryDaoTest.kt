@@ -36,7 +36,7 @@ class GroceryDaoTest {
 
     @Test
     fun insertAndGetGroceryItem() = runTest {
-        val item = GroceryItem(name = "Apples", quantity = "5", userId = userId)
+        val item = GroceryItem(id = "1", name = "Apples", quantity = "5", userId = userId)
         groceryDao.insertItem(item)
         
         val allItems = groceryDao.getAllItems(userId).first()
@@ -47,20 +47,20 @@ class GroceryDaoTest {
 
     @Test
     fun insertItemWithCategory() = runTest {
-        val category = Category(id = 10, name = "Produce", userId = userId)
+        val category = Category(id = "10", name = "Produce", userId = userId)
         groceryDao.insertCategory(category)
         
-        val item = GroceryItem(name = "Carrots", categoryId = 10, userId = userId)
+        val item = GroceryItem(name = "Carrots", categoryId = "10", userId = userId)
         groceryDao.insertItem(item)
         
         val allItems = groceryDao.getAllItems(userId).first()
         assertEquals(1, allItems.size)
-        assertEquals(10, allItems[0].categoryId)
+        assertEquals("10", allItems[0].categoryId)
     }
 
     @Test
     fun updateGroceryItem() = runTest {
-        val item = GroceryItem(id = 1, name = "Bananas", isBought = false, userId = userId)
+        val item = GroceryItem(id = "1", name = "Bananas", isBought = false, userId = userId)
         groceryDao.insertItem(item)
         
         val updatedItem = item.copy(isBought = true)
@@ -72,7 +72,7 @@ class GroceryDaoTest {
 
     @Test
     fun deleteGroceryItem() = runTest {
-        val item = GroceryItem(id = 1, name = "Bananas", userId = userId)
+        val item = GroceryItem(id = "1", name = "Bananas", userId = userId)
         groceryDao.insertItem(item)
         groceryDao.deleteItem(item)
         
@@ -160,7 +160,7 @@ class GroceryDaoTest {
 
     @Test
     fun updateCategory() = runTest {
-        val cat = Category(id = 1, name = "Old Name", userId = userId)
+        val cat = Category(id = "1", name = "Old Name", userId = userId)
         groceryDao.insertCategory(cat)
         
         groceryDao.updateCategory(cat.copy(name = "New Name"))
