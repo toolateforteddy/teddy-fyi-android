@@ -5,6 +5,7 @@ import fyi.teddy.android.grocery.data.GroceryDao
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.Store
+import android.util.Log
 import kotlinx.serialization.json.JsonElement
 
 object GrocerySyncManager {
@@ -293,7 +294,7 @@ object GrocerySyncManager {
             try {
                 NetworkClient.syncJson.decodeFromJsonElement(serializer, it)
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
+                Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
                 null
             }
         }
@@ -303,6 +304,7 @@ object GrocerySyncManager {
         if (listId == null) return
         val existing = dao.getListByIdOneShot(listId)
         if (existing == null) {
+            Log.d(TAG, "ensureListExists: Creating placeholder list for $listId - why was it missing from remote changes?")
             dao.upsertList(GroceryList(id = listId, name = "Syncing List...", syncState = "SYNCED", version = 0))
         }
     }
@@ -310,6 +312,7 @@ object GrocerySyncManager {
     private suspend fun ensureItemExists(dao: GroceryDao, itemId: String) {
         val existing = dao.getItemByIdOneShot(itemId)
         if (existing == null) {
+            Log.d(TAG, "ensureItemExists: Creating placeholder item for $itemId - why was it missing from remote changes?")
             dao.upsertItem(GroceryItem(id = itemId, name = "Syncing Item...", syncState = "SYNCED", version = 0))
         }
     }
@@ -317,6 +320,7 @@ object GrocerySyncManager {
     private suspend fun ensureStoreExists(dao: GroceryDao, storeId: String) {
         val existing = dao.getStoreByIdOneShot(storeId)
         if (existing == null) {
+            Log.d(TAG, "ensureStoreExists: Creating placeholder store for $storeId - why was it missing from remote changes?")
             dao.upsertStore(Store(id = storeId, name = "Syncing Store...", syncState = "SYNCED", version = 0))
         }
     }

@@ -11,6 +11,8 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import androidx.core.content.edit
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(
@@ -49,10 +51,11 @@ class SyncWorker(
         }
     }
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = syncMutex.withLock {
         val startTime = System.currentTimeMillis()
+        val workerId = id.toString().take(8)
 
-        Log.d(TAG, "Starting synchronization worker...")
+        Log.d(TAG, "[$workerId] Starting synchronization worker...")
 
         // 1. Load authenticated user session
         val session = NetworkClient.session
@@ -61,7 +64,7 @@ class SyncWorker(
         val idToken = session.idToken
         if (idToken == null) {
             val errorMsg = "No auth token found."
-            Log.w(TAG, "No auth token found, skipping sync.")
+            Log.w(TAG, "[$workerId] No auth token found, skipping sync.")
             recordSyncLog("FAILURE", startTime, errorMsg)
             return Result.failure()
         }
@@ -126,7 +129,7 @@ class SyncWorker(
 
         Log.d(
             TAG,
-            "Sending sync payload. Counts: [todoLists: $todoListChangesSent, todoItems: $todoChangesSent, groceryLists: $groceryListChangesSent, groceryMembers: $groceryListMemberChangesSent, stores: $storeChangesSent, categories: $categoryChangesSent, groceryItems: $groceryChangesSent, storeInfos: $groceryItemStoreInfoChangesSent]"
+            "[$workerId] Sending sync payload. Counts: [todoLists: $todoListChangesSent, todoItems: $todoChangesSent, groceryLists: $groceryListChangesSent, groceryMembers: $groceryListMemberChangesSent, stores: $storeChangesSent, categories: $categoryChangesSent, groceryItems: $groceryChangesSent, storeInfos: $groceryItemStoreInfoChangesSent]"
         )
 
         // 4. Execute the network transaction
@@ -138,7 +141,7 @@ class SyncWorker(
             }
         } catch (e: Exception) {
             val errorMsg = e.localizedMessage ?: e.toString()
-            Log.e(TAG, "Network connection error during sync. Requesting retry.", e)
+            Log.e(TAG, "[$workerId] Network connection error during sync. Requesting retry.", e)
             recordSyncLog(
                 status = "RETRY",
                 startTime = startTime,
@@ -163,7 +166,7 @@ class SyncWorker(
 
             Log.d(
                 TAG,
-                "Sync succeeded. Server time: ${syncResponse.serverTimestamp}. Received: [todoLists: $todoListChangesReceived, todoItems: $todoChangesReceived, groceryLists: $groceryListChangesReceived, groceryMembers: $groceryListMemberChangesReceived, stores: $storeChangesReceived, categories: $categoryChangesReceived, groceryItems: $groceryChangesReceived, storeInfos: $groceryItemStoreInfoChangesReceived]"
+                "[$workerId] Sync succeeded. Server time: ${syncResponse.serverTimestamp}. Received: [todoLists: $todoListChangesReceived, todoItems: $todoChangesReceived, groceryLists: $groceryListChangesReceived, groceryMembers: $groceryListMemberChangesReceived, stores: $storeChangesReceived, categories: $categoryChangesReceived, groceryItems: $groceryChangesReceived, storeInfos: $groceryItemStoreInfoChangesReceived]"
             )
 
             try {
@@ -193,7 +196,7 @@ class SyncWorker(
                         putString("last_synced_at", syncResponse.serverTimestamp)
                     }
                 }
-                Log.d(TAG, "Local database transaction successfully completed.")
+                Log.d(TAG, "[$workerId] Local database transaction successfully completed.")
                 session.save(applicationContext)
                 recordSyncLog(
                     status = "SUCCESS",
@@ -206,7 +209,7 @@ class SyncWorker(
                 return Result.success()
             } catch (e: Exception) {
                 val dbErrorMsg = "DB transaction failed: ${e.localizedMessage ?: e.toString()}"
-                Log.e(TAG, "Database transaction failed during sync response processing.", e)
+                Log.e(TAG, "[$workerId] Database transaction failed during sync response processing.", e)
                 recordSyncLog(
                     status = "RETRY",
                     startTime = startTime,
@@ -220,7 +223,7 @@ class SyncWorker(
             }
         } else if (response.status.value == 401) {
             val unauthMsg = "HTTP 401 Unauthorized token."
-            Log.e(TAG, "Sync failed: $unauthMsg")
+            Log.e(TAG, "[$workerId] Sync failed: $unauthMsg")
             recordSyncLog(
                 status = "FAILURE",
                 startTime = startTime,
@@ -236,7 +239,7 @@ class SyncWorker(
                 response.status.description
             }
             val httpErrorMsg = "HTTP ${response.status.value}: $errorBody"
-            Log.e(TAG, "Sync failed with status code ${response.status.value}. Response: $errorBody")
+            Log.e(TAG, "[$workerId] Sync failed with status code ${response.status.value}. Response: $errorBody")
             recordSyncLog(
                 status = "RETRY",
                 startTime = startTime,
@@ -251,6 +254,7 @@ class SyncWorker(
     companion object {
         private const val TAG = "SyncWorker"
         const val WORK_NAME = "SyncWorker"
+        private val syncMutex = Mutex()
 
         fun enqueue(context: Context) {
             val constraints = Constraints.Builder()
