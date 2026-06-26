@@ -96,12 +96,16 @@ class GroceryRepository(
     }
     
     suspend fun insertStoreInfo(info: GroceryItemStoreInfo) {
-        groceryDao.insertStoreInfo(info)
+        groceryDao.upsertStoreInfo(info.copy(syncState = "PENDING_INSERT"))
         scheduleSync()
     }
 
     suspend fun deleteStoreInfo(info: GroceryItemStoreInfo) {
-        groceryDao.deleteStoreInfo(info)
+        if (info.syncState == "PENDING_INSERT") {
+            groceryDao.deleteStoreInfo(info)
+        } else {
+            groceryDao.upsertStoreInfo(info.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
         scheduleSync()
     }
     
@@ -124,13 +128,13 @@ class GroceryRepository(
     fun getAllLists(userId: String): Flow<List<GroceryList>> = groceryDao.getAllLists(userId)
 
     suspend fun insertList(list: GroceryList) {
-        groceryDao.insertList(list)
+        groceryDao.upsertList(list.copy(syncState = "PENDING_INSERT"))
         scheduleSync()
     }
 
     suspend fun updateList(list: GroceryList) {
         val nextSyncState = if (list.syncState == "SYNCED") "PENDING_UPDATE" else list.syncState
-        groceryDao.updateList(list.copy(syncState = nextSyncState))
+        groceryDao.upsertList(list.copy(syncState = nextSyncState))
         scheduleSync()
     }
 
@@ -138,18 +142,22 @@ class GroceryRepository(
         if (list.syncState == "PENDING_INSERT") {
             groceryDao.deleteList(list)
         } else {
-            groceryDao.updateList(list.copy(syncState = "PENDING_DELETE", isDeleted = true))
+            groceryDao.upsertList(list.copy(syncState = "PENDING_DELETE", isDeleted = true))
         }
         scheduleSync()
     }
 
     suspend fun insertListMember(member: GroceryListMember) {
-        groceryDao.insertListMember(member)
+        groceryDao.upsertListMember(member.copy(syncState = "PENDING_INSERT"))
         scheduleSync()
     }
 
     suspend fun deleteListMember(member: GroceryListMember) {
-        groceryDao.deleteListMember(member)
+        if (member.syncState == "PENDING_INSERT") {
+            groceryDao.deleteListMember(member)
+        } else {
+            groceryDao.upsertListMember(member.copy(syncState = "PENDING_DELETE", isDeleted = true))
+        }
         scheduleSync()
     }
 

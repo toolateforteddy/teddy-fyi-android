@@ -44,7 +44,8 @@ abstract class GroceryDao {
     @Query("""
         SELECT DISTINCT s.* FROM stores s
         LEFT JOIN grocery_list_members m ON s.listId = m.listId
-        WHERE s.userId = :userId OR m.userId = :userId
+        LEFT JOIN grocery_lists l ON s.listId = l.id
+        WHERE s.userId = :userId OR m.userId = :userId OR l.ownerId = :userId
         ORDER BY s.position ASC, s.name ASC
     """)
     abstract fun getAllStores(userId: String): Flow<List<Store>>
@@ -59,16 +60,20 @@ abstract class GroceryDao {
     abstract suspend fun deleteStore(store: Store)
 
     @Query("""
-        SELECT i.* FROM grocery_item_store_info i
+        SELECT DISTINCT i.* FROM grocery_item_store_info i
         JOIN grocery_items g ON i.groceryItemId = g.id
-        WHERE g.userId = :userId
+        LEFT JOIN grocery_list_members m ON g.listId = m.listId
+        LEFT JOIN grocery_lists l ON g.listId = l.id
+        WHERE g.userId = :userId OR m.userId = :userId OR l.ownerId = :userId
     """)
     abstract fun getAllStoreInfo(userId: String): Flow<List<GroceryItemStoreInfo>>
 
     @Query("""
-        SELECT i.* FROM grocery_item_store_info i
+        SELECT DISTINCT i.* FROM grocery_item_store_info i
         JOIN grocery_items g ON i.groceryItemId = g.id
-        WHERE i.groceryItemId = :itemId AND g.userId = :userId
+        LEFT JOIN grocery_list_members m ON g.listId = m.listId
+        LEFT JOIN grocery_lists l ON g.listId = l.id
+        WHERE i.groceryItemId = :itemId AND (g.userId = :userId OR m.userId = :userId OR l.ownerId = :userId)
     """)
     abstract fun getStoreInfoForItem(itemId: String, userId: String): Flow<List<GroceryItemStoreInfo>>
 
@@ -81,7 +86,8 @@ abstract class GroceryDao {
     @Query("""
         SELECT DISTINCT c.* FROM categories c
         LEFT JOIN grocery_list_members m ON c.listId = m.listId
-        WHERE c.userId = :userId OR m.userId = :userId
+        LEFT JOIN grocery_lists l ON c.listId = l.id
+        WHERE c.userId = :userId OR m.userId = :userId OR l.ownerId = :userId
         ORDER BY c.position ASC, c.name ASC
     """)
     abstract fun getAllCategories(userId: String): Flow<List<Category>>

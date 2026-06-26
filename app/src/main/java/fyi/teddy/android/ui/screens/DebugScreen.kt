@@ -6,6 +6,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -162,7 +164,9 @@ fun DebugScreen(
                 .padding(16.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // ROW 1: Authed Hello Check
@@ -358,9 +362,15 @@ fun DebugScreen(
                                         colors = CardDefaults.cardColors(containerColor = Color(0xFF321414)),
                                         border = BorderStroke(1.dp, Color.Red),
                                         shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 200.dp)
                                     ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(12.dp)
+                                                .verticalScroll(rememberScrollState())
+                                        ) {
                                             Text(
                                                 text = "Captured Exception Info:",
                                                 color = Color.Red,
@@ -442,8 +452,15 @@ fun DebugScreen(
                                         fontSize = 12.sp
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    recentLogs.forEach { log ->
-                                        SyncLogItemRow(log = log)
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 300.dp)
+                                            .verticalScroll(rememberScrollState())
+                                    ) {
+                                        recentLogs.forEach { log ->
+                                            SyncLogItemRow(log = log)
+                                        }
                                     }
                                 }
                             }
@@ -498,6 +515,8 @@ fun DebugScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(max = 400.dp)
+                                    .verticalScroll(rememberScrollState())
                                     .padding(top = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {

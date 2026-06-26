@@ -96,7 +96,12 @@ fun GroceryScreen(
     
     val suggestions = remember(state.newItemInput, uniqueNames) {
         if (state.newItemInput.length < 2) emptyList()
-        else uniqueNames.filter { it.contains(state.newItemInput, ignoreCase = true) && !it.equals(state.newItemInput, ignoreCase = true) }
+        else uniqueNames.filter {
+            it.contains(state.newItemInput, ignoreCase = true) && !it.equals(
+                state.newItemInput,
+                ignoreCase = true
+            )
+        }
     }
 
     Scaffold(
@@ -112,7 +117,13 @@ fun GroceryScreen(
         },
         topBar = {
             TopAppBar(
-                title = { Text("Grocery: ${state.currentPhase.displayName}") },
+                title = {
+                    val activeList = lists.find { it.id == state.selectedListId }
+                    val activeListName = activeList?.name ?: "Default List"
+
+                    if (state.isEditMode) Text("Grocery: ${state.currentPhase.displayName}")
+                    else Text("Grocery: ${state.currentPhase.displayName}: $activeListName")
+                        },
                 actions = {
                     if (state.currentPhase == GroceryPhase.NEED) {
                         val syncIconColor = when (state.lastSyncStatus) {
@@ -146,6 +157,11 @@ fun GroceryScreen(
                             )
                         }
                     }
+                    if (state.isEditMode) {
+                        IconButton(onClick = onManageConfig) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    }
                     if (state.currentPhase != GroceryPhase.SHOPPING) {
                         IconButton(onClick = { viewModel.onEvent(GroceryUiEvent.SetEditMode(!state.isEditMode)) }) {
                             Icon(
@@ -155,9 +171,7 @@ fun GroceryScreen(
                             )
                         }
                     }
-                    IconButton(onClick = onManageConfig) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
+
                     if (state.currentPhase == GroceryPhase.SHOPPING) {
                         var showConfirmTripDone by remember { mutableStateOf(false) }
                         IconButton(onClick = { showConfirmTripDone = true }) {
@@ -233,7 +247,7 @@ fun GroceryScreen(
                 val activeList = lists.find { it.id == state.selectedListId }
                 val activeListName = activeList?.name ?: "Default List"
 
-                if (lists.isNotEmpty() || state.isEditMode) {
+                if (state.isEditMode) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -291,8 +305,7 @@ fun GroceryScreen(
                             }
                         }
 
-                        if (state.isEditMode) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = { showJoinListDialog = true }) {
                                     Icon(
                                         Icons.Default.GroupAdd,
@@ -302,7 +315,7 @@ fun GroceryScreen(
                                 }
                                 IconButton(onClick = { showAddListDialog = true }) {
                                     Icon(
-                                        Icons.Default.Create,
+                                        Icons.Default.Add,
                                         contentDescription = "New List",
                                         tint = Color.White
                                     )
@@ -333,7 +346,7 @@ fun GroceryScreen(
                                     }
                                 }
                             }
-                        }
+
                     }
                 }
 
