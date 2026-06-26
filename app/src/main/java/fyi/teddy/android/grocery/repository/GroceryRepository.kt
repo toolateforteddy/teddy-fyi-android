@@ -119,8 +119,8 @@ class GroceryRepository(
         scheduleSync()
     }
 
-    suspend fun markDoneForTrip(userId: String) {
-        groceryDao.markDoneForTrip(userId)
+    suspend fun markDoneForTrip(userId: String, listId: String?) {
+        groceryDao.markDoneForTrip(userId, listId)
         scheduleSync()
     }
 

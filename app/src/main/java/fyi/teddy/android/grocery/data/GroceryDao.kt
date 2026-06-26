@@ -196,12 +196,18 @@ abstract class GroceryDao {
 
     @Query("""
         UPDATE grocery_items 
-        SET isBought = 0, isActive = 0, timesBought = timesBought + 1
+        SET isBought = 0, 
+            isActive = 0, 
+            timesBought = timesBought + 1,
+            sync_state = CASE WHEN sync_state = 'SYNCED' THEN 'PENDING_UPDATE' ELSE sync_state END
         WHERE isBought = 1
         AND isActive = 1
-        AND userId = :userId
+        AND (
+            (listId = :listId AND :listId IS NOT NULL) 
+            OR (listId IS NULL AND :listId IS NULL AND userId = :userId)
+        )
     """)
-    abstract suspend fun markDoneForTrip(userId: String)
+    abstract suspend fun markDoneForTrip(userId: String, listId: String?)
 
     @Query("""
         SELECT DISTINCT l.* FROM grocery_lists l

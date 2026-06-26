@@ -567,8 +567,9 @@ class GroceryViewModel(
     }
 
     fun markDoneForTrip() {
+        val listId = _selectedListId.value
         viewModelScope.launch {
-            repository.markDoneForTrip(userId)
+            repository.markDoneForTrip(userId, listId)
             setShoppingStoreId(null)
         }
     }
