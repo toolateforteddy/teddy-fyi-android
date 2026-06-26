@@ -155,7 +155,6 @@ fun ShoppingPhaseContent(
                         item(span = { GridItemSpan(2) }) {
                             ShoppingCategoryHeader(
                                 categoryName = category.name,
-                                count = "${categoryItems.count { it.isBought }} / ${categoryItems.size}",
                                 isExpanded = isExpanded,
                                 onToggle = { expandedCategories[category.id] = !isExpanded }
                             )
@@ -178,7 +177,6 @@ fun ShoppingPhaseContent(
                     item(span = { GridItemSpan(2) }) {
                         ShoppingCategoryHeader(
                             categoryName = "Uncategorized",
-                            count = "${otherItems.count { it.isBought }} / ${otherItems.size}",
                             isExpanded = isExpanded,
                             onToggle = { expandedCategories[null] = !isExpanded }
                         )
@@ -219,7 +217,6 @@ fun ShoppingPhaseContent(
 @Composable
 fun ShoppingCategoryHeader(
     categoryName: String,
-    count: String,
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
@@ -244,11 +241,6 @@ fun ShoppingCategoryHeader(
                 color = Color.Gray
             )
         }
-        Text(
-            text = count,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.DarkGray
-        )
     }
 }
 
