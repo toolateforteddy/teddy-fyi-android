@@ -11,10 +11,24 @@ data class SyncLog(
     val status: String, // "SUCCESS", "FAILURE", "RETRY"
     val durationMillis: Long,
     val errorMessage: String? = null,
-    val todoChangesSent: Int = 0,
-    val groceryChangesSent: Int = 0,
-    val todoChangesReceived: Int = 0,
-    val groceryChangesReceived: Int = 0
+    
+    val todoListsSent: Int = 0,
+    val todoItemsSent: Int = 0,
+    val groceryListsSent: Int = 0,
+    val groceryMembersSent: Int = 0,
+    val storesSent: Int = 0,
+    val categoriesSent: Int = 0,
+    val groceryItemsSent: Int = 0,
+    val storeInfosSent: Int = 0,
+
+    val todoListsReceived: Int = 0,
+    val todoItemsReceived: Int = 0,
+    val groceryListsReceived: Int = 0,
+    val groceryMembersReceived: Int = 0,
+    val storesReceived: Int = 0,
+    val categoriesReceived: Int = 0,
+    val groceryItemsReceived: Int = 0,
+    val storeInfosReceived: Int = 0
 )
 
 @Dao

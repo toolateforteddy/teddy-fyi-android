@@ -43,7 +43,9 @@ fun DebugScreen(
     val db = remember { AppDatabase.getDatabase(context) }
     
     // Live reactive count of unsynced items + lists
-    val unsyncedCount by db.todoDao().getUnsyncedCountFlow().collectAsState(initial = 0)
+    val unsyncedTodoCount by db.todoDao().getUnsyncedCountFlow().collectAsState(initial = 0)
+    val unsyncedGroceryCount by db.groceryDao().getUnsyncedCountFlow().collectAsState(initial = 0)
+    val unsyncedCount = unsyncedTodoCount + unsyncedGroceryCount
 
     // Table Counts
     val todoItemsCount by db.todoDao().getTodoItemsCountFlow().collectAsState(initial = 0)
@@ -53,6 +55,16 @@ fun DebugScreen(
     val storesCount by db.groceryDao().getStoresCountFlow().collectAsState(initial = 0)
     val categoriesCount by db.groceryDao().getCategoriesCountFlow().collectAsState(initial = 0)
     val storeInfosCount by db.groceryDao().getStoreInfosCountFlow().collectAsState(initial = 0)
+
+    // Unsynced per-table counts
+    val unsyncedTodoItemsCount by db.todoDao().getUnsyncedItemsCountFlow().collectAsState(initial = 0)
+    val unsyncedTodoListsCount by db.todoDao().getUnsyncedListsCountFlow().collectAsState(initial = 0)
+    val unsyncedGroceryItemsCount by db.groceryDao().getUnsyncedItemsCountFlow().collectAsState(initial = 0)
+    val unsyncedGroceryListsCount by db.groceryDao().getUnsyncedListsCountFlow().collectAsState(initial = 0)
+    val unsyncedStoresCount by db.groceryDao().getUnsyncedStoresCountFlow().collectAsState(initial = 0)
+    val unsyncedCategoriesCount by db.groceryDao().getUnsyncedCategoriesCountFlow().collectAsState(initial = 0)
+    val unsyncedStoreInfosCount by db.groceryDao().getUnsyncedStoreInfosCountFlow().collectAsState(initial = 0)
+    val unsyncedMembersCount by db.groceryDao().getUnsyncedMembersCountFlow().collectAsState(initial = 0)
 
     // Authed Hello Check State
     var authedHelloBody by remember { mutableStateOf<String?>(null) }
@@ -97,11 +109,11 @@ fun DebugScreen(
     }
 
     // Determine Sync Worker Status color
-    val tenMinutesMillis = 10 * 60 * 1000L
     val syncColor = when {
-        lastStatus == "ERROR" -> Color.Red
-        (lastStatus == "SUCCESS") && (currentTime - lastSuccessTime <= tenMinutesMillis) -> Color.Green
-        else -> Color.Yellow // successfully synced > 10m ago, or no attempts yet (lastStatus != "ERROR")
+        unsyncedCount > 0 -> Color.Yellow
+        lastStatus == "FAILURE" || lastStatus == "RETRY" -> Color.Red
+        lastStatus == "SUCCESS" -> Color.Green
+        else -> Color.Gray
     }
 
     fun formatTime(timeMillis: Long): String {
@@ -332,7 +344,7 @@ fun DebugScreen(
                                         text = lastStatus ?: "No previous runs",
                                         color = when (lastStatus) {
                                             "SUCCESS" -> Color.Green
-                                            "ERROR" -> Color.Red
+                                            "FAILURE", "RETRY" -> Color.Red
                                             else -> Color.Gray
                                         },
                                         fontSize = 12.sp,
@@ -498,60 +510,67 @@ fun DebugScreen(
                                 )
 
                                 val tables = listOf(
-                                    Triple("Todo Lists", todoListsCount) {
+                                    TableInfo("Todo Lists", todoListsCount, unsyncedTodoListsCount) {
                                         scope.launch {
                                             val list = db.todoDao().getAllListsOneShot()
                                             db.todoDao().insertLists(list.map { it.copy(syncState = "PENDING_INSERT") })
                                             SyncWorker.enqueue(context)
                                         }
                                     },
-                                    Triple("Todo Items", todoItemsCount) {
+                                    TableInfo("Todo Items", todoItemsCount, unsyncedTodoItemsCount) {
                                         scope.launch {
                                             val list = db.todoDao().getAllItemsOneShot()
                                             db.todoDao().insertItems(list.map { it.copy(syncState = "PENDING_INSERT") })
                                             SyncWorker.enqueue(context)
                                         }
                                     },
-                                    Triple("Grocery Lists", groceryListsCount) {
+                                    TableInfo("Grocery Lists", groceryListsCount, unsyncedGroceryListsCount) {
                                         scope.launch {
                                             val list = db.groceryDao().getAllListsOneShot()
                                             list.forEach { db.groceryDao().insertList(it.copy(syncState = "PENDING_INSERT")) }
                                             SyncWorker.enqueue(context)
                                         }
                                     },
-                                    Triple("Grocery Items", groceryItemsCount) {
+                                    TableInfo("Grocery Items", groceryItemsCount, unsyncedGroceryItemsCount) {
                                         scope.launch {
                                             val list = db.groceryDao().getAllItemsOneShot()
                                             list.forEach { db.groceryDao().insertItem(it.copy(syncState = "PENDING_INSERT")) }
                                             SyncWorker.enqueue(context)
                                         }
                                     },
-                                    Triple("Stores", storesCount) {
+                                    TableInfo("Stores", storesCount, unsyncedStoresCount) {
                                         scope.launch {
                                             val list = db.groceryDao().getAllStoresOneShot()
                                             list.forEach { db.groceryDao().insertStore(it.copy(syncState = "PENDING_INSERT")) }
                                             SyncWorker.enqueue(context)
                                         }
                                     },
-                                    Triple("Categories", categoriesCount) {
+                                    TableInfo("Categories", categoriesCount, unsyncedCategoriesCount) {
                                         scope.launch {
                                             val list = db.groceryDao().getAllCategoriesOneShot()
                                             list.forEach { db.groceryDao().insertCategory(it.copy(syncState = "PENDING_INSERT")) }
                                             SyncWorker.enqueue(context)
                                         }
                                     },
-                                    Triple("Store Info (Item Mappings)", storeInfosCount) {
+                                    TableInfo("Store Info", storeInfosCount, unsyncedStoreInfosCount) {
                                         scope.launch {
                                             val list = db.groceryDao().getAllStoreInfosOneShot()
                                             list.forEach { db.groceryDao().insertStoreInfo(it.copy(syncState = "PENDING_INSERT")) }
                                             SyncWorker.enqueue(context)
                                         }
+                                    },
+                                    TableInfo("List Members", 0, unsyncedMembersCount) {
+                                        scope.launch {
+                                            val list = db.groceryDao().getAllListMembersOneShot()
+                                            list.forEach { db.groceryDao().insertListMember(it.copy(syncState = "PENDING_INSERT")) }
+                                            SyncWorker.enqueue(context)
+                                        }
                                     }
                                 )
 
-                                tables.forEach { (name, count, action) ->
+                                tables.forEach { table ->
                                     Button(
-                                        onClick = { action() },
+                                        onClick = { table.action() },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF232135)),
                                         shape = RoundedCornerShape(8.dp),
@@ -562,11 +581,34 @@ fun DebugScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = "$name ($count rows)",
-                                                fontSize = 11.sp,
-                                                color = Color.Cyan
-                                            )
+                                            Column {
+                                                Text(
+                                                    text = table.name,
+                                                    fontSize = 11.sp,
+                                                    color = Color.Cyan
+                                                )
+                                                Text(
+                                                    text = "${table.totalCount} total rows",
+                                                    fontSize = 9.sp,
+                                                    color = Color.Gray
+                                                )
+                                            }
+                                            
+                                            if (table.unsyncedCount > 0) {
+                                                Text(
+                                                    text = "${table.unsyncedCount} PENDING",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.Yellow
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "SYNCED",
+                                                    fontSize = 10.sp,
+                                                    color = Color.Green
+                                                )
+                                            }
+
                                             Text(
                                                 text = "FORCE PUSH",
                                                 fontSize = 10.sp,
@@ -584,6 +626,13 @@ fun DebugScreen(
         }
     }
 }
+
+data class TableInfo(
+    val name: String,
+    val totalCount: Int,
+    val unsyncedCount: Int,
+    val action: () -> Unit
+)
 
 @Composable
 fun SyncLogItemRow(log: SyncLog) {
@@ -616,11 +665,50 @@ fun SyncLogItemRow(log: SyncLog) {
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace
                 )
+                val sentCount = log.todoListsSent + log.todoItemsSent + log.groceryListsSent + 
+                               log.groceryMembersSent + log.storesSent + log.categoriesSent + 
+                               log.groceryItemsSent + log.storeInfosSent
+                val recvCount = log.todoListsReceived + log.todoItemsReceived + log.groceryListsReceived + 
+                               log.groceryMembersReceived + log.storesReceived + log.categoriesReceived + 
+                               log.groceryItemsReceived + log.storeInfosReceived
+                
                 Text(
-                    text = "↑${log.todoChangesSent + log.groceryChangesSent} sent  |  ↓${log.todoChangesReceived + log.groceryChangesReceived} recv",
+                    text = "↑$sentCount sent  |  ↓$recvCount recv",
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
+                
+                // Show granular details if there were changes
+                if (sentCount > 0 || recvCount > 0) {
+                    val details = mutableListOf<String>()
+                    if (log.todoListsSent > 0) details.add("todoLists:↑${log.todoListsSent}")
+                    if (log.todoItemsSent > 0) details.add("todoItems:↑${log.todoItemsSent}")
+                    if (log.groceryListsSent > 0) details.add("groceryLists:↑${log.groceryListsSent}")
+                    if (log.groceryMembersSent > 0) details.add("groceryMembers:↑${log.groceryMembersSent}")
+                    if (log.storesSent > 0) details.add("stores:↑${log.storesSent}")
+                    if (log.categoriesSent > 0) details.add("categories:↑${log.categoriesSent}")
+                    if (log.groceryItemsSent > 0) details.add("groceryItems:↑${log.groceryItemsSent}")
+                    if (log.storeInfosSent > 0) details.add("storeInfos:↑${log.storeInfosSent}")
+
+                    if (log.todoListsReceived > 0) details.add("todoLists:↓${log.todoListsReceived}")
+                    if (log.todoItemsReceived > 0) details.add("todoItems:↓${log.todoItemsReceived}")
+                    if (log.groceryListsReceived > 0) details.add("groceryLists:↓${log.groceryListsReceived}")
+                    if (log.groceryMembersReceived > 0) details.add("groceryMembers:↓${log.groceryMembersReceived}")
+                    if (log.storesReceived > 0) details.add("stores:↓${log.storesReceived}")
+                    if (log.categoriesReceived > 0) details.add("categories:↓${log.categoriesReceived}")
+                    if (log.groceryItemsReceived > 0) details.add("groceryItems:↓${log.groceryItemsReceived}")
+                    if (log.storeInfosReceived > 0) details.add("storeInfos:↓${log.storeInfosReceived}")
+
+                    if (details.isNotEmpty()) {
+                        Text(
+                            text = details.joinToString(", "),
+                            color = Color.DarkGray,
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 10.sp
+                        )
+                    }
+                }
                 if (!log.errorMessage.isNullOrEmpty()) {
                     Text(
                         text = log.errorMessage,

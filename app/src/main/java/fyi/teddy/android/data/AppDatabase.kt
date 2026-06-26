@@ -30,7 +30,7 @@ import fyi.teddy.android.todo.data.TodoList
         GroceryListMember::class,
         SyncLog::class,
     ], 
-    version = 32,
+    version = 33,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -41,6 +41,39 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var Instance: AppDatabase? = null
+
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop and recreate sync_logs because it's easier than many ALTER TABLEs for columns that are NOT NULL but have no default in old versions
+                // Actually SyncLog has defaults in Kotlin, but SQLite needs them too if we use ALTER TABLE.
+                db.execSQL("DROP TABLE IF EXISTS `sync_logs`")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sync_logs` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `timestamp` INTEGER NOT NULL, 
+                        `status` TEXT NOT NULL, 
+                        `durationMillis` INTEGER NOT NULL, 
+                        `errorMessage` TEXT, 
+                        `todoListsSent` INTEGER NOT NULL DEFAULT 0,
+                        `todoItemsSent` INTEGER NOT NULL DEFAULT 0,
+                        `groceryListsSent` INTEGER NOT NULL DEFAULT 0,
+                        `groceryMembersSent` INTEGER NOT NULL DEFAULT 0,
+                        `storesSent` INTEGER NOT NULL DEFAULT 0,
+                        `categoriesSent` INTEGER NOT NULL DEFAULT 0,
+                        `groceryItemsSent` INTEGER NOT NULL DEFAULT 0,
+                        `storeInfosSent` INTEGER NOT NULL DEFAULT 0,
+                        `todoListsReceived` INTEGER NOT NULL DEFAULT 0,
+                        `todoItemsReceived` INTEGER NOT NULL DEFAULT 0,
+                        `groceryListsReceived` INTEGER NOT NULL DEFAULT 0,
+                        `groceryMembersReceived` INTEGER NOT NULL DEFAULT 0,
+                        `storesReceived` INTEGER NOT NULL DEFAULT 0,
+                        `categoriesReceived` INTEGER NOT NULL DEFAULT 0,
+                        `groceryItemsReceived` INTEGER NOT NULL DEFAULT 0,
+                        `storeInfosReceived` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
 
         val MIGRATION_13_14 = object : Migration(13, 14) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -719,7 +752,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
                         MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
                         MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31,
-                        MIGRATION_31_32
+                        MIGRATION_31_32, MIGRATION_32_33
                     )
                     .build()
                     .also { Instance = it }

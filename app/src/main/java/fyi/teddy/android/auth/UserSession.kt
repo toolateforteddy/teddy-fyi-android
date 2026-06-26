@@ -15,6 +15,9 @@ class UserSession {
     var refreshToken by mutableStateOf<String?>(null)
     var clientUuid by mutableStateOf<String?>(null)
 
+    val isLoggedIn: Boolean
+        get() = accessToken != null
+
     suspend fun save(context: Context) {
         val encryptedStore = EncryptedDataStore(context)
         encryptedStore.saveEncrypted("user_id", userId)
@@ -35,6 +38,19 @@ class UserSession {
         accessToken = encryptedStore.getDecrypted("access_token")
         refreshToken = encryptedStore.getDecrypted("refresh_token")
         clientUuid = encryptedStore.getDecrypted("client_uuid")
+
+        // Ensure we always have a client UUID if we are loaded
+        if (clientUuid == null) {
+            val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
+            val legacyId = sharedPrefs.getString("client_id", null)
+            if (legacyId != null) {
+                clientUuid = legacyId
+            } else {
+                clientUuid = java.util.UUID.randomUUID().toString()
+                // Save it back immediately so it's persisted in the encrypted store
+                save(context)
+            }
+        }
     }
 
     suspend fun clear(context: Context) {

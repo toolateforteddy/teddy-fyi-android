@@ -194,11 +194,14 @@ object GrocerySyncManager {
     private suspend fun processSuccessfulStoreInfos(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
         val items = if (isFirstSync) dao.getAllStoreInfosOneShot() else dao.getUnsyncedStoreInfos()
         items.forEach { local ->
-            if (successIds.contains(local.id)) {
+            // Store info uses a composite key (itemId, storeId). 
+            // The server might return the client-side 'id' UUID OR the natural composite 'itemId_storeId'.
+            val compositeId = "${local.groceryItemId}-${local.storeId}"
+            if (successIds.contains(local.id) || successIds.contains(compositeId)) {
                 if (local.isDeleted) dao.hardDeleteStoreInfo(local.groceryItemId, local.storeId)
                 else dao.upsertStoreInfo(local.copy(syncState = "SYNCED"))
             } else {
-                Log.d(TAG, "processSuccessfulStoreInfos: id ${local.id} not found in successIds ($successIds)")
+                Log.d(TAG, "processSuccessfulStoreInfos: id ${local.id} (composite: $compositeId) not found in successIds ($successIds)")
             }
         }
     }

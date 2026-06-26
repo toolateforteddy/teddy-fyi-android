@@ -24,10 +24,22 @@ class SyncWorker(
         status: String,
         startTime: Long,
         errorMessage: String? = null,
-        todoChangesSent: Int = 0,
-        groceryChangesSent: Int = 0,
-        todoChangesReceived: Int = 0,
-        groceryChangesReceived: Int = 0
+        todoListsSent: Int = 0,
+        todoItemsSent: Int = 0,
+        groceryListsSent: Int = 0,
+        groceryMembersSent: Int = 0,
+        storesSent: Int = 0,
+        categoriesSent: Int = 0,
+        groceryItemsSent: Int = 0,
+        storeInfosSent: Int = 0,
+        todoListsReceived: Int = 0,
+        todoItemsReceived: Int = 0,
+        groceryListsReceived: Int = 0,
+        groceryMembersReceived: Int = 0,
+        storesReceived: Int = 0,
+        categoriesReceived: Int = 0,
+        groceryItemsReceived: Int = 0,
+        storeInfosReceived: Int = 0
     ) {
         val durationMillis = System.currentTimeMillis() - startTime
         try {
@@ -37,10 +49,22 @@ class SyncWorker(
                     status = status,
                     durationMillis = durationMillis,
                     errorMessage = errorMessage,
-                    todoChangesSent = todoChangesSent,
-                    groceryChangesSent = groceryChangesSent,
-                    todoChangesReceived = todoChangesReceived,
-                    groceryChangesReceived = groceryChangesReceived
+                    todoListsSent = todoListsSent,
+                    todoItemsSent = todoItemsSent,
+                    groceryListsSent = groceryListsSent,
+                    groceryMembersSent = groceryMembersSent,
+                    storesSent = storesSent,
+                    categoriesSent = categoriesSent,
+                    groceryItemsSent = groceryItemsSent,
+                    storeInfosSent = storeInfosSent,
+                    todoListsReceived = todoListsReceived,
+                    todoItemsReceived = todoItemsReceived,
+                    groceryListsReceived = groceryListsReceived,
+                    groceryMembersReceived = groceryMembersReceived,
+                    storesReceived = storesReceived,
+                    categoriesReceived = categoriesReceived,
+                    groceryItemsReceived = groceryItemsReceived,
+                    storeInfosReceived = storeInfosReceived
                 )
             )
             // Prune logs older than 7 days
@@ -61,36 +85,17 @@ class SyncWorker(
         val session = NetworkClient.session
         session.load(applicationContext)
 
-        val idToken = session.idToken
-        if (idToken == null) {
+        if (!session.isLoggedIn) {
             val errorMsg = "No auth token found."
             Log.w(TAG, "[$workerId] No auth token found, skipping sync.")
             recordSyncLog("FAILURE", startTime, errorMsg)
             return Result.failure()
         }
 
-        // 2. Fetch last synced timestamp and client ID
+        // 2. Fetch last synced timestamp
         val sharedPrefs = applicationContext.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
         val lastSyncedAt = sharedPrefs.getString("last_synced_at", null)
-        
-        // Use the clientUuid from the session as the primary identifier.
-        // This ensures the X-Client-UUID header and the body client_id match.
-        val clientId = session.clientUuid ?: run {
-            // Fallback to shared prefs if session is missing it for some reason, 
-            // though login should have set it.
-            val legacyId = sharedPrefs.getString("client_id", null)
-            if (legacyId != null) {
-                session.clientUuid = legacyId
-                session.save(applicationContext)
-                legacyId
-            } else {
-                val newId = java.util.UUID.randomUUID().toString()
-                session.clientUuid = newId
-                session.save(applicationContext)
-                sharedPrefs.edit { putString("client_id", newId) }
-                newId
-            }
-        }
+        val clientId = session.clientUuid!! // Guaranteed by session.load()
 
         val db = AppDatabase.getDatabase(applicationContext)
 
@@ -134,11 +139,7 @@ class SyncWorker(
 
         // 4. Execute the network transaction
         val response = try {
-            val jsonBody = NetworkClient.syncJson.encodeToString(SyncRequest.serializer(), syncRequest)
-            Log.d(TAG, "[$workerId] Request JSON: $jsonBody")
-
             NetworkClient.client.post("https://api-rust.teddy.fyi/api/sync") {
-                // Remove manual Authorization header; Ktor's Auth plugin will handle it
                 contentType(ContentType.Application.Json)
                 setBody(syncRequest)
             }
@@ -149,17 +150,21 @@ class SyncWorker(
                 status = "RETRY",
                 startTime = startTime,
                 errorMessage = errorMsg,
-                todoChangesSent = todoChangesSent,
-                groceryChangesSent = groceryChangesSent
+                todoListsSent = todoListChangesSent,
+                todoItemsSent = todoChangesSent,
+                groceryListsSent = groceryListChangesSent,
+                groceryMembersSent = groceryListMemberChangesSent,
+                storesSent = storeChangesSent,
+                categoriesSent = categoryChangesSent,
+                groceryItemsSent = groceryChangesSent,
+                storeInfosSent = groceryItemStoreInfoChangesSent
             )
             return Result.retry()
         }
 
         // 5. Handle response and update local database
         if (response.status.isSuccess()) {
-            val responseBodyText = response.bodyAsText()
-            Log.d(TAG, "[$workerId] Response JSON: $responseBodyText")
-            val syncResponse = NetworkClient.syncJson.decodeFromString(SyncResponse.serializer(), responseBodyText)
+            val syncResponse = response.body<SyncResponse>()
 
             Log.d(TAG, "[$workerId] successIds: ${syncResponse.successIds}")
             val todoListChangesReceived = syncResponse.remoteTodoListChanges.size
@@ -208,10 +213,22 @@ class SyncWorker(
                 recordSyncLog(
                     status = "SUCCESS",
                     startTime = startTime,
-                    todoChangesSent = todoChangesSent,
-                    groceryChangesSent = groceryChangesSent,
-                    todoChangesReceived = todoChangesReceived,
-                    groceryChangesReceived = groceryChangesReceived
+                    todoListsSent = todoListChangesSent,
+                    todoItemsSent = todoChangesSent,
+                    groceryListsSent = groceryListChangesSent,
+                    groceryMembersSent = groceryListMemberChangesSent,
+                    storesSent = storeChangesSent,
+                    categoriesSent = categoryChangesSent,
+                    groceryItemsSent = groceryChangesSent,
+                    storeInfosSent = groceryItemStoreInfoChangesSent,
+                    todoListsReceived = todoListChangesReceived,
+                    todoItemsReceived = todoChangesReceived,
+                    groceryListsReceived = groceryListChangesReceived,
+                    groceryMembersReceived = groceryListMemberChangesReceived,
+                    storesReceived = storeChangesReceived,
+                    categoriesReceived = categoryChangesReceived,
+                    groceryItemsReceived = groceryChangesReceived,
+                    storeInfosReceived = groceryItemStoreInfoChangesReceived
                 )
                 return Result.success()
             } catch (e: Exception) {
@@ -221,10 +238,22 @@ class SyncWorker(
                     status = "RETRY",
                     startTime = startTime,
                     errorMessage = dbErrorMsg,
-                    todoChangesSent = todoChangesSent,
-                    groceryChangesSent = groceryChangesSent,
-                    todoChangesReceived = todoChangesReceived,
-                    groceryChangesReceived = groceryChangesReceived
+                    todoListsSent = todoListChangesSent,
+                    todoItemsSent = todoChangesSent,
+                    groceryListsSent = groceryListChangesSent,
+                    groceryMembersSent = groceryListMemberChangesSent,
+                    storesSent = storeChangesSent,
+                    categoriesSent = categoryChangesSent,
+                    groceryItemsSent = groceryChangesSent,
+                    storeInfosSent = groceryItemStoreInfoChangesSent,
+                    todoListsReceived = todoListChangesReceived,
+                    todoItemsReceived = todoChangesReceived,
+                    groceryListsReceived = groceryListChangesReceived,
+                    groceryMembersReceived = groceryListMemberChangesReceived,
+                    storesReceived = storeChangesReceived,
+                    categoriesReceived = categoryChangesReceived,
+                    groceryItemsReceived = groceryChangesReceived,
+                    storeInfosReceived = groceryItemStoreInfoChangesReceived
                 )
                 return Result.retry()
             }
@@ -235,8 +264,14 @@ class SyncWorker(
                 status = "FAILURE",
                 startTime = startTime,
                 errorMessage = unauthMsg,
-                todoChangesSent = todoChangesSent,
-                groceryChangesSent = groceryChangesSent
+                todoListsSent = todoListChangesSent,
+                todoItemsSent = todoChangesSent,
+                groceryListsSent = groceryListChangesSent,
+                groceryMembersSent = groceryListMemberChangesSent,
+                storesSent = storeChangesSent,
+                categoriesSent = categoryChangesSent,
+                groceryItemsSent = groceryChangesSent,
+                storeInfosSent = groceryItemStoreInfoChangesSent
             )
             return Result.failure()
         } else {
@@ -251,8 +286,14 @@ class SyncWorker(
                 status = "RETRY",
                 startTime = startTime,
                 errorMessage = httpErrorMsg,
-                todoChangesSent = todoChangesSent,
-                groceryChangesSent = groceryChangesSent
+                todoListsSent = todoListChangesSent,
+                todoItemsSent = todoChangesSent,
+                groceryListsSent = groceryListChangesSent,
+                groceryMembersSent = groceryListMemberChangesSent,
+                storesSent = storeChangesSent,
+                categoriesSent = categoryChangesSent,
+                groceryItemsSent = groceryChangesSent,
+                storeInfosSent = groceryItemStoreInfoChangesSent
             )
             return Result.retry()
         }

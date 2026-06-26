@@ -87,19 +87,19 @@ class GroceryViewModel(
         .map { log: SyncLog? -> log?.status }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private val _isSyncing = WorkManager.getInstance(application)
-        .getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME)
-        .map { infos ->
-            infos.any { it.state == WorkInfo.State.RUNNING }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    private val _isSyncing = combine(
+        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME),
+        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow("PeriodicSyncWorker")
+    ) { infos1, infos2 ->
+        (infos1 + infos2).any { it.state == WorkInfo.State.RUNNING }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private val _isSyncEnqueued = WorkManager.getInstance(application)
-        .getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME)
-        .map { infos ->
-            infos.any { it.state == WorkInfo.State.ENQUEUED }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    private val _isSyncEnqueued = combine(
+        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME),
+        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow("PeriodicSyncWorker")
+    ) { infos1, infos2 ->
+        (infos1 + infos2).any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
