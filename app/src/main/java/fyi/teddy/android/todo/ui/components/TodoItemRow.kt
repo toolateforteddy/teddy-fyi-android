@@ -374,9 +374,7 @@ fun TodoItemRow(
                                 onIntent(intent)
                             }
                         },
-                        isSubtask = isSubtask,
-                        index = index,
-                        totalItems = totalItems
+                        isSubtask = isSubtask
                     )
                 }
             }

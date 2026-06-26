@@ -46,9 +46,7 @@ fun TodoItemMenu(
     onDismissRequest: () -> Unit,
     onIntent: (TodoItemIntent) -> Unit,
     context: TodoMenuContext = TodoMenuContext.LIST_ROW,
-    isSubtask: Boolean = false,
-    index: Int = 0,
-    totalItems: Int = 1
+    isSubtask: Boolean = false
 ) {
     var activeOverlay by remember { mutableStateOf<ActiveRowOverlay?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -220,6 +218,7 @@ fun TodoItemMenu(
 
     if (activeOverlay == ActiveRowOverlay.AddSubtask) {
         AddSubtaskDialog(
+            parentTaskTitle = item.title,
             onDismiss = {
                 activeOverlay = null
             },

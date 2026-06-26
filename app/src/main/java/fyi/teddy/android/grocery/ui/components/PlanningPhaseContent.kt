@@ -112,7 +112,7 @@ fun PlanningPhaseContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // 2. The "Commonly Bought" Recommendation Tray
         val storeSpecificRecs = remember(state.planningStoreContextId, recommendedItems, storeInfos) {
@@ -133,7 +133,7 @@ fun PlanningPhaseContent(
         }
 
         if (storeSpecificRecs.isNotEmpty()) {
-            val selectedStoreName = stores.find { it.id == state.planningStoreContextId }?.name ?: "Commonly"
+            val selectedStoreName = stores.find { it.id == state.planningStoreContextId }?.name ?: "Common"
             
             Text(
                 text = "$selectedStoreName Recommendations",
@@ -147,7 +147,7 @@ fun PlanningPhaseContent(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(storeSpecificRecs) { rec ->
@@ -159,7 +159,7 @@ fun PlanningPhaseContent(
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // 3. The Main List View

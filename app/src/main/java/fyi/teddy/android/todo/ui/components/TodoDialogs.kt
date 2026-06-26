@@ -255,6 +255,7 @@ fun EditTitleDialog(
 
 @Composable
 fun AddSubtaskDialog(
+    parentTaskTitle: String,
     onDismiss: () -> Unit,
     onAdd: (String) -> Unit,
     onFinish: (String) -> Unit
@@ -268,7 +269,7 @@ fun AddSubtaskDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Subtask") },
+        title = { Text("Add Subtask to '$parentTaskTitle'") },
         text = {
             TextField(
                 value = subtaskTitle,
@@ -381,7 +382,7 @@ fun AddListDialog(
                             modifier = Modifier
                                 .size(32.dp)
                                 .background(
-                                    color = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(colorStr)),
+                                    color = Color(android.graphics.Color.parseColor(colorStr)),
                                     shape = RoundedCornerShape(16.dp)
                                 )
                                 .clickable { selectedColor = colorStr }
@@ -391,7 +392,7 @@ fun AddListDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                                 )
                             }
                         }
@@ -451,7 +452,7 @@ fun EditListDialog(
                             modifier = Modifier
                                 .size(32.dp)
                                 .background(
-                                    color = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(colorStr)),
+                                    color = Color(android.graphics.Color.parseColor(colorStr)),
                                     shape = RoundedCornerShape(16.dp)
                                 )
                                 .clickable { selectedColor = colorStr }
@@ -461,7 +462,7 @@ fun EditListDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                                 )
                             }
                         }
@@ -476,7 +477,7 @@ fun EditListDialog(
             ) {
                 TextButton(
                     onClick = onDelete,
-                    colors = ButtonDefaults.textButtonColors(contentColor = androidx.compose.ui.graphics.Color.Red)
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
                 ) {
                     Text("Delete")
                 }

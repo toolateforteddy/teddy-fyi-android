@@ -396,7 +396,7 @@ fun GroceryScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+//                Spacer(modifier = Modifier.height(8.dp))
 
                 when (state.currentPhase) {
                     GroceryPhase.NEED -> {
