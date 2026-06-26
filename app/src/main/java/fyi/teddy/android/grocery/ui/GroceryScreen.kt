@@ -2,10 +2,8 @@ package fyi.teddy.android.grocery.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.core.*
@@ -30,7 +28,6 @@ import fyi.teddy.android.R
 import fyi.teddy.android.grocery.ui.components.AddListDialog
 import fyi.teddy.android.grocery.ui.components.RenameListDialog
 import fyi.teddy.android.grocery.ui.components.JoinListDialog
-import fyi.teddy.android.grocery.ui.components.GroceryItemRowContainer
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
 import fyi.teddy.android.grocery.ui.components.PlanningPhaseContent
 import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog

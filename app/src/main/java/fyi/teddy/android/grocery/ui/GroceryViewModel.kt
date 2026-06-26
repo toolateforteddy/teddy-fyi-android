@@ -25,6 +25,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.core.content.edit
+import kotlin.time.Duration.Companion.seconds
 
 class GroceryViewModel(
     private val repository: GroceryRepository,
@@ -40,12 +42,12 @@ class GroceryViewModel(
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
     private val _selectedStoreIds = MutableStateFlow(setOf<String>())
     private val _planningStoreContextId = MutableStateFlow<String?>(null)
-    private val _shoppingStoreId = MutableStateFlow<String?>(
+    private val _shoppingStoreId = MutableStateFlow(
         try {
             prefs.getString("last_shopping_store_id", null)
         } catch (_: ClassCastException) {
             // Handle legacy Int values by clearing them
-            prefs.edit().remove("last_shopping_store_id").apply()
+            prefs.edit { remove("last_shopping_store_id") }
             null
         }
     )
@@ -57,12 +59,12 @@ class GroceryViewModel(
     private val _newItemInput = MutableStateFlow("")
     private val _selectedCategoryId = MutableStateFlow<String?>(null)
     private val _recentlyCheckedIds = MutableStateFlow(setOf<String>())
-    private val _selectedListId = MutableStateFlow<String?>(
+    private val _selectedListId = MutableStateFlow(
         try {
             prefs.getString("selected_list_id", null)
         } catch (_: ClassCastException) {
             // Handle legacy Int values by clearing them
-            prefs.edit().remove("selected_list_id").apply()
+            prefs.edit { remove("selected_list_id") }
             null
         }
     )
@@ -288,9 +290,9 @@ class GroceryViewModel(
     fun setShoppingStoreId(storeId: String?) {
         _shoppingStoreId.value = storeId
         if (storeId != null) {
-            prefs.edit().putString("last_shopping_store_id", storeId).apply()
+            prefs.edit { putString("last_shopping_store_id", storeId) }
         } else {
-            prefs.edit().remove("last_shopping_store_id").apply()
+            prefs.edit { remove("last_shopping_store_id") }
         }
     }
 
@@ -331,10 +333,14 @@ class GroceryViewModel(
         _selectedStoreIds,
         _shoppingStoreId
     ) { args ->
+        @Suppress("UNCHECKED_CAST")
         val itemsList = args[0] as List<GroceryItem>
+        @Suppress("UNCHECKED_CAST")
         val infos = args[1] as List<GroceryItemStoreInfo>
+        @Suppress("UNCHECKED_CAST")
         val allStores = args[2] as List<Store>
         val phase = args[3] as GroceryPhase
+        @Suppress("UNCHECKED_CAST")
         val selectedStores = args[4] as Set<String>
         val shoppingStore = args[5] as String?
 
@@ -557,7 +563,7 @@ class GroceryViewModel(
             updateItem(updatedItem)
             
             viewModelScope.launch {
-                delay(2000)
+                delay(2.seconds)
                 _recentlyCheckedIds.update { it - item.id }
             }
         } else {
@@ -642,9 +648,9 @@ class GroceryViewModel(
     fun setSelectedListId(listId: String?) {
         _selectedListId.value = listId
         if (listId != null) {
-            prefs.edit().putString("selected_list_id", listId).apply()
+            prefs.edit { putString("selected_list_id", listId) }
         } else {
-            prefs.edit().remove("selected_list_id").apply()
+            prefs.edit { remove("selected_list_id") }
         }
     }
 
@@ -704,9 +710,7 @@ class GroceryViewModel(
                 // Clear last_synced_at to force a full resync from the server.
                 // This ensures we get the metadata (name, owner) for the new list.
                 application.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-                    .edit()
-                    .remove("last_synced_at")
-                    .apply()
+                    .edit { remove("last_synced_at") }
                 
                 // Trigger sync immediately
                 SyncWorker.enqueue(application)
