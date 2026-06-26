@@ -229,6 +229,7 @@ data class GroceryListMemberDto(
 
 @Serializable
 data class GroceryItemStoreInfoDto(
+    val id: String,
     @SerialName("grocery_item_id") val groceryItemId: String,
     @SerialName("store_id") val storeId: String,
     val price: Double?,
@@ -237,7 +238,6 @@ data class GroceryItemStoreInfoDto(
     @SerialName("sync_state") val syncState: String = "SYNCED",
     val version: Int = 1,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
-    val id: String?, // Ignored
 )
 
 // Helper mapping extensions
@@ -468,6 +468,7 @@ fun GroceryListMemberDto.toEntity(): GroceryListMember {
 
 fun GroceryItemStoreInfo.toDto(): GroceryItemStoreInfoDto {
     return GroceryItemStoreInfoDto(
+        id = id,
         groceryItemId = groceryItemId,
         storeId = storeId,
         price = price,
@@ -475,13 +476,13 @@ fun GroceryItemStoreInfo.toDto(): GroceryItemStoreInfoDto {
         userId = userId,
         syncState = syncState,
         version = version,
-        isDeleted = isDeleted,
-        id = "${groceryItemId}_${storeId}"
+        isDeleted = isDeleted
     )
 }
 
 fun GroceryItemStoreInfoDto.toEntity(): GroceryItemStoreInfo {
     return GroceryItemStoreInfo(
+        id = id,
         groceryItemId = groceryItemId,
         storeId = storeId,
         price = price,

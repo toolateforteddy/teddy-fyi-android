@@ -8,12 +8,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -45,7 +47,12 @@ enum class GroceryPhase {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit) {
+fun GroceryScreen(
+    userId: String, 
+    onBack: () -> Unit, 
+    onManageConfig: () -> Unit,
+    onNavigateToDebug: () -> Unit
+) {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
         factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId),
@@ -108,30 +115,35 @@ fun GroceryScreen(userId: String, onBack: () -> Unit, onManageConfig: () -> Unit
                 title = { Text("Grocery: ${state.currentPhase.displayName}") },
                 actions = {
                     if (state.currentPhase == GroceryPhase.NEED) {
-                        val sharedPrefs = context.getSharedPreferences("sync_metadata", android.content.Context.MODE_PRIVATE)
-                        val lastSyncedAtString = try {
-                            sharedPrefs.getString("last_synced_at", null)
-                        } catch (_: ClassCastException) {
-                            sharedPrefs.edit().remove("last_synced_at").apply()
-                            null
+                        val syncIconColor = when (state.lastSyncStatus) {
+                            "FAILURE", "RETRY" -> Color.Red
+                            else -> if (state.unsyncedCount > 0) Color.Yellow else Color.White
                         }
-                        val isStale = remember(lastSyncedAtString) {
-                            if (lastSyncedAtString == null) true
-                            else {
-                                try {
-                                    val lastSynced = java.time.OffsetDateTime.parse(lastSyncedAtString)
-                                    lastSynced.isBefore(java.time.OffsetDateTime.now().minusDays(1))
-                                } catch (_: Exception) { true }
+                        
+                        val transition = rememberInfiniteTransition(label = "syncRotation")
+                        val rotation by transition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "rotation"
+                        )
+
+                        IconButton(onClick = {
+                            if (state.lastSyncStatus == "FAILURE" || state.lastSyncStatus == "RETRY") {
+                                onNavigateToDebug()
+                            } else {
+                                fyi.teddy.android.network.SyncWorker.enqueue(context)
                             }
-                        }
-                        if (isStale) {
-                            IconButton(onClick = { fyi.teddy.android.network.SyncWorker.enqueue(context) }) {
-                                Icon(
-                                    Icons.Default.Sync,
-                                    contentDescription = "Sync Stale Data",
-                                    tint = Color.Yellow
-                                )
-                            }
+                        }) {
+                            Icon(
+                                Icons.Default.Sync,
+                                contentDescription = "Sync Data",
+                                tint = syncIconColor,
+                                modifier = if (state.isSyncing) Modifier.rotate(rotation) else Modifier
+                            )
                         }
                     }
                     if (state.currentPhase != GroceryPhase.SHOPPING) {

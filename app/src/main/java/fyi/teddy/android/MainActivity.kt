@@ -136,9 +136,9 @@ class MainActivity : ComponentActivity() {
                         GroceryScreen(
                             userId = session.userId ?: "unauthed",
                             onBack = { navController.popBackStack() },
-                        ) {
-                            navController.navigate(Screen.GroceryConfig.route)
-                        }
+                            onManageConfig = { navController.navigate(Screen.GroceryConfig.route) },
+                            onNavigateToDebug = { navController.navigate(Screen.Debug.route) }
+                        )
                     }
                     composable(Screen.GroceryConfig.route) {
                         GroceryConfigScreen(

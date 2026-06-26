@@ -134,6 +134,9 @@ class SyncWorker(
 
         // 4. Execute the network transaction
         val response = try {
+            val jsonBody = NetworkClient.syncJson.encodeToString(SyncRequest.serializer(), syncRequest)
+            Log.d(TAG, "[$workerId] Request JSON: $jsonBody")
+
             NetworkClient.client.post("https://api-rust.teddy.fyi/api/sync") {
                 // Remove manual Authorization header; Ktor's Auth plugin will handle it
                 contentType(ContentType.Application.Json)
@@ -154,7 +157,11 @@ class SyncWorker(
 
         // 5. Handle response and update local database
         if (response.status.isSuccess()) {
-            val syncResponse = response.body<SyncResponse>()
+            val responseBodyText = response.bodyAsText()
+            Log.d(TAG, "[$workerId] Response JSON: $responseBodyText")
+            val syncResponse = NetworkClient.syncJson.decodeFromString(SyncResponse.serializer(), responseBodyText)
+
+            Log.d(TAG, "[$workerId] successIds: ${syncResponse.successIds}")
             val todoListChangesReceived = syncResponse.remoteTodoListChanges.size
             val todoChangesReceived = syncResponse.remoteTodoChanges.size
             val groceryListChangesReceived = syncResponse.remoteGroceryListChanges.size

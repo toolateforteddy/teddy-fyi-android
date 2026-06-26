@@ -156,4 +156,5 @@ class GroceryRepository(
     fun getListMembers(listId: String): Flow<List<GroceryListMember>> = groceryDao.getListMembers(listId)
     fun getItemsForList(listId: String): Flow<List<GroceryItem>> = groceryDao.getItemsForList(listId)
     fun getItemsWithoutList(userId: String): Flow<List<GroceryItem>> = groceryDao.getItemsWithoutList(userId)
+    fun getUnsyncedCountFlow(): Flow<Int> = groceryDao.getUnsyncedCountFlow()
 }

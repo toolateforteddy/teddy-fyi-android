@@ -14,8 +14,12 @@ import fyi.teddy.android.grocery.domain.MoveGroceryItemDownUseCase
 import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
 import fyi.teddy.android.grocery.domain.ai.GroceryCategorizer
 import fyi.teddy.android.grocery.repository.GroceryRepository
+import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.data.SyncLog
 import fyi.teddy.android.network.GroceryNetworkRepository
 import fyi.teddy.android.network.SyncWorker
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -29,6 +33,8 @@ class GroceryViewModel(
 ) : ViewModel() {
 
     private val prefs = application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE)
+    private val db = AppDatabase.getDatabase(application)
+    private val syncLogDao = db.syncLogDao()
 
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
@@ -74,6 +80,27 @@ class GroceryViewModel(
         orphans.isNotEmpty() || storesOrphaned || catsOrphaned
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    private val _unsyncedCount = repository.getUnsyncedCountFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    private val _lastSyncStatus = syncLogDao.getLatestLog()
+        .map { log: SyncLog? -> log?.status }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val _isSyncing = WorkManager.getInstance(application)
+        .getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME)
+        .map { infos ->
+            infos.any { it.state == WorkInfo.State.RUNNING }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val _isSyncEnqueued = WorkManager.getInstance(application)
+        .getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME)
+        .map { infos ->
+            infos.any { it.state == WorkInfo.State.ENQUEUED }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
         _currentPhase,
@@ -93,7 +120,11 @@ class GroceryViewModel(
         _snackbarMessage,
         categorizer.isReady,
         _isCategorizing,
-        _hasDefaultItems
+        _hasDefaultItems,
+        _unsyncedCount,
+        _lastSyncStatus,
+        _isSyncing,
+        _isSyncEnqueued
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         GroceryUiState(
@@ -114,7 +145,11 @@ class GroceryViewModel(
             snackbarMessage = args[14] as GrocerySnackbarMessage?,
             isAiReady = args[15] as Boolean,
             isCategorizing = args[16] as Boolean,
-            hasItemsInDefaultList = args[17] as Boolean
+            hasItemsInDefaultList = args[17] as Boolean,
+            unsyncedCount = args[18] as Int,
+            lastSyncStatus = args[19] as String?,
+            isSyncing = args[20] as Boolean,
+            isSyncEnqueued = args[21] as Boolean
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 

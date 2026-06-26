@@ -90,7 +90,7 @@ object GrocerySyncManager {
         return items.map { item ->
             val op = determineOpType(item.isDeleted, item.syncState)
             GroceryItemStoreInfoChangeDelta(
-                id = "${item.groceryItemId}_${item.storeId}",
+                id = item.id,
                 groceryItemId = item.groceryItemId,
                 storeId = item.storeId,
                 operationType = op,
@@ -131,6 +131,7 @@ object GrocerySyncManager {
     }
 
     private suspend fun processSuccessfulUploads(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
+        Log.d(TAG, "processSuccessfulUploads: successIds count = ${successIds.size}")
         // Order matches dependency hierarchy where possible
         processSuccessfulLists(dao, successIds, isFirstSync)
         processSuccessfulListMembers(dao, successIds, isFirstSync)
@@ -193,10 +194,11 @@ object GrocerySyncManager {
     private suspend fun processSuccessfulStoreInfos(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
         val items = if (isFirstSync) dao.getAllStoreInfosOneShot() else dao.getUnsyncedStoreInfos()
         items.forEach { local ->
-            val compositeId = "${local.groceryItemId}_${local.storeId}"
-            if (successIds.contains(compositeId)) {
+            if (successIds.contains(local.id)) {
                 if (local.isDeleted) dao.hardDeleteStoreInfo(local.groceryItemId, local.storeId)
                 else dao.upsertStoreInfo(local.copy(syncState = "SYNCED"))
+            } else {
+                Log.d(TAG, "processSuccessfulStoreInfos: id ${local.id} not found in successIds ($successIds)")
             }
         }
     }

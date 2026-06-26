@@ -18,5 +18,9 @@ data class GroceryUiState(
     val snackbarMessage: GrocerySnackbarMessage? = null,
     val isAiReady: Boolean = false,
     val isCategorizing: Boolean = false,
-    val hasItemsInDefaultList: Boolean = false
+    val hasItemsInDefaultList: Boolean = false,
+    val unsyncedCount: Int = 0,
+    val lastSyncStatus: String? = null,
+    val isSyncing: Boolean = false,
+    val isSyncEnqueued: Boolean = false
 )

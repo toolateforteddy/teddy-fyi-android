@@ -25,6 +25,9 @@ interface SyncLogDao {
     @Query("SELECT * FROM sync_logs ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentLogs(limit: Int = 50): Flow<List<SyncLog>>
 
+    @Query("SELECT * FROM sync_logs ORDER BY timestamp DESC LIMIT 1")
+    fun getLatestLog(): Flow<SyncLog?>
+
     @Query("DELETE FROM sync_logs WHERE timestamp < :cutoff")
     suspend fun pruneLogs(cutoff: Long)
 

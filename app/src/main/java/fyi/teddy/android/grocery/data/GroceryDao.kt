@@ -357,4 +357,14 @@ abstract class GroceryDao {
 
     @Query("SELECT COUNT(*) FROM grocery_item_store_info")
     abstract fun getStoreInfosCountFlow(): Flow<Int>
+
+    @Query("""
+        SELECT (SELECT COUNT(*) FROM grocery_items WHERE sync_state != 'SYNCED' OR is_deleted = 1) +
+               (SELECT COUNT(*) FROM grocery_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1) +
+               (SELECT COUNT(*) FROM stores WHERE sync_state != 'SYNCED' OR is_deleted = 1) +
+               (SELECT COUNT(*) FROM categories WHERE sync_state != 'SYNCED' OR is_deleted = 1) +
+               (SELECT COUNT(*) FROM grocery_list_members WHERE sync_state != 'SYNCED' OR is_deleted = 1) +
+               (SELECT COUNT(*) FROM grocery_item_store_info WHERE sync_state != 'SYNCED' OR is_deleted = 1)
+    """)
+    abstract fun getUnsyncedCountFlow(): Flow<Int>
 }

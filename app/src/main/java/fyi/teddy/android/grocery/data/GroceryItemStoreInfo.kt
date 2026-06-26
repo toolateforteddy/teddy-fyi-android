@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
+import java.util.UUID
 
 @Entity(
     tableName = "grocery_item_store_info",
@@ -25,6 +26,7 @@ import androidx.room.Index
     indices = [Index("groceryItemId"), Index("storeId")]
 )
 data class GroceryItemStoreInfo(
+    val id: String = UUID.randomUUID().toString(),
     val groceryItemId: String,
     val storeId: String,
     val price: Double? = null,
