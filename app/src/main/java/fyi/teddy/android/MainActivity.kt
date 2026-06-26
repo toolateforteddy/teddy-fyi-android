@@ -14,11 +14,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import fyi.teddy.android.auth.AuthUtils
 import fyi.teddy.android.auth.LoginScreen
-import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.grocery.ui.CategoryManagementScreen
 import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
+import fyi.teddy.android.network.AuthRepository
 import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.network.NetworkClient
 import fyi.teddy.android.todo.ui.TodoScreen
@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                             session.profilePictureUri = result.profilePictureUri?.toString()
                             
                             scope.launch { 
-                                val success = fyi.teddy.android.network.AuthRepository.login(context, session, result.idToken)
+                                val success = AuthRepository.login(context, session, result.idToken)
                                 if (success) {
                                     SyncWorker.enqueueIfNecessary(context)
                                     SyncWorker.schedulePeriodicSync(context)
@@ -118,8 +118,8 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = Screen.Todo.route,
                         arguments = listOf(
-                            androidx.navigation.navArgument("initialMode") {
-                                type = androidx.navigation.NavType.StringType
+                            navArgument("initialMode") {
+                                type = NavType.StringType
                                 nullable = true
                                 defaultValue = null
                             }

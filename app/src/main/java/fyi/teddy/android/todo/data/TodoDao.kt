@@ -49,10 +49,6 @@ abstract class TodoDao {
     @Query("UPDATE todo_items SET lastScheduledDate = scheduledDate, scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0 AND (scheduledDate IS NOT NULL AND scheduledDate < :today)")
     abstract suspend fun resetPlannedItems(userId: String, today: String)
 
-    suspend fun resetPlannedItems(userId: String) {
-        resetPlannedItems(userId, java.time.LocalDate.now().toString())
-    }
-
     @Query("UPDATE todo_items SET userId = :userId WHERE userId IS NULL")
     abstract suspend fun claimUnownedItems(userId: String)
 
