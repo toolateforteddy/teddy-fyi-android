@@ -26,6 +26,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLog
+import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.data.TodoList
+import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.data.Store
+import fyi.teddy.android.grocery.data.Category
+import fyi.teddy.android.grocery.data.GroceryListMember
+import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.delay
@@ -67,6 +75,154 @@ fun DebugScreen(
     val unsyncedCategoriesCount by db.groceryDao().getUnsyncedCategoriesCountFlow().collectAsState(initial = 0)
     val unsyncedStoreInfosCount by db.groceryDao().getUnsyncedStoreInfosCountFlow().collectAsState(initial = 0)
     val unsyncedMembersCount by db.groceryDao().getUnsyncedMembersCountFlow().collectAsState(initial = 0)
+
+    // Detailed Pending Changes
+    val pendingTodoItems by db.todoDao().getUnsyncedItemsFlow().collectAsState(initial = emptyList())
+    val pendingTodoLists by db.todoDao().getUnsyncedListsFlow().collectAsState(initial = emptyList())
+    val pendingGroceryItems by db.groceryDao().getUnsyncedItemsFlow().collectAsState(initial = emptyList())
+    val pendingGroceryLists by db.groceryDao().getUnsyncedListsFlow().collectAsState(initial = emptyList())
+    val pendingStores by db.groceryDao().getUnsyncedStoresFlow().collectAsState(initial = emptyList())
+    val pendingCategories by db.groceryDao().getUnsyncedCategoriesFlow().collectAsState(initial = emptyList())
+    val pendingMembers by db.groceryDao().getUnsyncedListMembersFlow().collectAsState(initial = emptyList())
+    val pendingStoreInfos by db.groceryDao().getUnsyncedStoreInfosFlow().collectAsState(initial = emptyList())
+
+    val allPendingChanges = remember(
+        pendingTodoItems, pendingTodoLists, pendingGroceryItems, pendingGroceryLists,
+        pendingStores, pendingCategories, pendingMembers, pendingStoreInfos
+    ) {
+        val list = mutableListOf<PendingChange>()
+        
+        pendingTodoItems.forEach { item ->
+            list.add(PendingChange(item.id, "Todo Item", item.title, item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.todoDao().hardDeleteItem(item.id)
+                        else db.todoDao().upsertItem(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.todoDao().upsertItem(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingTodoLists.forEach { item ->
+            list.add(PendingChange(item.id, "Todo List", item.name, item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.todoDao().hardDeleteList(item.id)
+                        else db.todoDao().upsertList(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.todoDao().upsertList(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingGroceryItems.forEach { item ->
+            list.add(PendingChange(item.id, "Grocery Item", item.name, item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.groceryDao().hardDeleteItem(item.id)
+                        else db.groceryDao().upsertItem(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.groceryDao().upsertItem(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingGroceryLists.forEach { item ->
+            list.add(PendingChange(item.id, "Grocery List", item.name, item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.groceryDao().hardDeleteList(item.id)
+                        else db.groceryDao().upsertList(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.groceryDao().upsertList(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingStores.forEach { item ->
+            list.add(PendingChange(item.id, "Store", item.name, item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.groceryDao().hardDeleteStore(item.id)
+                        else db.groceryDao().upsertStore(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.groceryDao().upsertStore(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingCategories.forEach { item ->
+            list.add(PendingChange(item.id, "Category", item.name, item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.groceryDao().hardDeleteCategory(item.id)
+                        else db.groceryDao().upsertCategory(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.groceryDao().upsertCategory(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingMembers.forEach { item ->
+            list.add(PendingChange(item.id, "List Member", "User: ${item.userId}", item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.groceryDao().hardDeleteListMember(item.id)
+                        else db.groceryDao().upsertListMember(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.groceryDao().upsertListMember(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        pendingStoreInfos.forEach { item ->
+            list.add(PendingChange("${item.groceryItemId}:${item.storeId}", "Store Info", "Price/Aisle Info", item.syncState, item.isDeleted,
+                onRevert = {
+                    scope.launch {
+                        if (item.syncState == "PENDING_INSERT") db.groceryDao().hardDeleteStoreInfo(item.groceryItemId, item.storeId)
+                        else db.groceryDao().upsertStoreInfo(item.copy(syncState = "SYNCED", isDeleted = false))
+                    }
+                },
+                onForceUpdate = {
+                    scope.launch {
+                        db.groceryDao().upsertStoreInfo(item.copy(syncState = "NEED_UPDATE"))
+                        SyncWorker.enqueue(context)
+                    }
+                }
+            ))
+        }
+        
+        list.sortedByDescending { it.type }
+    }
 
     // Authed Hello Check State
     var authedHelloBody by remember { mutableStateOf<String?>(null) }
@@ -641,6 +797,142 @@ fun DebugScreen(
                         }
                     }
                 }
+
+                // ROW 4: Detailed Pending Changes
+                if (allPendingChanges.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161424)),
+                        border = BorderStroke(1.dp, Color(0xFF3700B3))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PendingActions,
+                                    contentDescription = null,
+                                    tint = Color.Yellow,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "Pending Sync Changes",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 400.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                allPendingChanges.forEach { change ->
+                                    PendingChangeRow(change)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class PendingChange(
+    val id: String,
+    val type: String,
+    val label: String,
+    val syncState: String,
+    val isDeleted: Boolean,
+    val onRevert: () -> Unit,
+    val onForceUpdate: () -> Unit
+)
+
+@Composable
+fun PendingChangeRow(change: PendingChange) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF232135), RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = change.type,
+                    fontSize = 10.sp,
+                    color = Color.Cyan,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.width(8.dp))
+                if (change.isDeleted) {
+                    Text(
+                        text = "DELETED",
+                        fontSize = 9.sp,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                if (change.syncState == "NEED_UPDATE") {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "REFRESHING",
+                        fontSize = 9.sp,
+                        color = Color.Yellow,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Text(
+                text = change.label,
+                color = Color.White,
+                fontSize = 13.sp,
+                maxLines = 1
+            )
+            Text(
+                text = "State: ${change.syncState} | ID: ${change.id.take(8)}...",
+                color = Color.Gray,
+                fontSize = 10.sp
+            )
+        }
+        
+        Row {
+            if (change.syncState != "PENDING_INSERT" && change.syncState != "NEED_UPDATE") {
+                IconButton(onClick = change.onForceUpdate) {
+                    Icon(
+                        imageVector = Icons.Default.CloudDownload,
+                        contentDescription = "Force Update from Server",
+                        tint = Color.Cyan,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            IconButton(onClick = change.onRevert) {
+                Icon(
+                    imageVector = Icons.Default.SettingsBackupRestore,
+                    contentDescription = "Revert",
+                    tint = Color.Red,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

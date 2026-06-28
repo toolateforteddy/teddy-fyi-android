@@ -22,10 +22,9 @@ object TodoSyncManager {
             val operationType = when {
                 item.isDeleted -> OperationType.DELETE
                 item.syncState == "PENDING_INSERT" -> OperationType.INSERT
-                item.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
                 else -> OperationType.UPDATE
             }
-            val data = if (operationType == OperationType.DELETE) null else {
+            val data = if (operationType == OperationType.DELETE || item.syncState == "NEED_UPDATE") null else {
                 NetworkClient.syncJson.encodeToJsonElement(TodoItemDto.serializer(), item.toDto())
             }
             TodoChangeDelta(
@@ -49,10 +48,9 @@ object TodoSyncManager {
             val operationType = when {
                 list.isDeleted -> OperationType.DELETE
                 list.syncState == "PENDING_INSERT" -> OperationType.INSERT
-                list.syncState == "PENDING_UPDATE" -> OperationType.UPDATE
                 else -> OperationType.UPDATE
             }
-            val data = if (operationType == OperationType.DELETE) null else {
+            val data = if (operationType == OperationType.DELETE || list.syncState == "NEED_UPDATE") null else {
                 NetworkClient.syncJson.encodeToJsonElement(TodoListDto.serializer(), list.toDto())
             }
             TodoListChangeDelta(

@@ -386,14 +386,14 @@ class SyncWorker(
             val isFirstSync = sharedPrefs.getString("last_synced_at", null) == null
             
             val hasChanges = if (isFirstSync) true else {
-                db.todoDao().getUnsyncedItems().isNotEmpty() ||
-                db.todoDao().getUnsyncedLists().isNotEmpty() ||
-                db.groceryDao().getUnsyncedItems().isNotEmpty() ||
-                db.groceryDao().getUnsyncedLists().isNotEmpty() ||
-                db.groceryDao().getUnsyncedStores().isNotEmpty() ||
-                db.groceryDao().getUnsyncedCategories().isNotEmpty() ||
-                db.groceryDao().getUnsyncedListMembers().isNotEmpty() ||
-                db.groceryDao().getUnsyncedStoreInfos().isNotEmpty()
+            db.todoDao().getUnsyncedItems().isNotEmpty() ||
+            db.todoDao().getUnsyncedLists().isNotEmpty() ||
+            db.groceryDao().getUnsyncedItems().isNotEmpty() ||
+            db.groceryDao().getUnsyncedLists().isNotEmpty() ||
+            db.groceryDao().getUnsyncedStores().isNotEmpty() ||
+            db.groceryDao().getUnsyncedCategories().isNotEmpty() ||
+            db.groceryDao().getUnsyncedListMembers().isNotEmpty() ||
+            db.groceryDao().getUnsyncedStoreInfos().isNotEmpty()
             }
 
             if (hasChanges) {

@@ -106,8 +106,14 @@ abstract class TodoDao {
     @Query("SELECT * FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedItems(): List<TodoItem>
 
+    @Query("SELECT * FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedItemsFlow(): Flow<List<TodoItem>>
+
     @Query("SELECT * FROM todo_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedLists(): List<TodoList>
+
+    @Query("SELECT * FROM todo_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedListsFlow(): Flow<List<TodoList>>
 
     @Query("SELECT COUNT(*) FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract fun getUnsyncedItemsCountFlow(): Flow<Int>

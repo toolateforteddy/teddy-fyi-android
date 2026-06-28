@@ -123,7 +123,7 @@ class GroceryViewModelTest {
     @Test
     fun `test toggleBought shopping phase checking item starts 2-second in-cart delay`() = runTest {
         val viewModel = GroceryViewModel(repository, userId, application)
-        val item = GroceryItem(id = 99, name = "Milk", isBought = false, userId = userId)
+        val item = GroceryItem(id = "99", name = "Milk", isBought = false, userId = userId)
 
         viewModel.setPhase(GroceryPhase.SHOPPING)
         viewModel.toggleBought(item, isChecked = true)
@@ -144,7 +144,7 @@ class GroceryViewModelTest {
         testScheduler.runCurrent()
 
         // Verify it was removed from recentlyCheckedIds, so it moves to In Cart
-        assertFalse(viewModel.state.value.recentlyCheckedIds.contains(99))
+        assertFalse(viewModel.state.value.recentlyCheckedIds.contains("99"))
     }
 
     @Test
@@ -153,7 +153,35 @@ class GroceryViewModelTest {
         viewModel.markDoneForTrip()
         testScheduler.advanceUntilIdle()
 
-        coVerify(exactly = 1) { repository.markDoneForTrip(userId) }
+        coVerify(exactly = 1) { repository.markDoneForTrip(userId, null) }
+    }
+
+    @Test
+    fun `test deleteItem marks as inactive if bought before`() = runTest {
+        val viewModel = GroceryViewModel(repository, userId, application)
+        val item = GroceryItem(id = "1", name = "Bananas", timesBought = 5, userId = userId)
+
+        viewModel.deleteItem(item)
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            repository.updateItem(withArg {
+                assertFalse(it.isActive)
+            })
+        }
+        coVerify(exactly = 0) { repository.deleteItem(any()) }
+    }
+
+    @Test
+    fun `test deleteItem fully deletes if never bought`() = runTest {
+        val viewModel = GroceryViewModel(repository, userId, application)
+        val item = GroceryItem(id = "1", name = "Bananas", timesBought = 0, userId = userId)
+
+        viewModel.deleteItem(item)
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.deleteItem(item) }
+        coVerify(exactly = 0) { repository.updateItem(any()) }
     }
 
     @Test
@@ -221,8 +249,8 @@ class GroceryViewModelTest {
     @Test
     fun `test MoveItemUp and MoveItemDown use cases`() = runTest {
         val viewModel = GroceryViewModel(repository, userId, application)
-        val item1 = GroceryItem(id = 1, name = "A", position = 0, userId = userId)
-        val item2 = GroceryItem(id = 2, name = "B", position = 1, userId = userId)
+        val item1 = GroceryItem(id = "1", name = "A", position = 0, userId = userId)
+        val item2 = GroceryItem(id = "2", name = "B", position = 1, userId = userId)
         val siblings = listOf(item1, item2)
 
         viewModel.onEvent(GroceryUiEvent.MoveItemUp(item2, siblings))
@@ -309,7 +337,7 @@ class GroceryViewModelTest {
     @Test
     fun `test reactivation of existing item keeps old quantity if not specified`() = runTest {
         val viewModel = GroceryViewModel(repository, userId, application)
-        val existingItem = GroceryItem(id = 10, name = "Fairlife Milk", quantity = "3", isActive = false, userId = userId)
+        val existingItem = GroceryItem(id = "10", name = "Fairlife Milk", quantity = "3", isActive = false, userId = userId)
         
         coEvery { repository.getItemsWithoutList(userId) } returns flowOf(listOf(existingItem))
         
@@ -333,7 +361,7 @@ class GroceryViewModelTest {
     @Test
     fun `test reactivation of existing item overwrites quantity if specified`() = runTest {
         val viewModel = GroceryViewModel(repository, userId, application)
-        val existingItem = GroceryItem(id = 10, name = "Fairlife Milk", quantity = "3", isActive = false, userId = userId)
+        val existingItem = GroceryItem(id = "10", name = "Fairlife Milk", quantity = "3", isActive = false, userId = userId)
         
         coEvery { repository.getItemsWithoutList(userId) } returns flowOf(listOf(existingItem))
         

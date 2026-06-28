@@ -23,7 +23,8 @@ object GrocerySyncManager {
                 id = item.id,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(GroceryItemDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                       else NetworkClient.syncJson.encodeToJsonElement(GroceryItemDto.serializer(), item.toDto())
             )
         }
     }
@@ -37,7 +38,8 @@ object GrocerySyncManager {
                 id = item.id,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(GroceryListDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                       else NetworkClient.syncJson.encodeToJsonElement(GroceryListDto.serializer(), item.toDto())
             )
         }
     }
@@ -51,7 +53,8 @@ object GrocerySyncManager {
                 id = item.id,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(GroceryListMemberDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                       else NetworkClient.syncJson.encodeToJsonElement(GroceryListMemberDto.serializer(), item.toDto())
             )
         }
     }
@@ -65,7 +68,8 @@ object GrocerySyncManager {
                 id = item.id,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(StoreDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                       else NetworkClient.syncJson.encodeToJsonElement(StoreDto.serializer(), item.toDto())
             )
         }
     }
@@ -79,7 +83,8 @@ object GrocerySyncManager {
                 id = item.id,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(CategoryDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                       else NetworkClient.syncJson.encodeToJsonElement(CategoryDto.serializer(), item.toDto())
             )
         }
     }
@@ -95,7 +100,8 @@ object GrocerySyncManager {
                 storeId = item.storeId,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(GroceryItemStoreInfoDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                       else NetworkClient.syncJson.encodeToJsonElement(GroceryItemStoreInfoDto.serializer(), item.toDto())
             )
         }
     }

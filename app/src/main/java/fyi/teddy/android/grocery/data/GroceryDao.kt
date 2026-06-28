@@ -253,14 +253,26 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedItems(): List<GroceryItem>
 
+    @Query("SELECT * FROM grocery_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedItemsFlow(): Flow<List<GroceryItem>>
+
     @Query("SELECT * FROM grocery_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedLists(): List<GroceryList>
+
+    @Query("SELECT * FROM grocery_lists WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedListsFlow(): Flow<List<GroceryList>>
 
     @Query("SELECT * FROM stores WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedStores(): List<Store>
 
+    @Query("SELECT * FROM stores WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedStoresFlow(): Flow<List<Store>>
+
     @Query("SELECT * FROM categories WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedCategories(): List<Category>
+
+    @Query("SELECT * FROM categories WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedCategoriesFlow(): Flow<List<Category>>
 
     @Query("DELETE FROM grocery_items WHERE id = :id")
     abstract suspend fun hardDeleteItem(id: String)
@@ -301,8 +313,14 @@ abstract class GroceryDao {
     @Query("SELECT * FROM grocery_list_members WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedListMembers(): List<GroceryListMember>
 
+    @Query("SELECT * FROM grocery_list_members WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedListMembersFlow(): Flow<List<GroceryListMember>>
+
     @Query("SELECT * FROM grocery_item_store_info WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedStoreInfos(): List<GroceryItemStoreInfo>
+
+    @Query("SELECT * FROM grocery_item_store_info WHERE sync_state != 'SYNCED' OR is_deleted = 1")
+    abstract fun getUnsyncedStoreInfosFlow(): Flow<List<GroceryItemStoreInfo>>
 
     @Query("SELECT COUNT(*) FROM grocery_lists WHERE (ownerId = :userId OR ownerId IS NULL) AND is_deleted = 0")
     abstract suspend fun getGroceryListsCountOneShot(userId: String): Int
@@ -340,6 +358,8 @@ abstract class GroceryDao {
             val defaultListId = if (defaultList == null) {
                 val newList = GroceryList(name = "My List", ownerId = userId)
                 insertList(newList)
+                // Grant ourselves access as ADMIN
+                insertListMember(GroceryListMember(listId = newList.id, userId = userId, role = "ADMIN"))
                 newList.id
             } else {
                 defaultList.id

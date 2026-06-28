@@ -146,11 +146,16 @@ class TodoViewModel(
                 // For scheduled, we keep them flat or grouped by date later in UI
                 allParents.map { it to (allChildren[it.id] ?: emptyList()) }
             } else {
+                // TODAY mode: filter to show only parents relevant for today,
+                // and only their subtasks that are also relevant for today.
                 allParents.filter { parent ->
-                    parent.scheduledDate == (if (mode == TodoMode.TODAY) todayString else parent.scheduledDate) || 
-                            allChildren[parent.id]?.any { it.scheduledDate == (if (mode == TodoMode.TODAY) todayString else it.scheduledDate) } == true
+                    parent.scheduledDate == todayString || 
+                            allChildren[parent.id]?.any { it.scheduledDate == todayString } == true
                 }.map { parent ->
-                    parent to (allChildren[parent.id] ?: emptyList())
+                    val childrenForToday = allChildren[parent.id]?.filter { child ->
+                        child.scheduledDate == todayString || (parent.scheduledDate == todayString && child.scheduledDate == null)
+                    } ?: emptyList()
+                    parent to childrenForToday
                 }
             }
             result

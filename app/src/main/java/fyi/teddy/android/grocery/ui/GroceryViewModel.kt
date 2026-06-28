@@ -543,7 +543,16 @@ class GroceryViewModel(
     }
 
     fun deleteItem(item: GroceryItem) {
-        viewModelScope.launch { repository.deleteItem(item) }
+        viewModelScope.launch {
+            if (item.timesBought > 0) {
+                // If it has been bought before, just deactivate it instead of deleting.
+                // This keeps it in the database for history/recommendations.
+                repository.updateItem(item.copy(isActive = false))
+            } else {
+                // Never bought, safe to delete.
+                repository.deleteItem(item)
+            }
+        }
     }
 
     fun updateStoreInfo(info: GroceryItemStoreInfo) {
@@ -663,6 +672,14 @@ class GroceryViewModel(
                     ownerId = userId
                 )
                 repository.insertList(newList)
+                // Grant ourselves access as ADMIN
+                repository.insertListMember(
+                    GroceryListMember(
+                        listId = newList.id,
+                        userId = userId,
+                        role = "ADMIN"
+                    )
+                )
                 setSelectedListId(newList.id)
             }
         }
