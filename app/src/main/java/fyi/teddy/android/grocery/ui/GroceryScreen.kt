@@ -33,7 +33,9 @@ import fyi.teddy.android.grocery.ui.components.PlanningPhaseContent
 import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog
 import fyi.teddy.android.grocery.ui.components.ShareListDialog
 import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
+import kotlinx.coroutines.delay
 import java.util.*
+import kotlin.time.Duration.Companion.minutes
 
 enum class GroceryPhase {
     NEED, PLANNING, SHOPPING;
@@ -76,6 +78,18 @@ fun GroceryScreen(
     
     val lists by viewModel.lists.collectAsState()
     
+    // Periodic sync every 5 minutes while Shopping tab is open
+    LaunchedEffect(state.currentPhase) {
+        if (state.currentPhase == GroceryPhase.SHOPPING) {
+            // Immediate sync when entering Shopping phase
+            fyi.teddy.android.network.SyncWorker.enqueue(context)
+            while (true) {
+                delay(5.minutes)
+                fyi.teddy.android.network.SyncWorker.enqueue(context)
+            }
+        }
+    }
+
     val sheetState = rememberModalBottomSheetState()
     var showAddItemSheet by remember { mutableStateOf(false) }
     
@@ -122,7 +136,7 @@ fun GroceryScreen(
                     else Text("Grocery: ${state.currentPhase.displayName}: $activeListName")
                         },
                 actions = {
-                    if (state.currentPhase == GroceryPhase.NEED) {
+                    if (state.currentPhase == GroceryPhase.NEED || state.currentPhase == GroceryPhase.SHOPPING) {
                         val syncIconColor = when (state.lastSyncStatus) {
                             "FAILURE", "RETRY" -> Color.Red
                             else -> if (state.unsyncedCount > 0) Color.Yellow else Color.White

@@ -347,13 +347,17 @@ class SyncWorker(
          * Subsequent calls will replace the existing work, effectively pushing back the timer.
          */
         fun enqueueDebounced(context: Context) {
+            enqueueDelayed(context, 30)
+        }
+
+        fun enqueueDelayed(context: Context, delaySeconds: Long) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
             val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(constraints)
-                .setInitialDelay(30, TimeUnit.SECONDS)
+                .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
                     WorkRequest.MIN_BACKOFF_MILLIS,

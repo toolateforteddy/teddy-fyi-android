@@ -7,6 +7,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,6 +41,20 @@ class MainActivity : ComponentActivity() {
                 val session = NetworkClient.session
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
+                val lifecycleOwner = LocalLifecycleOwner.current
+
+                // Global Sync on Resume
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            SyncWorker.enqueue(context)
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
 
                 LaunchedEffect(Unit) {
                     session.load(context)
