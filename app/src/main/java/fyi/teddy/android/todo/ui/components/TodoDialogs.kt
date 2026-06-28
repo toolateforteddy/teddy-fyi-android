@@ -540,3 +540,67 @@ fun PriorityDialog(
         }
     )
 }
+
+@Composable
+fun SpacePickerDialog(
+    allLists: List<fyi.teddy.android.todo.data.TodoList>,
+    currentListId: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (String?) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move to Space") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // "None" or "All" option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onConfirm(null) }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = currentListId == null,
+                        onClick = { onConfirm(null) }
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("No Space (All)", style = MaterialTheme.typography.bodyLarge)
+                }
+
+                allLists.forEach { list ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onConfirm(list.id) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentListId == list.id,
+                            onClick = { onConfirm(list.id) }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(
+                                    color = Color(android.graphics.Color.parseColor(list.colorHex)),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(list.name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}

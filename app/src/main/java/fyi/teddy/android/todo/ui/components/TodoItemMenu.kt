@@ -35,6 +35,7 @@ sealed interface ActiveRowOverlay {
     object DueDatePicker : ActiveRowOverlay
     object ScheduleDatePicker : ActiveRowOverlay
     object IconPicker : ActiveRowOverlay
+    object SpacePicker : ActiveRowOverlay
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,7 @@ sealed interface ActiveRowOverlay {
 fun TodoItemMenu(
     item: TodoItem,
     subtasks: List<TodoItem> = emptyList(),
+    allLists: List<fyi.teddy.android.todo.data.TodoList> = emptyList(),
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     onIntent: (TodoItemIntent) -> Unit,
@@ -96,6 +98,18 @@ fun TodoItemMenu(
     }
 
     // Overlays / Dialogs
+    if (activeOverlay == ActiveRowOverlay.SpacePicker) {
+        SpacePickerDialog(
+            allLists = allLists,
+            currentListId = item.listId,
+            onDismiss = { activeOverlay = null },
+            onConfirm = { listId ->
+                onIntent(TodoItemIntent.Update(item.copy(listId = listId)))
+                activeOverlay = null
+                onDismissRequest()
+            }
+        )
+    }
     if (activeOverlay == ActiveRowOverlay.DueDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = item.dueDate ?: System.currentTimeMillis()
@@ -421,6 +435,15 @@ fun ListRowMenuContent(
                     label = "Priority",
                     onClick = { onShowOverlay(ActiveRowOverlay.Priority) }
                 )
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                ActionGridItem(
+                    icon = Icons.Default.Category,
+                    label = "Space",
+                    onClick = { onShowOverlay(ActiveRowOverlay.SpacePicker) }
+                )
+                // Placeholder to keep alignment if needed, or another action
+                Box(modifier = Modifier.width(140.dp))
             }
         }
 

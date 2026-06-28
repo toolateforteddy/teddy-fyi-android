@@ -20,14 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fyi.teddy.android.R
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.utils.getIconByName
 import kotlinx.coroutines.delay
 import java.time.LocalDate
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed interface TodoItemIntent {
     data class Delete(val item: TodoItem) : TodoItemIntent
@@ -47,6 +46,7 @@ fun TodoItemRow(
     item: TodoItem,
     isSubtask: Boolean = false,
     subtasks: List<TodoItem> = emptyList(),
+    allLists: List<fyi.teddy.android.todo.data.TodoList> = emptyList(),
     subtaskCount: Int = 0,
     completedSubtaskCount: Int = 0,
     isExpanded: Boolean = false,
@@ -76,7 +76,7 @@ fun TodoItemRow(
 
     LaunchedEffect(dismissState.targetValue) {
         if (dismissState.targetValue != DismissValue.Default) {
-            delay(1000)
+            delay(1000.milliseconds)
             if (dismissState.targetValue != DismissValue.Default) {
                 isConfirmed = true
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -366,6 +366,7 @@ fun TodoItemRow(
                     TodoItemMenu(
                         item = item,
                         subtasks = subtasks,
+                        allLists = allLists,
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
                         context = TodoMenuContext.LIST_ROW,

@@ -419,6 +419,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                         TodoItemRow(
                                             item = parent,
                                             subtasks = children,
+                                            allLists = allLists,
                                             subtaskCount = children.size,
                                             completedSubtaskCount = children.count { it.isCompleted },
                                             isExpanded = isExpanded,
@@ -459,6 +460,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 TodoItemRow(
                                                     item = child,
                                                     isSubtask = true,
+                                                    allLists = allLists,
                                                     isEditing = isEditMode,
                                                     isPlanningMode = currentMode == TodoMode.PLANNING,
                                                     planningDate = selectedPlanningDate,
@@ -507,6 +509,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                         TodoItemRow(
                                             item = parent,
                                             subtasks = children,
+                                            allLists = allLists,
                                             subtaskCount = children.size,
                                             completedSubtaskCount = children.count { it.isCompleted },
                                             isExpanded = isExpanded,
@@ -553,6 +556,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             TodoItemRow(
                                                 item = child,
                                                 isSubtask = true,
+                                                allLists = allLists,
                                                 isEditing = isEditMode,
                                                 isPlanningMode = currentMode == TodoMode.PLANNING,
                                                 planningDate = selectedPlanningDate,
