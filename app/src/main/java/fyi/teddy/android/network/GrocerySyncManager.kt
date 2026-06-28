@@ -2,9 +2,6 @@ package fyi.teddy.android.network
 
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.GroceryDao
-import fyi.teddy.android.grocery.data.GroceryList
-import fyi.teddy.android.grocery.data.GroceryItem
-import fyi.teddy.android.grocery.data.Store
 import android.util.Log
 import kotlinx.serialization.json.JsonElement
 

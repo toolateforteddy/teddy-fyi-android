@@ -2,7 +2,6 @@ package fyi.teddy.android.network
 
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.todo.data.TodoDao
-import fyi.teddy.android.todo.data.TodoList
 import android.util.Log
 import kotlinx.serialization.json.JsonElement
 
