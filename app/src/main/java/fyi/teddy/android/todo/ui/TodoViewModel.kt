@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.time.Duration.Companion.milliseconds
 
 class TodoViewModel(
     application: Application,
@@ -205,7 +206,7 @@ class TodoViewModel(
             _recentlyCompletedIds.update { it + item.id }
             viewModelScope.launch {
                 _confettiTrigger.emit(Unit)
-                delay(2000)
+                delay(2000.milliseconds)
                 _recentlyCompletedIds.update { it - item.id }
                 
                 if (item.recurrenceRule != null) {

@@ -27,20 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLog
-import fyi.teddy.android.todo.data.TodoItem
-import fyi.teddy.android.todo.data.TodoList
-import fyi.teddy.android.grocery.data.GroceryItem
-import fyi.teddy.android.grocery.data.GroceryList
-import fyi.teddy.android.grocery.data.Store
-import fyi.teddy.android.grocery.data.Category
-import fyi.teddy.android.grocery.data.GroceryListMember
-import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,7 +256,7 @@ fun DebugScreen(
         while (true) {
             reloadSyncMetadata()
             currentTime = System.currentTimeMillis()
-            delay(1000) // Poll/Tick every 1 second to keep UI/timers fresh
+            delay(1000.milliseconds) // Poll/Tick every 1 second to keep UI/timers fresh
         }
     }
 
