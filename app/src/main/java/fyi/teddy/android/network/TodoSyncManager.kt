@@ -138,9 +138,12 @@ object TodoSyncManager {
                 remoteItemsDeleted++
             } else {
                 decodeDto(changeDelta.data, TodoItemDto.serializer())?.let { dto ->
-                    ensureListExists(todoDao, dto.listId)
-                    todoDao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
-                    remoteItemsUpserted++
+                    if (listExists(todoDao, dto.listId)) {
+                        todoDao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                        remoteItemsUpserted++
+                    } else {
+                        Log.e(TAG, "INCONSISTENCY: Ignoring TodoItem ${changeDelta.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                    }
                 }
             }
         }
@@ -158,19 +161,8 @@ object TodoSyncManager {
         }
     }
 
-    private suspend fun ensureListExists(dao: TodoDao, listId: String?) {
-        if (listId == null) return
-        val existing = dao.getListByIdOneShot(listId)
-        if (existing == null) {
-            Log.d(TAG, "ensureListExists: Creating placeholder list for $listId")
-            dao.upsertList(
-                TodoList(
-                    id = listId,
-                    name = "Syncing List...",
-                    syncState = "SYNCED",
-                    version = 0
-                )
-            )
-        }
+    private suspend fun listExists(dao: TodoDao, listId: String?): Boolean {
+        if (listId == null) return true
+        return dao.getListByIdOneShot(listId) != null
     }
 }

@@ -247,9 +247,12 @@ object GrocerySyncManager {
                 membersDeleted++
             } else {
                 decodeDto(change.data, GroceryListMemberDto.serializer())?.let { dto ->
-                    ensureListExists(dao, dto.listId)
-                    dao.upsertListMember(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                    membersUpserted++
+                    if (listExists(dao, dto.listId)) {
+                        dao.upsertListMember(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                        membersUpserted++
+                    } else {
+                        Log.e(TAG, "INCONSISTENCY: Ignoring GroceryMember ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                    }
                 }
             }
         }
@@ -263,9 +266,12 @@ object GrocerySyncManager {
                 storesDeleted++
             } else {
                 decodeDto(change.data, StoreDto.serializer())?.let { dto ->
-                    ensureListExists(dao, dto.listId)
-                    dao.upsertStore(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                    storesUpserted++
+                    if (listExists(dao, dto.listId)) {
+                        dao.upsertStore(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                        storesUpserted++
+                    } else {
+                        Log.e(TAG, "INCONSISTENCY: Ignoring Store ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                    }
                 }
             }
         }
@@ -279,9 +285,12 @@ object GrocerySyncManager {
                 categoriesDeleted++
             } else {
                 decodeDto(change.data, CategoryDto.serializer())?.let { dto ->
-                    ensureListExists(dao, dto.listId)
-                    dao.upsertCategory(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                    categoriesUpserted++
+                    if (listExists(dao, dto.listId)) {
+                        dao.upsertCategory(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                        categoriesUpserted++
+                    } else {
+                        Log.e(TAG, "INCONSISTENCY: Ignoring Category ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                    }
                 }
             }
         }
@@ -295,9 +304,12 @@ object GrocerySyncManager {
                 itemsDeleted++
             } else {
                 decodeDto(change.data, GroceryItemDto.serializer())?.let { dto ->
-                    ensureListExists(dao, dto.listId)
-                    dao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                    itemsUpserted++
+                    if (listExists(dao, dto.listId)) {
+                        dao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                        itemsUpserted++
+                    } else {
+                        Log.e(TAG, "INCONSISTENCY: Ignoring GroceryItem ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                    }
                 }
             }
         }
@@ -311,10 +323,12 @@ object GrocerySyncManager {
                 storeInfosDeleted++
             } else {
                 decodeDto(change.data, GroceryItemStoreInfoDto.serializer())?.let { dto ->
-                    ensureItemExists(dao, change.groceryItemId)
-                    ensureStoreExists(dao, change.storeId)
-                    dao.upsertStoreInfo(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                    storeInfosUpserted++
+                    if (itemExists(dao, change.groceryItemId) && storeExists(dao, change.storeId)) {
+                        dao.upsertStoreInfo(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                        storeInfosUpserted++
+                    } else {
+                        Log.e(TAG, "INCONSISTENCY: Ignoring StoreInfo because dependencies are missing. ItemId: ${change.groceryItemId}, StoreId: ${change.storeId}. Item: $dto")
+                    }
                 }
             }
         }
@@ -342,28 +356,16 @@ object GrocerySyncManager {
         }
     }
 
-    private suspend fun ensureListExists(dao: GroceryDao, listId: String?) {
-        if (listId == null) return
-        val existing = dao.getListByIdOneShot(listId)
-        if (existing == null) {
-            Log.d(TAG, "ensureListExists: Creating placeholder list for $listId - why was it missing from remote changes?")
-            dao.upsertList(GroceryList(id = listId, name = "Syncing List...", syncState = "SYNCED", version = 0))
-        }
+    private suspend fun listExists(dao: GroceryDao, listId: String?): Boolean {
+        if (listId == null) return true
+        return dao.getListByIdOneShot(listId) != null
     }
 
-    private suspend fun ensureItemExists(dao: GroceryDao, itemId: String) {
-        val existing = dao.getItemByIdOneShot(itemId)
-        if (existing == null) {
-            Log.d(TAG, "ensureItemExists: Creating placeholder item for $itemId - why was it missing from remote changes?")
-            dao.upsertItem(GroceryItem(id = itemId, name = "Syncing Item...", syncState = "SYNCED", version = 0))
-        }
+    private suspend fun itemExists(dao: GroceryDao, itemId: String): Boolean {
+        return dao.getItemByIdOneShot(itemId) != null
     }
 
-    private suspend fun ensureStoreExists(dao: GroceryDao, storeId: String) {
-        val existing = dao.getStoreByIdOneShot(storeId)
-        if (existing == null) {
-            Log.d(TAG, "ensureStoreExists: Creating placeholder store for $storeId - why was it missing from remote changes?")
-            dao.upsertStore(Store(id = storeId, name = "Syncing Store...", syncState = "SYNCED", version = 0))
-        }
+    private suspend fun storeExists(dao: GroceryDao, storeId: String): Boolean {
+        return dao.getStoreByIdOneShot(storeId) != null
     }
 }
