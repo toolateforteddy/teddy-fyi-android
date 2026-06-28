@@ -42,6 +42,9 @@ interface SyncLogDao {
     @Query("SELECT * FROM sync_logs ORDER BY timestamp DESC LIMIT 1")
     fun getLatestLog(): Flow<SyncLog?>
 
+    @Query("SELECT timestamp FROM sync_logs WHERE status = 'SUCCESS' ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLastSuccessTimestamp(): Long?
+
     @Query("DELETE FROM sync_logs WHERE timestamp < :cutoff")
     suspend fun pruneLogs(cutoff: Long)
 

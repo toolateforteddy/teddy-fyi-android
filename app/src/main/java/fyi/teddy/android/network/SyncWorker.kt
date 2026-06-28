@@ -1,6 +1,7 @@
 package fyi.teddy.android.network
 
 import android.content.Context
+import android.net.ConnectivityManager
 import android.util.Log
 import androidx.room.withTransaction
 import androidx.work.*
@@ -80,6 +81,22 @@ class SyncWorker(
         val workerId = id.toString().take(8)
 
         Log.d(TAG, "[$workerId] Starting synchronization worker...")
+
+        // 0. Check network constraints for periodic sync
+        val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val isMetered = cm.isActiveNetworkMetered
+        val isPeriodic = tags.contains("PERIODIC_SYNC")
+
+        if (isPeriodic && isMetered) {
+            val db = AppDatabase.getDatabase(applicationContext)
+            val lastSuccess = db.syncLogDao().getLastSuccessTimestamp() ?: 0L
+            val hoursSinceLastSync = (System.currentTimeMillis() - lastSuccess) / (1000 * 60 * 60)
+            if (hoursSinceLastSync < 24) {
+                Log.d(TAG, "[$workerId] Skipping periodic sync: Metered network and last success was $hoursSinceLastSync hours ago.")
+                return Result.success()
+            }
+            Log.d(TAG, "[$workerId] Metered network, but last success was $hoursSinceLastSync hours ago (> 24h). Proceeding anyway.")
+        }
 
         // 1. Load authenticated user session
         val session = NetworkClient.session
@@ -360,8 +377,9 @@ class SyncWorker(
                 .build()
 
             val periodicSyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
-                1, TimeUnit.HOURS
+                2, TimeUnit.HOURS
             )
+                .addTag("PERIODIC_SYNC")
                 .setConstraints(constraints)
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
@@ -372,7 +390,7 @@ class SyncWorker(
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 "PeriodicSyncWorker",
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 periodicSyncRequest
             )
         }
