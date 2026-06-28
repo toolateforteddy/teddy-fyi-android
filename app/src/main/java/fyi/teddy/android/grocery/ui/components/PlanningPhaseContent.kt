@@ -174,7 +174,8 @@ fun PlanningPhaseContent(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            items(items) { item ->
+            val sortedItems = items.sortedBy { it.name }
+            items(sortedItems) { item ->
                 PlanningItemTile(
                     item = item,
                     showControls = expandedItemId == item.id,
@@ -196,7 +197,7 @@ fun PlanningPhaseContent(
                 )
             }
             
-            if (items.isEmpty()) {
+            if (sortedItems.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(32.dp),

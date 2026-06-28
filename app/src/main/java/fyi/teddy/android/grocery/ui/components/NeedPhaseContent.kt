@@ -74,7 +74,8 @@ fun NeedPhaseContent(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val grouped = items.groupBy { it.categoryId }
+        val sortedItems = items.sortedBy { it.name }
+        val grouped = sortedItems.groupBy { it.categoryId }
         val knownCategoryIds = categories.map { it.id }.toSet()
 
         categories.forEach { category ->
@@ -114,7 +115,7 @@ fun NeedPhaseContent(
         }
 
         // Show items that have no category OR a category that is not in the current list
-        val otherItems = items.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
+        val otherItems = sortedItems.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
         if (otherItems.isNotEmpty()) {
             item(span = { GridItemSpan(2) }) {
                 Text(

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.data.AppDatabase
@@ -753,10 +754,9 @@ fun DebugScreen(
                                     ) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Column {
+                                            Column(modifier = Modifier.weight(1f)) {
                                                 Text(
                                                     text = table.name,
                                                     fontSize = 11.sp,
@@ -769,26 +769,33 @@ fun DebugScreen(
                                                 )
                                             }
                                             
-                                            if (table.unsyncedCount > 0) {
-                                                Text(
-                                                    text = "${table.unsyncedCount} PENDING",
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color.Yellow
-                                                )
-                                            } else {
-                                                Text(
-                                                    text = "SYNCED",
-                                                    fontSize = 10.sp,
-                                                    color = Color.Green
-                                                )
+                                            Box(
+                                                modifier = Modifier.width(90.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (table.unsyncedCount > 0) {
+                                                    Text(
+                                                        text = "${table.unsyncedCount} PENDING",
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color.Yellow
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        text = "SYNCED",
+                                                        fontSize = 10.sp,
+                                                        color = Color.Green
+                                                    )
+                                                }
                                             }
 
                                             Text(
                                                 text = "FORCE PUSH",
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White
+                                                color = Color.White,
+                                                modifier = Modifier.width(80.dp),
+                                                textAlign = TextAlign.End
                                             )
                                         }
                                     }

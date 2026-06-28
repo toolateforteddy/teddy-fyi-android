@@ -145,7 +145,8 @@ fun ShoppingPhaseContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val grouped = items.groupBy { it.categoryId }
+                val sortedItems = items.sortedBy { it.name }
+                val grouped = sortedItems.groupBy { it.categoryId }
                 val knownCategoryIds = categories.map { it.id }.toSet()
 
                 categories.forEach { category ->
@@ -171,7 +172,7 @@ fun ShoppingPhaseContent(
                     }
                 }
 
-                val otherItems = items.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
+                val otherItems = sortedItems.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
                 if (otherItems.isNotEmpty()) {
                     val isExpanded = expandedCategories[null] ?: true
                     item(span = { GridItemSpan(2) }) {
@@ -193,15 +194,16 @@ fun ShoppingPhaseContent(
                 }
 
                 if (inCartItems.isNotEmpty()) {
+                    val sortedInCartItems = inCartItems.sortedBy { it.name }
                     item(span = { GridItemSpan(2) }) {
                         Text(
-                            "In Cart (${inCartItems.size})",
+                            "In Cart (${sortedInCartItems.size})",
                             style = MaterialTheme.typography.titleSmall,
                             color = Color.Gray,
                             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
                         )
                     }
-                    items(inCartItems, key = { it.id }) { item ->
+                    items(sortedInCartItems, key = { it.id }) { item ->
                         ShoppingItemTile(
                             item = item,
                             onToggleBought = { onEvent(GroceryUiEvent.ToggleBought(item, false)) },
