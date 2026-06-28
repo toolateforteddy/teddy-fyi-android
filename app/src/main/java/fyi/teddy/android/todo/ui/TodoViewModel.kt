@@ -234,10 +234,7 @@ class TodoViewModel(
      */
     fun insertItem(title: String, userId: String, parentId: String?, scheduledDate: String?) {
         if (title.isNotBlank()) {
-            val words = title.split(" ")
-            val capitalizedTitle = words.joinToString(" ") { word ->
-                word.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
-            }
+            val capitalizedTitle = formatTitle(title)
             viewModelScope.launch {
                 repository.insertItem(TodoItem(
                     title = capitalizedTitle,
@@ -250,16 +247,25 @@ class TodoViewModel(
         }
     }
 
+    private fun formatTitle(title: String): String {
+        return title.trim().split("\\s+".toRegex()).joinToString(" ") { word ->
+            word.lowercase().replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString()
+            }
+        }
+    }
+
     fun selectList(listId: String?) {
         _selectedListId.value = listId
     }
 
     fun insertList(name: String, colorHex: String = "#000000") {
         if (name.isNotBlank()) {
+            val capitalizedName = formatTitle(name)
             viewModelScope.launch {
                 repository.insertList(
                     fyi.teddy.android.todo.data.TodoList(
-                        name = name,
+                        name = capitalizedName,
                         colorHex = colorHex,
                         userId = userId
                     )
@@ -269,8 +275,9 @@ class TodoViewModel(
     }
 
     fun updateList(list: fyi.teddy.android.todo.data.TodoList) {
+        val formattedList = list.copy(name = formatTitle(list.name))
         viewModelScope.launch {
-            repository.updateList(list)
+            repository.updateList(formattedList)
         }
     }
 
@@ -284,11 +291,13 @@ class TodoViewModel(
     }
 
     fun insertItem(item: TodoItem) {
-        viewModelScope.launch { repository.insertItem(item) }
+        val formattedItem = item.copy(title = formatTitle(item.title))
+        viewModelScope.launch { repository.insertItem(formattedItem) }
     }
 
     fun updateItem(item: TodoItem) {
-        viewModelScope.launch { repository.updateItem(item) }
+        val formattedItem = item.copy(title = formatTitle(item.title))
+        viewModelScope.launch { repository.updateItem(formattedItem) }
     }
 
     fun deleteItem(item: TodoItem) {
