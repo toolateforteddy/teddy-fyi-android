@@ -213,12 +213,14 @@ fun TodoItemRow(
                     )
                 }
 
+                val isChecked = if (isPlanningMode) {
+                    if (planningDate != null) item.scheduledDate == planningDate else item.scheduledDate != null
+                } else item.isCompleted || isRecentlyCompleted
+
                 HexCheckbox(
-                    checked = if (isPlanningMode) {
-                        if (planningDate != null) item.scheduledDate == planningDate else item.scheduledDate != null
-                    } else item.isCompleted || isRecentlyCompleted,
+                    checked = isChecked,
                     onCheckedChange = onCheckedChange,
-                    modifier = Modifier.clickable { onCheckedChange(true) }
+                    modifier = Modifier.clickable { onCheckedChange(!isChecked) }
                 )
 
                 Column(
@@ -247,8 +249,8 @@ fun TodoItemRow(
                         }
                         Text(
                             text = item.title,
-                            color = if (!isPlanningMode && (item.isCompleted || isRecentlyCompleted)) MutedGrey else Color.White,
-                            style = if (!isPlanningMode && (item.isCompleted || isRecentlyCompleted)) MaterialTheme.typography.bodyLarge.copy(
+                            color = if (!isPlanningMode && isChecked) MutedGrey else Color.White,
+                            style = if (!isPlanningMode && isChecked) MaterialTheme.typography.bodyLarge.copy(
                                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                             ) else MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
