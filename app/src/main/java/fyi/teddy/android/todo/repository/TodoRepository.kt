@@ -74,6 +74,11 @@ class TodoRepository(
             todoDao.scheduleIncompleteUnscheduledChildren(item.id, item.userId, item.scheduledDate)
         }
 
+        // If this is a parent task, ensure all children are in the same space
+        if (item.parentId == null && item.userId != null) {
+            todoDao.updateChildrenListId(item.id, item.userId, item.listId)
+        }
+
         scheduleSync()
     }
 

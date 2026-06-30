@@ -431,20 +431,20 @@ fun ListRowMenuContent(
                     onClick = { onShowOverlay(ActiveRowOverlay.IconPicker) }
                 )
                 ActionGridItem(
-                    icon = Icons.Default.Flag,
-                    label = "Priority",
-                    onClick = { onShowOverlay(ActiveRowOverlay.Priority) }
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                ActionGridItem(
                     icon = Icons.Default.Category,
                     label = "Space",
                     onClick = { onShowOverlay(ActiveRowOverlay.SpacePicker) }
                 )
-                // Placeholder to keep alignment if needed, or another action
-                Box(modifier = Modifier.width(140.dp))
             }
+//            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+//                ActionGridItem(
+//                    icon = Icons.Default.Flag,
+//                    label = "Priority",
+//                    onClick = { onShowOverlay(ActiveRowOverlay.Priority) }
+//                )
+//                // Placeholder to keep alignment if needed, or another action
+//                Box(modifier = Modifier.width(140.dp))
+//            }
         }
 
         Divider(modifier = Modifier.padding(vertical = 16.dp))

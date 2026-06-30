@@ -145,6 +145,9 @@ abstract class TodoDao {
     @Query("UPDATE todo_items SET scheduledDate = :scheduledDate, sync_state = 'PENDING_UPDATE' WHERE parentId = :parentId AND userId = :userId AND isCompleted = 0 AND (scheduledDate IS NULL OR scheduledDate = '')")
     abstract suspend fun scheduleIncompleteUnscheduledChildren(parentId: String, userId: String, scheduledDate: String)
 
+    @Query("UPDATE todo_items SET listId = :listId, sync_state = CASE WHEN sync_state = 'SYNCED' THEN 'PENDING_UPDATE' ELSE sync_state END WHERE parentId = :parentId AND userId = :userId")
+    abstract suspend fun updateChildrenListId(parentId: String, userId: String, listId: String?)
+
     @Query("SELECT * FROM todo_items")
     abstract suspend fun getAllItemsOneShot(): List<TodoItem>
 
