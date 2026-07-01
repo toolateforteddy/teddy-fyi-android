@@ -1,3 +1,4 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class, kotlinx.serialization.InternalSerializationApi::class)
 package fyi.teddy.android.network
 
 import android.content.Context
@@ -44,6 +45,7 @@ object AuthRepository {
             
             if (response.status.value in 200..299) {
                 val tokens = response.body<TokenResponse>()
+                session.userId = userIdValue
                 session.accessToken = tokens.accessToken
                 session.refreshToken = tokens.refreshToken
                 session.clientUuid = clientUuid
