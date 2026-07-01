@@ -37,15 +37,15 @@ object NetworkClient {
     private fun createClient() = HttpClient(OkHttp) {
         engine {
             config {
-                connectTimeout(60, TimeUnit.SECONDS)
-                readTimeout(60, TimeUnit.SECONDS)
-                writeTimeout(60, TimeUnit.SECONDS)
+                connectTimeout(30, TimeUnit.SECONDS)
+                readTimeout(30, TimeUnit.SECONDS)
+                writeTimeout(30, TimeUnit.SECONDS)
             }
         }
         install(HttpTimeout) {
-            requestTimeoutMillis = 60000L
-            connectTimeoutMillis = 60000L
-            socketTimeoutMillis = 60000L
+            requestTimeoutMillis = 30000L
+            connectTimeoutMillis = 30000L
+            socketTimeoutMillis = 30000L
         }
         install(ContentNegotiation) {
             json(syncJson)

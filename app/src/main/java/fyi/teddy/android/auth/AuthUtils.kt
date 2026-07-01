@@ -20,7 +20,13 @@ object AuthUtils {
         try {
             val parts = idToken.split(".")
             if (parts.size < 2) return null
-            val payloadRaw = parts[1]
+            var payloadRaw = parts[1]
+            
+            // Fix padding if missing
+            while (payloadRaw.length % 4 != 0) {
+                payloadRaw += "="
+            }
+            
             val decodedBytes = Base64.decode(payloadRaw, Base64.URL_SAFE)
             val payload = String(decodedBytes, Charset.forName("UTF-8"))
             val json = JSONObject(payload)
@@ -36,7 +42,13 @@ object AuthUtils {
         try {
             val parts = idToken.split(".")
             if (parts.size < 2) return null
-            val payloadRaw = parts[1]
+            var payloadRaw = parts[1]
+
+            // Fix padding if missing
+            while (payloadRaw.length % 4 != 0) {
+                payloadRaw += "="
+            }
+
             val decodedBytes = Base64.decode(payloadRaw, Base64.URL_SAFE)
             val payload = String(decodedBytes, Charset.forName("UTF-8"))
             val json = JSONObject(payload)

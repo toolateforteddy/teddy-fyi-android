@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import fyi.teddy.android.auth.AuthUtils
 import fyi.teddy.android.auth.LoginScreen
+import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.ui.CategoryManagementScreen
 import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
@@ -58,10 +59,13 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     session.load(context)
-                    if (session.idToken != null) {
-                        if (session.userId == null) {
-                            session.userId = AuthUtils.extractUserIdFromToken(session.idToken!!)
-                        }
+                    val uid = session.userId
+                    if (session.idToken != null && uid != null && uid.isNotBlank() && uid != "unknown") {
+                        // Ensure local items are claimed if they were somehow missed (e.g. crash after login)
+                        val db = AppDatabase.getDatabase(context)
+                        db.todoDao().claimUnownedItems(uid)
+                        db.groceryDao().claimEverything(uid)
+
                         if ((session.profilePictureUri == null) || session.profilePictureUri!!.contains("s2/photos/profile")) {
                             session.profilePictureUri = AuthUtils.extractPictureFromToken(session.idToken!!)?.toString()
                         }
@@ -88,10 +92,21 @@ class MainActivity : ComponentActivity() {
                             session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
                             session.profilePictureUri = result.profilePictureUri?.toString()
                             
-                            scope.launch { 
+                            scope.launch {
                                 val success = AuthRepository.login(context, session, result.idToken)
                                 if (success) {
-                                    SyncWorker.enqueueIfNecessary(context)
+                                    // Only claim local items if backend login succeeded and we have a valid ID
+                                    val uid = session.userId
+                                    if (uid != null && uid.isNotBlank() && uid != "unknown") {
+                                        val db = AppDatabase.getDatabase(context)
+                                        db.todoDao().claimUnownedItems(uid)
+                                        db.groceryDao().claimEverything(uid)
+                                    }
+                                    
+                                    // Save the session state (now including backend tokens and claimed UID)
+                                    session.save(context)
+
+                                    SyncWorker.enqueue(context)
                                     SyncWorker.schedulePeriodicSync(context)
                                     navController.navigate(Screen.Home.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }

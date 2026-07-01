@@ -1,7 +1,10 @@
 package fyi.teddy.android.network
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
+import android.os.BatteryManager
 import android.util.Log
 import androidx.room.withTransaction
 import androidx.work.*
@@ -321,16 +324,37 @@ class SyncWorker(
         const val WORK_NAME = "SyncWorker"
         private val syncMutex = Mutex()
 
+        private fun isCharging(context: Context): Boolean {
+            val intentFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val batteryStatus = context.registerReceiver(null, intentFilter)
+            val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            return status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
+        }
+
+        private fun getBackoffCriteria(context: Context): Pair<BackoffPolicy, Long> {
+            return if (isCharging(context)) {
+                // When charging, we can afford a more frequent retry (start at 30s)
+                BackoffPolicy.EXPONENTIAL to 30000L
+            } else {
+                // When on battery, use a much more aggressive exponential backoff (start at 5m)
+                // to prevent battery drain when the backend is unreachable.
+                BackoffPolicy.EXPONENTIAL to TimeUnit.MINUTES.toMillis(5)
+            }
+        }
+
         fun enqueue(context: Context) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
+            val (backoffPolicy, backoffDelay) = getBackoffCriteria(context)
+
             val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(constraints)
                 .setBackoffCriteria(
-                    BackoffPolicy.EXPONENTIAL,
-                    WorkRequest.MIN_BACKOFF_MILLIS, // 10 seconds
+                    backoffPolicy,
+                    backoffDelay,
                     TimeUnit.MILLISECONDS
                 )
                 .build()
@@ -343,11 +367,12 @@ class SyncWorker(
         }
 
         /**
-         * Enqueues a sync with a short debounce delay (30 seconds).
-         * Subsequent calls will replace the existing work, effectively pushing back the timer.
+         * Enqueues a sync with a debounce delay.
+         * Longer delay when on battery to batch more changes and save power.
          */
         fun enqueueDebounced(context: Context) {
-            enqueueDelayed(context, 30)
+            val delaySeconds = if (isCharging(context)) 30L else 300L // 30s vs 5m
+            enqueueDelayed(context, delaySeconds)
         }
 
         fun enqueueDelayed(context: Context, delaySeconds: Long) {
@@ -355,12 +380,14 @@ class SyncWorker(
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
+            val (backoffPolicy, backoffDelay) = getBackoffCriteria(context)
+
             val syncWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(constraints)
                 .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
                 .setBackoffCriteria(
-                    BackoffPolicy.EXPONENTIAL,
-                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    backoffPolicy,
+                    backoffDelay,
                     TimeUnit.MILLISECONDS
                 )
                 .build()
@@ -380,14 +407,16 @@ class SyncWorker(
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
+            val (backoffPolicy, backoffDelay) = getBackoffCriteria(context)
+
             val periodicSyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
                 2, TimeUnit.HOURS
             )
                 .addTag("PERIODIC_SYNC")
                 .setConstraints(constraints)
                 .setBackoffCriteria(
-                    BackoffPolicy.EXPONENTIAL,
-                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    backoffPolicy,
+                    backoffDelay,
                     TimeUnit.MILLISECONDS
                 )
                 .build()

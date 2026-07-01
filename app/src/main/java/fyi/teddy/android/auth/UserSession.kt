@@ -31,13 +31,24 @@ class UserSession {
 
     suspend fun load(context: Context) {
         val encryptedStore = EncryptedDataStore(context)
-        userId = encryptedStore.getDecrypted("user_id")
-        userName = encryptedStore.getDecrypted("user_name")
-        idToken = encryptedStore.getDecrypted("id_token")
-        profilePictureUri = encryptedStore.getDecrypted("profile_pic")
-        accessToken = encryptedStore.getDecrypted("access_token")
-        refreshToken = encryptedStore.getDecrypted("refresh_token")
-        clientUuid = encryptedStore.getDecrypted("client_uuid")
+        val loadedUserId = encryptedStore.getDecrypted("user_id")
+        val loadedUserName = encryptedStore.getDecrypted("user_name")
+        val loadedIdToken = encryptedStore.getDecrypted("id_token")
+        val loadedProfilePic = encryptedStore.getDecrypted("profile_pic")
+        val loadedAccessToken = encryptedStore.getDecrypted("access_token")
+        val loadedRefreshToken = encryptedStore.getDecrypted("refresh_token")
+        val loadedClientUuid = encryptedStore.getDecrypted("client_uuid")
+
+        // Only overwrite if currently null or if the loaded value is not null
+        // This avoids race conditions where a background load might overwrite 
+        // a freshly set in-memory value during login with an old null from disk.
+        if (loadedUserId != null) userId = loadedUserId
+        if (loadedUserName != null) userName = loadedUserName
+        if (loadedIdToken != null) idToken = loadedIdToken
+        if (loadedProfilePic != null) profilePictureUri = loadedProfilePic
+        if (loadedAccessToken != null) accessToken = loadedAccessToken
+        if (loadedRefreshToken != null) refreshToken = loadedRefreshToken
+        if (loadedClientUuid != null) clientUuid = loadedClientUuid
 
         // Ensure we always have a client UUID if we are loaded
         if (clientUuid == null) {

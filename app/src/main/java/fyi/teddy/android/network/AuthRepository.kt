@@ -1,6 +1,7 @@
 package fyi.teddy.android.network
 
 import android.content.Context
+import fyi.teddy.android.auth.AuthUtils
 import fyi.teddy.android.auth.UserSession
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -28,7 +29,13 @@ object AuthRepository {
     suspend fun login(context: Context, session: UserSession, googleToken: String): Boolean {
         return try {
             val clientUuid = session.clientUuid ?: UUID.randomUUID().toString()
-            val userIdValue = session.userId ?: "unknown"
+            
+            // Ensure we have a valid userId from the token if not already in session
+            val userIdValue = session.userId ?: AuthUtils.extractUserIdFromToken(googleToken)
+            if (userIdValue == null) {
+                android.util.Log.e("AuthRepository", "Could not extract userId from token")
+                return false
+            }
             
             val response = NetworkClient.client.post("https://api-rust.teddy.fyi/auth/login") {
                 contentType(ContentType.Application.Json)
