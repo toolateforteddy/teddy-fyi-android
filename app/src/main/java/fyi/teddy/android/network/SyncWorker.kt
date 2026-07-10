@@ -105,7 +105,7 @@ class SyncWorker(
         val session = NetworkClient.session
         session.load(applicationContext)
 
-        if (!session.isLoggedIn) {
+        if (session.accessToken.isNullOrBlank()) {
             val errorMsg = "No auth token found."
             Log.w(TAG, "[$workerId] No auth token found, skipping sync.")
             recordSyncLog("FAILURE", startTime, errorMsg)
@@ -279,7 +279,8 @@ class SyncWorker(
             }
         } else if (response.status.value == 401) {
             val unauthMsg = "HTTP 401 Unauthorized token."
-            Log.e(TAG, "[$workerId] Sync failed: $unauthMsg")
+            Log.e(TAG, "[$workerId] Sync failed: $unauthMsg. Clearing session.")
+            session.clear(applicationContext)
             recordSyncLog(
                 status = "FAILURE",
                 startTime = startTime,
@@ -371,7 +372,7 @@ class SyncWorker(
          * Longer delay when on battery to batch more changes and save power.
          */
         fun enqueueDebounced(context: Context) {
-            val delaySeconds = if (isCharging(context)) 30L else 300L // 30s vs 5m
+            val delaySeconds = 10L // Fixed 10s debounce for better responsiveness during active use
             enqueueDelayed(context, delaySeconds)
         }
 
@@ -432,6 +433,13 @@ class SyncWorker(
          * Checks if there are any local unsynced changes and enqueues a sync if so.
          */
         suspend fun enqueueIfNecessary(context: Context) {
+            val session = NetworkClient.session
+            session.load(context)
+            if (session.accessToken.isNullOrBlank()) {
+                Log.d(TAG, "No auth token found, skipping enqueueIfNecessary.")
+                return
+            }
+
             val db = AppDatabase.getDatabase(context)
             val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
             val isFirstSync = sharedPrefs.getString("last_synced_at", null) == null

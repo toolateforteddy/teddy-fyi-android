@@ -269,8 +269,6 @@ class TodoViewModel(
             _recentlyCompletedIds.update { it + item.id }
             viewModelScope.launch {
                 _confettiTrigger.emit(Unit)
-                // Schedule sync for 10 seconds later when an item is checked off
-                fyi.teddy.android.network.SyncWorker.enqueueDelayed(getApplication(), 10)
 
                 delay(2000.milliseconds)
                 _recentlyCompletedIds.update { it - item.id }

@@ -286,8 +286,6 @@ class GroceryViewModel(
         _shoppingStoreId.value = storeId
         if (storeId != null) {
             prefs.edit { putString("last_shopping_store_id", storeId) }
-            // Trigger sync when switching stores
-            SyncWorker.enqueue(application)
         } else {
             prefs.edit { remove("last_shopping_store_id") }
         }
@@ -568,9 +566,6 @@ class GroceryViewModel(
             _recentlyCheckedIds.update { it + item.id }
             updateItem(updatedItem)
             
-            // Schedule sync for 10 seconds later when an item is checked off
-            SyncWorker.enqueueDelayed(application, 10)
-
             viewModelScope.launch {
                 delay(2.seconds)
                 _recentlyCheckedIds.update { it - item.id }

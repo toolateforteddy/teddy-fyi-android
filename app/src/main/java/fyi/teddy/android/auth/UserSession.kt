@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.edit
 import androidx.datastore.preferences.core.edit
 
 class UserSession {
@@ -16,7 +17,7 @@ class UserSession {
     var clientUuid by mutableStateOf<String?>(null)
 
     val isLoggedIn: Boolean
-        get() = accessToken != null
+        get() = !accessToken.isNullOrBlank()
 
     suspend fun save(context: Context) {
         val encryptedStore = EncryptedDataStore(context)
@@ -65,9 +66,12 @@ class UserSession {
     }
 
     suspend fun clear(context: Context) {
+        val preservedUuid = clientUuid
+        val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
+        val preservedLegacyId = sharedPrefs.getString("client_id", null)
+
         context.dataStore.edit { it.clear() }
-        // Also clear sync metadata which might contain old client IDs or timestamps
-        context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE).edit().clear().apply()
+        sharedPrefs.edit().clear().apply()
 
         userId = null
         userName = null
@@ -75,6 +79,21 @@ class UserSession {
         profilePictureUri = null
         accessToken = null
         refreshToken = null
-        clientUuid = null
+        
+        // Restore and persist the client UUID
+        if (preservedUuid != null) {
+            clientUuid = preservedUuid
+            save(context)
+        } else if (preservedLegacyId != null) {
+            clientUuid = preservedLegacyId
+            save(context)
+        } else {
+            clientUuid = null
+        }
+
+        // Restore legacy ID for compatibility if it existed
+        if (preservedLegacyId != null) {
+            sharedPrefs.edit(commit = true) { putString("client_id", preservedLegacyId) }
+        }
     }
 }

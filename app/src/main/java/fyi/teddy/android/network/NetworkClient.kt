@@ -53,8 +53,14 @@ object NetworkClient {
         install(Auth) {
             bearer {
                 loadTokens {
-                    session.accessToken?.let { BearerTokens(it, session.refreshToken ?: "") }
+                    val token = session.accessToken
+                    if (!token.isNullOrBlank()) {
+                        BearerTokens(token, session.refreshToken ?: "")
+                    } else {
+                        null
+                    }
                 }
+                sendWithoutRequest { true }
                 refreshTokens {
                     // Try to refresh the token using an internal client instance to avoid recursion
                     val refreshClient = HttpClient(OkHttp) {
@@ -80,6 +86,11 @@ object NetworkClient {
                             session.refreshToken = tokens.refreshToken
                             BearerTokens(tokens.accessToken, tokens.refreshToken)
                         } else {
+                            if (response.status.value == 401) {
+                                // Terminal auth failure: clear tokens in memory
+                                session.accessToken = null
+                                session.refreshToken = null
+                            }
                             null
                         }
                     } catch (_: Exception) {
