@@ -18,6 +18,7 @@ import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLog
 import fyi.teddy.android.network.GroceryNetworkRepository
 import fyi.teddy.android.network.SyncWorker
+import fyi.teddy.android.util.StringUtils
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -265,12 +266,7 @@ class GroceryViewModel(
 
     // Sanitize and format name inputs uniformly
     fun formatName(input: String): String {
-        return input.trim().split("\\s+".toRegex())
-            .joinToString(" ") { word ->
-                word.lowercase().replaceFirstChar { 
-                    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
-                }
-            }
+        return StringUtils.formatTitle(input)
     }
 
     // Setters

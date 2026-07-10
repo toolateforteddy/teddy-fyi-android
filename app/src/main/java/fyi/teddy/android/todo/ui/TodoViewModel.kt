@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.repository.TodoRepository
 import fyi.teddy.android.todo.util.TodoResetScheduler
+import fyi.teddy.android.util.StringUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -251,11 +252,7 @@ class TodoViewModel(
     }
 
     private fun formatTitle(title: String): String {
-        return title.trim().split("\\s+".toRegex()).joinToString(" ") { word ->
-            word.lowercase().replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString()
-            }
-        }
+        return StringUtils.formatTitle(title)
     }
 
     fun selectList(listId: String?) {
