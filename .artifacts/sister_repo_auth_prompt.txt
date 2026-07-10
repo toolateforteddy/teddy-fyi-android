@@ -1,0 +1,56 @@
+# Act as a Senior Android Security Engineer & Architect
+
+## Context
+We are building a sister app for the "Teddy FYI" ecosystem. This app interacts with the same Rust backend (`api-rust.teddy.fyi`) and must strictly adhere to the established authentication and security protocol to ensure compatibility and security parity.
+
+## Objective
+Implement or audit the Authentication layer to match the "Teddy FYI" standard.
+
+## Mandatory Technical Requirements
+
+### 1. Identity Provider: Google Identity (`androidx.credentials`)
+- Use the `androidx.credentials` library (v1.2.2+) with `googleid` provider.
+- Implement "One-Tap" sign-in where possible.
+- **Workflow**:
+    1. Request a Google ID Token using the backend's `webServerClientId`.
+    2. Extract the `idToken` from the `GetCredentialResponse`.
+    3. Pass this token to our `/auth/login` endpoint.
+
+### 2. Secure Token Storage: Encrypted DataStore (Tink)
+- **NO PLAIN TEXT STORAGE**: Do not use standard `SharedPreferences` or `DataStore` for tokens.
+- **Implementation**: Use `androidx.datastore` combined with **Google Tink** (`com.google.crypto.tink:tink-android`) for authenticated encryption (AES256_GCM).
+- **Storage Keys**: `user_id`, `access_token`, `refresh_token`, and `client_uuid`.
+
+### 3. JWT Management & Ktor Auth Plugin
+- Use **Ktor** with the `Auth` and `ContentNegotiation` plugins.
+- **Bearer Tokens**: Implement a `Bearer` auth provider that:
+    - Loads the `access_token` and `refresh_token` from the Encrypted DataStore.
+    - Includes `X-Client-UUID` in the `defaultRequest` headers for all calls.
+- **Automatic Refresh**: The `refreshTokens` block MUST:
+    - Intercept `401 Unauthorized`.
+    - Call `POST /auth/refresh` using a separate, non-authenticated `HttpClient` (to avoid infinite recursion).
+    - Update the local `UserSession` and Encrypted DataStore with the new tokens.
+    - If refresh fails with 401/403, clear the session and force a logout.
+
+### 4. API Specification
+- **Login**: `POST /auth/login`
+  - Body: `{ "user_id": "string", "client_uuid": "string", "google_auth_token": "string", "expires_in_secs": Long? }`
+- **Refresh**: `POST /auth/refresh`
+  - Body: `{ "user_id": "string", "client_uuid": "string", "refresh_token": "string", "expires_in_secs": Long? }`
+- **Headers**:
+  - `Authorization: Bearer <access_token>`
+  - `X-Client-UUID: <client_uuid>` (Mandatory)
+
+### 5. Session Lifecycle & State Machine
+- Maintain a `UserSession` singleton/state object that reflects `isLoggedIn`.
+- On Logout: Clear all tokens and user data, but **persist the `client_uuid`** (generate one if missing) to maintain device consistency across sessions.
+- Use `viewModelScope` for all auth-related network operations.
+
+## Evaluation Criteria
+Your implementation is only correct if:
+1. It uses `androidx.credentials` for the login UI.
+2. It uses `Tink` to encrypt tokens before they hit the disk.
+3. It handles `401` errors automatically via the Ktor Auth plugin.
+4. It includes the `X-Client-UUID` header in every request.
+
+**Task**: Inspect the current code in this repo. Identify any deviations from this spec and provide a step-by-step migration plan or implementation to reach parity.
