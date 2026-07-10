@@ -110,7 +110,7 @@ data class SyncRequest(
 
 @Serializable
 data class SyncResponse(
-    @SerialName("success_ids") val successIds: List<String>,
+    @SerialName("success_ids") val successIds: List<String> = emptyList(),
     @SerialName("remote_todo_list_changes") val remoteTodoListChanges: List<TodoListChangeDelta> = emptyList(),
     @SerialName("remote_todo_changes") val remoteTodoChanges: List<TodoChangeDelta> = emptyList(),
     @SerialName("remote_grocery_list_changes") val remoteGroceryListChanges: List<GroceryListChangeDelta> = emptyList(),
@@ -119,7 +119,7 @@ data class SyncResponse(
     @SerialName("remote_category_changes") val remoteCategoryChanges: List<CategoryChangeDelta> = emptyList(),
     @SerialName("remote_grocery_changes") val remoteGroceryChanges: List<GroceryChangeDelta> = emptyList(),
     @SerialName("remote_grocery_item_store_info_changes") val remoteGroceryItemStoreInfoChanges: List<GroceryItemStoreInfoChangeDelta> = emptyList(),
-    @SerialName("server_timestamp") val serverTimestamp: String
+    @SerialName("server_timestamp") val serverTimestamp: String,
 )
 
 @Serializable

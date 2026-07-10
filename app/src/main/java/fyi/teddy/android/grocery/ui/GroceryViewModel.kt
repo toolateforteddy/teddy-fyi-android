@@ -719,10 +719,9 @@ class GroceryViewModel(
         viewModelScope.launch {
             val listId = GroceryNetworkRepository.joinList(code)
             if (listId != null) {
-                // Clear last_synced_at to force a full resync from the server.
+                // Clear user sync metadata to force a full resync from the server for this user.
                 // This ensures we get the metadata (name, owner) for the new list.
-                application.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-                    .edit { remove("last_synced_at") }
+                db.userSyncMetadataDao().clear(userId)
                 
                 // Trigger sync immediately
                 SyncWorker.enqueue(application)

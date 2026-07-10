@@ -29,18 +29,32 @@ import fyi.teddy.android.todo.data.TodoList
         GroceryList::class,
         GroceryListMember::class,
         SyncLog::class,
+        UserSyncMetadata::class,
     ], 
-    version = 33,
+    version = 34,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
     abstract fun groceryDao(): GroceryDao
     abstract fun syncLogDao(): SyncLogDao
+    abstract fun userSyncMetadataDao(): UserSyncMetadataDao
 
     companion object {
         @Volatile
         private var Instance: AppDatabase? = null
+
+        val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `user_sync_metadata` (
+                        `userId` TEXT NOT NULL, 
+                        `lastSyncedAt` TEXT, 
+                        PRIMARY KEY(`userId`)
+                    )
+                """.trimIndent())
+            }
+        }
 
         val MIGRATION_32_33 = object : Migration(32, 33) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -752,7 +766,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
                         MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
                         MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31,
-                        MIGRATION_31_32, MIGRATION_32_33
+                        MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34
                     )
                     .build()
                     .also { Instance = it }

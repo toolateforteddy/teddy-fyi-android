@@ -1,6 +1,5 @@
 package fyi.teddy.android.ui.screens
 
-import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -29,6 +28,7 @@ import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLog
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.network.SyncWorker
+import fyi.teddy.android.network.NetworkClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -237,10 +237,17 @@ fun DebugScreen(
     var isSyncExpanded by remember { mutableStateOf(false) }
     var isTablesExpanded by remember { mutableStateOf(false) }
 
-    // Helper to reload shared preference metadata (e.g. server high-watermark)
+    // Helper to reload sync metadata (e.g. server high-watermark)
     fun reloadSyncMetadata() {
-        val prefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-        lastSyncedAtState = prefs.getString("last_synced_at", null)
+        scope.launch {
+            val session = NetworkClient.session
+            val sessionUserId = session.userId
+            if (sessionUserId != null) {
+                lastSyncedAtState = db.userSyncMetadataDao().getLastSyncedAt(sessionUserId)
+            } else {
+                lastSyncedAtState = "No User Session"
+            }
+        }
     }
 
     // Refresh data periodically
@@ -566,10 +573,11 @@ fun DebugScreen(
                                 Button(
                                     onClick = {
                                         scope.launch {
-                                            val prefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-                                            prefs.edit()
-                                                .remove("last_synced_at")
-                                                .commit()
+                                            val session = NetworkClient.session
+                                            val sessionUserId = session.userId
+                                            if (sessionUserId != null) {
+                                                db.userSyncMetadataDao().clear(sessionUserId)
+                                            }
                                             db.syncLogDao().clearAll()
                                             SyncWorker.enqueue(context)
                                             reloadSyncMetadata()

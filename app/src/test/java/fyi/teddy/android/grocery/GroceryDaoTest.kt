@@ -93,24 +93,24 @@ class GroceryDaoTest {
 
     @Test
     fun itemsOrdering_positionThenTimestamp() = runTest {
-        val item1 = GroceryItem(id = 1, name = "Later but pos 0", position = 0, createdAt = 100, userId = userId)
-        val item2 = GroceryItem(id = 2, name = "Earlier but pos 0", position = 0, createdAt = 50, userId = userId)
-        val item3 = GroceryItem(id = 3, name = "Pos 1", position = 1, createdAt = 100, userId = userId)
+        val item1 = GroceryItem(id = "1", name = "Later but pos 0", position = 0, createdAt = 100, userId = userId)
+        val item2 = GroceryItem(id = "2", name = "Earlier but pos 0", position = 0, createdAt = 50, userId = userId)
+        val item3 = GroceryItem(id = "3", name = "Pos 1", position = 1, createdAt = 100, userId = userId)
         
         groceryDao.insertItem(item2)
         groceryDao.insertItem(item1)
         groceryDao.insertItem(item3)
         
         val allItems = groceryDao.getAllItems(userId).first()
-        assertEquals(1, allItems[0].id) // Pos 0, higher timestamp
-        assertEquals(2, allItems[1].id) // Pos 0, lower timestamp
-        assertEquals(3, allItems[2].id) // Pos 1
+        assertEquals("1", allItems[0].id) // Pos 0, higher timestamp
+        assertEquals("2", allItems[1].id) // Pos 0, lower timestamp
+        assertEquals("3", allItems[2].id) // Pos 1
     }
 
     @Test
     fun insertAndGetAllStores() = runTest {
-        val store1 = Store(id = 1, name = "Whole Foods", userId = userId)
-        val store2 = Store(id = 2, name = "Trader Joe's", userId = userId)
+        val store1 = Store(id = "1", name = "Whole Foods", userId = userId)
+        val store2 = Store(id = "2", name = "Trader Joe's", userId = userId)
         groceryDao.insertStore(store1)
         groceryDao.insertStore(store2)
         
@@ -123,7 +123,7 @@ class GroceryDaoTest {
 
     @Test
     fun updateStore() = runTest {
-        val store = Store(id = 1, name = "Original", isDefaultSupported = true, userId = userId)
+        val store = Store(id = "1", name = "Original", isDefaultSupported = true, userId = userId)
         groceryDao.insertStore(store)
         
         val updatedStore = store.copy(name = "Updated", isDefaultSupported = false)
@@ -136,7 +136,7 @@ class GroceryDaoTest {
 
     @Test
     fun deleteStore() = runTest {
-        val store = Store(id = 1, name = "To Delete", userId = userId)
+        val store = Store(id = "1", name = "To Delete", userId = userId)
         groceryDao.insertStore(store)
         groceryDao.deleteStore(store)
         
@@ -146,8 +146,8 @@ class GroceryDaoTest {
 
     @Test
     fun insertAndGetCategories() = runTest {
-        val cat1 = Category(id = 1, name = "Dairy", userId = userId)
-        val cat2 = Category(id = 2, name = "Bakery", userId = userId)
+        val cat1 = Category(id = "1", name = "Dairy", userId = userId)
+        val cat2 = Category(id = "2", name = "Bakery", userId = userId)
         groceryDao.insertCategory(cat1)
         groceryDao.insertCategory(cat2)
         
@@ -171,12 +171,12 @@ class GroceryDaoTest {
 
     @Test
     fun storeInfoPersistence() = runTest {
-        val item = GroceryItem(id = 1, name = "Milk", userId = userId)
-        val store = Store(id = 1, name = "Store", userId = userId)
+        val item = GroceryItem(id = "1", name = "Milk", userId = userId)
+        val store = Store(id = "1", name = "Store", userId = userId)
         groceryDao.insertItem(item)
         groceryDao.insertStore(store)
         
-        val info = GroceryItemStoreInfo(groceryItemId = 1, storeId = 1, price = 3.99, isAvailable = true, userId = userId)
+        val info = GroceryItemStoreInfo(groceryItemId = "1", storeId = "1", price = 3.99, isAvailable = true, userId = userId)
         groceryDao.insertStoreInfo(info)
         
         val allInfo = groceryDao.getAllStoreInfo(userId).first()
@@ -186,17 +186,17 @@ class GroceryDaoTest {
 
     @Test
     fun getStoreInfoForItem_filtersCorrectly() = runTest {
-        val item1 = GroceryItem(id = 1, name = "Milk", userId = userId)
-        val item2 = GroceryItem(id = 2, name = "Bread", userId = userId)
-        val store = Store(id = 1, name = "Store", userId = userId)
+        val item1 = GroceryItem(id = "1", name = "Milk", userId = userId)
+        val item2 = GroceryItem(id = "2", name = "Bread", userId = userId)
+        val store = Store(id = "1", name = "Store", userId = userId)
         groceryDao.insertItem(item1)
         groceryDao.insertItem(item2)
         groceryDao.insertStore(store)
         
-        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = 1, storeId = 1, price = 1.0, userId = userId))
-        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = 2, storeId = 1, price = 2.0, userId = userId))
+        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = "1", storeId = "1", price = 1.0, userId = userId))
+        groceryDao.insertStoreInfo(GroceryItemStoreInfo(groceryItemId = "2", storeId = "1", price = 2.0, userId = userId))
         
-        val item1Info = groceryDao.getStoreInfoForItem(1, userId).first()
+        val item1Info = groceryDao.getStoreInfoForItem("1", userId).first()
         assertEquals(1, item1Info.size)
         assertEquals(1.0, item1Info[0].price!!, 0.001)
     }

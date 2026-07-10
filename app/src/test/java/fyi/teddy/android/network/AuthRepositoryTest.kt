@@ -37,11 +37,12 @@ class AuthRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
         }
-        NetworkClient.client = HttpClient(mockEngine) {
+        val mockClient = HttpClient(mockEngine) {
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
         }
+        NetworkClient.client = mockClient
         NetworkClient.session = session
         
         val success = AuthRepository.login(context, session, "google_token_123")
@@ -57,11 +58,12 @@ class AuthRepositoryTest {
         val mockEngine = MockEngine { request ->
             respond("", status = HttpStatusCode.Unauthorized)
         }
-        NetworkClient.client = HttpClient(mockEngine) {
+        val mockClient = HttpClient(mockEngine) {
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 json()
             }
         }
+        NetworkClient.client = mockClient
         NetworkClient.session = session
         
         val success = AuthRepository.login(context, session, "bad_token")

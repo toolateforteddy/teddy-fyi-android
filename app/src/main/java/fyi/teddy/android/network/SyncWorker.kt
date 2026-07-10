@@ -114,11 +114,24 @@ class SyncWorker(
         }
 
         // 2. Fetch last synced timestamp
-        val sharedPrefs = applicationContext.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-        val lastSyncedAt = sharedPrefs.getString("last_synced_at", null)
-        val clientId = session.clientUuid!! // Guaranteed by session.load()
-
         val db = AppDatabase.getDatabase(applicationContext)
+        val sessionUserId = session.userId ?: ""
+        var lastSyncedAt = db.userSyncMetadataDao().getLastSyncedAt(sessionUserId)
+        
+        // Migration: If we don't have it in DB, check legacy SharedPreferences
+        if (lastSyncedAt == null && sessionUserId.isNotBlank()) {
+            val sharedPrefs = applicationContext.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
+            val legacyLastSyncedAt = sharedPrefs.getString("last_synced_at", null)
+            if (legacyLastSyncedAt != null) {
+                Log.d(TAG, "[$workerId] Migrating legacy last_synced_at for user $sessionUserId")
+                lastSyncedAt = legacyLastSyncedAt
+                db.userSyncMetadataDao().upsert(fyi.teddy.android.data.UserSyncMetadata(sessionUserId, lastSyncedAt))
+                // Clear legacy preference so other users don't adopt it
+                sharedPrefs.edit { remove("last_synced_at") }
+            }
+        }
+
+        val clientId = session.clientUuid!! // Guaranteed by session.load()
 
         // 3. Collect local unsynced mutations from each domain independently
         val isFirstSync = lastSyncedAt == null
@@ -224,10 +237,13 @@ class SyncWorker(
                         isFirstSync = isFirstSync
                     )
 
-                    // Overwrite local last_synced_at metadata key
-                    sharedPrefs.edit(commit = true) {
-                        putString("last_synced_at", syncResponse.serverTimestamp)
-                    }
+                    // Overwrite local last_synced_at metadata key in DB
+                    db.userSyncMetadataDao().upsert(
+                        fyi.teddy.android.data.UserSyncMetadata(
+                            userId = sessionUserId,
+                            lastSyncedAt = syncResponse.serverTimestamp
+                        )
+                    )
                 }
                 Log.d(TAG, "[$workerId] Local database transaction successfully completed.")
                 session.save(applicationContext)
@@ -442,8 +458,9 @@ class SyncWorker(
             }
 
             val db = AppDatabase.getDatabase(context)
-            val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
-            val isFirstSync = sharedPrefs.getString("last_synced_at", null) == null
+            val sessionUserId = session.userId ?: ""
+            val lastSyncedAt = if (sessionUserId.isBlank()) null else db.userSyncMetadataDao().getLastSyncedAt(sessionUserId)
+            val isFirstSync = lastSyncedAt == null
             
             val hasChanges = if (isFirstSync) true else {
             db.todoDao().getUnsyncedItems().isNotEmpty() ||

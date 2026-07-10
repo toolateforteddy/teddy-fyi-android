@@ -36,7 +36,7 @@ object NetworkClient {
         return if (isOnWifi) 60L else 3600L
     }
 
-    val session = UserSession()
+    var session = UserSession()
 
     val syncJson = Json {
         encodeDefaults = true

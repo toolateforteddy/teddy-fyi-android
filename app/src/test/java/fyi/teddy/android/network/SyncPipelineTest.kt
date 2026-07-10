@@ -148,6 +148,23 @@ class SyncPipelineTest {
     }
 
     @Test
+    fun testSyncResponseConciseness() {
+        // Minimal JSON as might be sent by a concise backend
+        val minimalJson = """
+            {
+                "server_timestamp": "2023-10-27T10:15:30Z"
+            }
+        """.trimIndent()
+
+        val response = json.decodeFromString<SyncResponse>(minimalJson)
+        
+        assertEquals("2023-10-27T10:15:30Z", response.serverTimestamp)
+        assertTrue(response.successIds.isEmpty())
+        assertTrue(response.remoteTodoChanges.isEmpty())
+        assertTrue(response.remoteGroceryChanges.isEmpty())
+    }
+
+    @Test
     fun testUnsyncedDatabaseQueries() = runTest {
         // Insert some synced and unsynced items
         val item1 = TodoItem(id = "1", title = "Synced item", syncState = "SYNCED", isDeleted = false)
@@ -229,8 +246,8 @@ class SyncPipelineTest {
         val groceryDao = database.groceryDao()
         val repository = GroceryRepository(groceryDao)
 
-        val groceryItem1 = GroceryItem(id = 1, name = "Bananas", syncState = "PENDING_INSERT")
-        val groceryItem2 = GroceryItem(id = 2, name = "Apples", syncState = "SYNCED")
+        val groceryItem1 = GroceryItem(id = "1", name = "Bananas", syncState = "PENDING_INSERT")
+        val groceryItem2 = GroceryItem(id = "2", name = "Apples", syncState = "SYNCED")
 
         groceryDao.insertItem(groceryItem1)
         groceryDao.insertItem(groceryItem2)
@@ -243,7 +260,7 @@ class SyncPipelineTest {
 
         // 2. Update SYNCED item
         repository.updateItem(groceryItem2.copy(name = "Organic Apples"))
-        val updatedItem2 = groceryDao.getUnsyncedItems().find { it.id == 2 }
+        val updatedItem2 = groceryDao.getUnsyncedItems().find { it.id == "2" }
         assertNotNull(updatedItem2)
         assertEquals("PENDING_UPDATE", updatedItem2?.syncState)
         assertEquals("Organic Apples", updatedItem2?.name)
@@ -251,11 +268,11 @@ class SyncPipelineTest {
         // 3. Delete PENDING_INSERT item (should hard-delete)
         repository.deleteItem(groceryItem1)
         val remainingItems = groceryDao.getAllItemsOneShot()
-        assertFalse(remainingItems.any { it.id == 1 })
+        assertFalse(remainingItems.any { it.id == "1" })
 
         // 4. Delete SYNCED/PENDING_UPDATE item (should soft-delete)
         repository.deleteItem(updatedItem2!!)
-        val softDeletedItem2 = groceryDao.getUnsyncedItems().find { it.id == 2 }
+        val softDeletedItem2 = groceryDao.getUnsyncedItems().find { it.id == "2" }
         assertNotNull(softDeletedItem2)
         assertEquals("PENDING_DELETE", softDeletedItem2?.syncState)
         assertTrue(softDeletedItem2?.isDeleted == true)
@@ -264,7 +281,7 @@ class SyncPipelineTest {
     @Test
     fun testStoreAndCategoryDtoMapping() {
         val store = Store(
-            id = 42,
+            id = "42",
             name = "Trader Joe's",
             position = 2,
             isDefaultSupported = false,
@@ -288,7 +305,7 @@ class SyncPipelineTest {
         assertEquals(store, storeEntity)
 
         val category = Category(
-            id = 15,
+            id = "15",
             name = "Produce",
             position = 4,
             userId = "user-123",
@@ -337,8 +354,8 @@ class SyncPipelineTest {
         assertEquals(member, memberEntity)
 
         val storeInfo = GroceryItemStoreInfo(
-            groceryItemId = 50,
-            storeId = 12,
+            groceryItemId = "50",
+            storeId = "12",
             price = 4.99,
             isAvailable = true,
             userId = "user-uuid",

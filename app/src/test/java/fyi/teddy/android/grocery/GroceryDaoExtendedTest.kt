@@ -53,8 +53,8 @@ class GroceryDaoExtendedTest {
 
     @Test
     fun getRecommendedItems_onlyIncludesBoughtItems() = runTest {
-        val item1 = GroceryItem(id = 1, name = "Bought", timesBought = 1, userId = userId, isActive = false)
-        val item2 = GroceryItem(id = 2, name = "Never Bought", timesBought = 0, userId = userId, isActive = false)
+        val item1 = GroceryItem(id = "1", name = "Bought", timesBought = 1, userId = userId, isActive = false)
+        val item2 = GroceryItem(id = "2", name = "Never Bought", timesBought = 0, userId = userId, isActive = false)
         
         groceryDao.insertItem(item1)
         groceryDao.insertItem(item2)
