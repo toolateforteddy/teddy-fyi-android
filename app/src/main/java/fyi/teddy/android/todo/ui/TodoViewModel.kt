@@ -178,9 +178,9 @@ class TodoViewModel(
         val recentlyCompleted = settings.recentlyCompleted
         val selectedListId = settings.selectedListId
         
-        val listFilteredAll = all.filter { if (selectedListId != null) it.listId == selectedListId else true }
-        val listFilteredToday = today.filter { if (selectedListId != null) it.listId == selectedListId else true }
-        val listFilteredScheduled = scheduled.filter { if (selectedListId != null) it.listId == selectedListId else true }
+        val listFilteredAll = all.filter { if (selectedListId != null) it.listId == selectedListId else true && !it.isDeleted }
+        val listFilteredToday = today.filter { if (selectedListId != null) it.listId == selectedListId else true && !it.isDeleted }
+        val listFilteredScheduled = scheduled.filter { if (selectedListId != null) it.listId == selectedListId else true && !it.isDeleted }
 
         val baseItems = when(mode) {
             TodoMode.TODAY -> listFilteredToday

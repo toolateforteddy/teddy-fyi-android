@@ -8,24 +8,24 @@ abstract class TodoDao {
     @Query(
         "SELECT * FROM todo_items WHERE (isDaily = 1 OR recurrenceRule IS NULL OR " +
         "scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1) " +
-        "AND userId = :userId ORDER BY position ASC, createdAt DESC"
+        "AND userId = :userId AND is_deleted = 0 ORDER BY position ASC, createdAt DESC"
     )
     abstract fun getAllItems(userId: String): Flow<List<TodoItem>>
 
     @Query("""
-        SELECT * FROM todo_items WHERE userId = :userId AND (
+        SELECT * FROM todo_items WHERE userId = :userId AND is_deleted = 0 AND (
             scheduledDate = :today 
             OR (dueDate IS NOT NULL AND dueDate <= (strftime('%s','now') * 1000 + 172800000))
             OR (isDaily = 1 OR recurrenceRule IS NULL OR scheduledAt <= (strftime('%s','now') * 1000 + 60000) OR isCompleted = 1)
-            OR id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId)
-            OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId))
-            OR parentId IN (SELECT id FROM todo_items WHERE scheduledDate = :today AND userId = :userId)
+            OR id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId AND is_deleted = 0)
+            OR id IN (SELECT parentId FROM todo_items WHERE id IN (SELECT parentId FROM todo_items WHERE scheduledDate = :today AND parentId IS NOT NULL AND userId = :userId AND is_deleted = 0) AND is_deleted = 0)
+            OR parentId IN (SELECT id FROM todo_items WHERE scheduledDate = :today AND userId = :userId AND is_deleted = 0)
         )
         ORDER BY (CASE WHEN scheduledDate = :today THEN 0 ELSE 1 END) ASC, position ASC, createdAt DESC
     """)
     abstract fun getTodayItems(userId: String, today: String): Flow<List<TodoItem>>
 
-    @Query("SELECT * FROM todo_items WHERE userId = :userId AND scheduledDate > :today AND isCompleted = 0 ORDER BY scheduledDate ASC")
+    @Query("SELECT * FROM todo_items WHERE userId = :userId AND scheduledDate > :today AND isCompleted = 0 AND is_deleted = 0 ORDER BY scheduledDate ASC")
     abstract fun getScheduledItems(userId: String, today: String): Flow<List<TodoItem>>
 
     @Upsert
@@ -46,13 +46,13 @@ abstract class TodoDao {
     @Query("DELETE FROM todo_items WHERE userId = :userId")
     abstract suspend fun deleteAll(userId: String)
 
-    @Query("UPDATE todo_items SET lastScheduledDate = scheduledDate, scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0 AND (scheduledDate IS NOT NULL AND scheduledDate < :today)")
+    @Query("UPDATE todo_items SET lastScheduledDate = scheduledDate, scheduledDate = NULL WHERE isCompleted = 0 AND userId = :userId AND isDaily = 0 AND is_deleted = 0 AND (scheduledDate IS NOT NULL AND scheduledDate < :today)")
     abstract suspend fun resetPlannedItems(userId: String, today: String)
 
     @Query("UPDATE todo_items SET userId = :userId WHERE userId IS NULL")
     abstract suspend fun claimUnownedItems(userId: String)
 
-    @Query("UPDATE todo_items SET isCompleted = 0, scheduledDate = :today WHERE isDaily = 1 AND userId = :userId")
+    @Query("UPDATE todo_items SET isCompleted = 0, scheduledDate = :today WHERE isDaily = 1 AND userId = :userId AND is_deleted = 0")
     abstract suspend fun resetDailyItems(userId: String, today: String)
 
     @Transaction
@@ -65,10 +65,10 @@ abstract class TodoDao {
         insertItem(item.copy(position = maxPos + 1))
     }
 
-    @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId = :parentId")
+    @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId = :parentId AND is_deleted = 0")
     protected abstract suspend fun getMaxPosition(userId: String, parentId: String): Int?
 
-    @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId IS NULL")
+    @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId IS NULL AND is_deleted = 0")
     protected abstract suspend fun getMaxPositionNullParent(userId: String): Int?
 
     @Transaction
@@ -142,10 +142,10 @@ abstract class TodoDao {
     @Query("DELETE FROM todo_lists WHERE id = :id")
     abstract suspend fun hardDeleteList(id: String)
 
-    @Query("UPDATE todo_items SET scheduledDate = :scheduledDate, sync_state = 'PENDING_UPDATE' WHERE parentId = :parentId AND userId = :userId AND isCompleted = 0 AND (scheduledDate IS NULL OR scheduledDate = '')")
+    @Query("UPDATE todo_items SET scheduledDate = :scheduledDate, sync_state = 'PENDING_UPDATE' WHERE parentId = :parentId AND userId = :userId AND isCompleted = 0 AND is_deleted = 0 AND (scheduledDate IS NULL OR scheduledDate = '')")
     abstract suspend fun scheduleIncompleteUnscheduledChildren(parentId: String, userId: String, scheduledDate: String)
 
-    @Query("UPDATE todo_items SET listId = :listId, sync_state = CASE WHEN sync_state = 'SYNCED' THEN 'PENDING_UPDATE' ELSE sync_state END WHERE parentId = :parentId AND userId = :userId")
+    @Query("UPDATE todo_items SET listId = :listId, sync_state = CASE WHEN sync_state = 'SYNCED' THEN 'PENDING_UPDATE' ELSE sync_state END WHERE parentId = :parentId AND userId = :userId AND is_deleted = 0")
     abstract suspend fun updateChildrenListId(parentId: String, userId: String, listId: String?)
 
     @Query("SELECT * FROM todo_items")

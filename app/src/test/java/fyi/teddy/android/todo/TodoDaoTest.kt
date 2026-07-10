@@ -118,4 +118,37 @@ class TodoDaoTest {
         assertEquals("Unowned Task", items[0].title)
         assertEquals(testUserId, items[0].userId)
     }
+
+    @Test
+    fun softDeletedItemsAreExcluded() = runTest {
+        val today = "2023-10-27"
+        val tomorrow = "2023-10-28"
+        
+        // 1. All Items
+        todoDao.insertItem(TodoItem(id = "active", title = "Active", userId = testUserId, isDeleted = false))
+        todoDao.insertItem(TodoItem(id = "deleted", title = "Deleted", userId = testUserId, isDeleted = true))
+        
+        val allItems = todoDao.getAllItems(testUserId).first()
+        assertEquals(1, allItems.size)
+        assertEquals("active", allItems[0].id)
+        
+        // 2. Today Items
+        todoDao.insertItem(TodoItem(id = "today_active", title = "Today Active", userId = testUserId, scheduledDate = today, isDeleted = false))
+        todoDao.insertItem(TodoItem(id = "today_deleted", title = "Today Deleted", userId = testUserId, scheduledDate = today, isDeleted = true))
+        
+        val todayItems = todoDao.getTodayItems(testUserId, today).first()
+        // Should find "active" (as it matches general criteria) and "today_active"
+        assertTrue(todayItems.any { it.id == "active" })
+        assertTrue(todayItems.any { it.id == "today_active" })
+        assertFalse(todayItems.any { it.id == "deleted" })
+        assertFalse(todayItems.any { it.id == "today_deleted" })
+        
+        // 3. Scheduled Items
+        todoDao.insertItem(TodoItem(id = "future_active", title = "Future Active", userId = testUserId, scheduledDate = tomorrow, isDeleted = false))
+        todoDao.insertItem(TodoItem(id = "future_deleted", title = "Future Deleted", userId = testUserId, scheduledDate = tomorrow, isDeleted = true))
+        
+        val scheduledItems = todoDao.getScheduledItems(testUserId, today).first()
+        assertEquals(1, scheduledItems.size)
+        assertEquals("future_active", scheduledItems[0].id)
+    }
 }
