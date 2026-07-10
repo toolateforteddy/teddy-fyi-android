@@ -50,7 +50,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isClusterHappy by remember { mutableStateOf<Boolean?>(null) }
-    
+
     var selectedTodoForItemMenu by remember { mutableStateOf<TodoItem?>(null) }
 
     LaunchedEffect(Unit) {
@@ -66,11 +66,11 @@ fun HomeScreen(
             val todayString = java.time.LocalDate.now().toString()
             db.todoDao().getTodayItems(userId, todayString)
                 .map { items ->
-                    items.filter { 
-                        (!it.isCompleted) && 
-                        (!it.isDeleted) && 
-                        (it.scheduledDate == todayString) && 
-                        (it.parentId == null) 
+                    items.filter {
+                        (!it.isCompleted) &&
+                                (!it.isDeleted) &&
+                                (it.scheduledDate == todayString) &&
+                                (it.parentId == null)
                     }
                 }
         } else {
@@ -91,11 +91,11 @@ fun HomeScreen(
         if (userId != null) {
             db.todoDao().getAllItems(userId)
                 .map { items ->
-                    items.filter { 
-                        !it.isCompleted && 
-                        !it.isDeleted && 
-                        it.scheduledDate == null && 
-                        it.parentId == null 
+                    items.filter {
+                        !it.isCompleted &&
+                                !it.isDeleted &&
+                                it.scheduledDate == null &&
+                                it.parentId == null
                     }.size
                 }
         } else {
@@ -148,7 +148,7 @@ fun HomeScreen(
                         )
                     }
 
-                    // Profile Picture or Account icon (click to logout)
+                    // Profile Picture or Account icon (click to log out)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (profilePic != null) {
                             AsyncImage(
@@ -159,8 +159,11 @@ fun HomeScreen(
                                     .clip(CircleShape)
                                     .clickable {
                                         scope.launch {
-                                            val credentialManager = CredentialManager.create(context)
-                                            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                                            val credentialManager =
+                                                CredentialManager.create(context)
+                                            credentialManager.clearCredentialState(
+                                                ClearCredentialStateRequest()
+                                            )
                                             onLogout()
                                         }
                                     },
@@ -170,7 +173,9 @@ fun HomeScreen(
                             IconButton(onClick = {
                                 scope.launch {
                                     val credentialManager = CredentialManager.create(context)
-                                    credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                                    credentialManager.clearCredentialState(
+                                        ClearCredentialStateRequest()
+                                    )
                                     onLogout()
                                 }
                             }) {
@@ -208,14 +213,17 @@ fun HomeScreen(
                                             todoRepository.updateItem(intent.item)
                                             selectedTodoForItemMenu = null
                                         }
+
                                         is TodoItemIntent.Delete -> {
                                             todoRepository.deleteItem(intent.item)
                                             selectedTodoForItemMenu = null
                                         }
+
                                         is TodoItemIntent.ToggleComplete -> {
                                             todoRepository.updateItem(intent.item.copy(isCompleted = intent.isChecked))
                                             selectedTodoForItemMenu = null
                                         }
+
                                         is TodoItemIntent.AssignIcon -> {
                                             val session = fyi.teddy.android.auth.UserSession()
                                             session.load(context)
@@ -225,16 +233,21 @@ fun HomeScreen(
                                             }
                                             selectedTodoForItemMenu = null
                                         }
+
                                         is TodoItemIntent.AddSubtask -> {
-                                            todoRepository.insertItem(TodoItem(
-                                                title = StringUtils.formatTitle(intent.title),
-                                                userId = item.userId,
-                                                parentId = intent.parentId,
-                                                listId = item.listId
-                                            ))
+                                            todoRepository.insertItem(
+                                                TodoItem(
+                                                    title = StringUtils.formatTitle(intent.title),
+                                                    userId = item.userId,
+                                                    parentId = intent.parentId,
+                                                    listId = item.listId
+                                                )
+                                            )
                                             // Don't close menu when adding subtask
                                         }
-                                        else -> { /* Not implemented on home screen yet */ }
+
+                                        else -> { /* Not implemented on home screen yet */
+                                        }
                                     }
                                 }
                             }

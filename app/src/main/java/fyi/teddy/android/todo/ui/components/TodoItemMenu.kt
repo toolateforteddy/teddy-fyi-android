@@ -76,6 +76,7 @@ fun TodoItemMenu(
                             DashboardHexMenuContent(
                                 item = item,
                                 subtasks = subtasks,
+                                allLists = allLists,
                                 onIntent = onIntent,
                                 onDismissRequest = onDismissRequest,
                                 onShowOverlay = { activeOverlay = it }
@@ -86,6 +87,7 @@ fun TodoItemMenu(
                                 item = item,
                                 isSubtask = isSubtask,
                                 subtasks = subtasks,
+                                allLists = allLists,
                                 onIntent = onIntent,
                                 onDismissRequest = onDismissRequest,
                                 onShowOverlay = { activeOverlay = it }
@@ -271,6 +273,7 @@ fun TodoItemMenu(
 fun DashboardHexMenuContent(
     item: TodoItem,
     subtasks: List<TodoItem>,
+    allLists: List<fyi.teddy.android.todo.data.TodoList> = emptyList(),
     onIntent: (TodoItemIntent) -> Unit,
     onDismissRequest: () -> Unit,
     onShowOverlay: (ActiveRowOverlay) -> Unit
@@ -346,18 +349,29 @@ fun DashboardHexMenuContent(
             modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)
         ) {
             items(subtasks) { subtask ->
+                val subtaskColor = remember(subtask.listId, allLists) {
+                    allLists.find { it.id == subtask.listId }?.let { list ->
+                        try {
+                            Color(android.graphics.Color.parseColor(list.colorHex))
+                        } catch (_: Exception) {
+                            NeonTeal
+                        }
+                    } ?: NeonTeal
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(
+                    HexCheckbox(
                         checked = subtask.isCompleted,
                         onCheckedChange = { isChecked ->
                             onIntent(TodoItemIntent.ToggleComplete(subtask, isChecked))
-                        }
+                        },
+                        color = subtaskColor
                     )
+                    Spacer(Modifier.width(12.dp))
                     Text(
                         text = subtask.title,
                         style = if (subtask.isCompleted) MaterialTheme.typography.bodyMedium.copy(
@@ -376,6 +390,7 @@ fun ListRowMenuContent(
     item: TodoItem,
     isSubtask: Boolean,
     subtasks: List<TodoItem>,
+    allLists: List<fyi.teddy.android.todo.data.TodoList> = emptyList(),
     onIntent: (TodoItemIntent) -> Unit,
     onDismissRequest: () -> Unit,
     onShowOverlay: (ActiveRowOverlay) -> Unit
@@ -487,18 +502,29 @@ fun ListRowMenuContent(
                 modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
                 items(subtasks) { subtask ->
+                    val subtaskColor = remember(subtask.listId, allLists) {
+                        allLists.find { it.id == subtask.listId }?.let { list ->
+                            try {
+                                Color(android.graphics.Color.parseColor(list.colorHex))
+                            } catch (_: Exception) {
+                                NeonTeal
+                            }
+                        } ?: NeonTeal
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Checkbox(
+                        HexCheckbox(
                             checked = subtask.isCompleted,
                             onCheckedChange = { isChecked ->
                                 onIntent(TodoItemIntent.ToggleComplete(subtask, isChecked))
-                            }
+                            },
+                            color = subtaskColor
                         )
+                        Spacer(Modifier.width(12.dp))
                         Text(
                             text = subtask.title,
                             style = if (subtask.isCompleted) MaterialTheme.typography.bodyMedium.copy(

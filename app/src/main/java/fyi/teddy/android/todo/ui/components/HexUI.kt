@@ -71,15 +71,16 @@ class ClippedCornerShape(val cornerSize: Float = 12f) : Shape {
 fun HexCheckbox(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    color: Color = NeonTeal
 ) {
     Box(
         modifier = modifier
             .size(24.dp)
             .clip(HexagonShape())
-            .background(if (checked) NeonTeal else Color.Transparent)
+            .background(if (checked) color else Color.Transparent)
             .border(
-                BorderStroke(2.dp, if (checked) NeonTeal else MutedGrey),
+                BorderStroke(2.dp, if (checked) color else MutedGrey),
                 HexagonShape()
             ),
         contentAlignment = Alignment.Center

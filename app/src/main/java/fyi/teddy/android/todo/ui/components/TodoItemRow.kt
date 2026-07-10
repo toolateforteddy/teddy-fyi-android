@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.utils.getIconByName
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -46,7 +47,7 @@ fun TodoItemRow(
     item: TodoItem,
     isSubtask: Boolean = false,
     subtasks: List<TodoItem> = emptyList(),
-    allLists: List<fyi.teddy.android.todo.data.TodoList> = emptyList(),
+    allLists: List<TodoList> = emptyList(),
     subtaskCount: Int = 0,
     completedSubtaskCount: Int = 0,
     isExpanded: Boolean = false,
@@ -65,6 +66,16 @@ fun TodoItemRow(
     var dragOffsetY by remember { mutableStateOf(value = 0f) }
     var isConfirmed by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+
+    val itemColor = remember(item.listId, allLists) {
+        allLists.find { it.id == item.listId }?.let { list ->
+            try {
+                Color(android.graphics.Color.parseColor(list.colorHex))
+            } catch (_: Exception) {
+                NeonTeal
+            }
+        } ?: NeonTeal
+    }
 
     val today = LocalDate.now().toString()
     val isScheduledForToday = item.scheduledDate == today
@@ -209,7 +220,7 @@ fun TodoItemRow(
                             .padding(start = 12.dp, end = 16.dp)
                             .width(2.dp)
                             .height(20.dp)
-                            .background(NeonTeal.copy(alpha = 0.3f))
+                            .background(itemColor.copy(alpha = 0.3f))
                     )
                 }
 
@@ -220,7 +231,8 @@ fun TodoItemRow(
                 HexCheckbox(
                     checked = isChecked,
                     onCheckedChange = onCheckedChange,
-                    modifier = Modifier.clickable { onCheckedChange(!isChecked) }
+                    modifier = Modifier.clickable { onCheckedChange(!isChecked) },
+                    color = itemColor
                 )
 
                 Column(
@@ -243,7 +255,7 @@ fun TodoItemRow(
                             Icon(
                                 imageVector = explicitIcon,
                                 contentDescription = null,
-                                tint = NeonTeal.copy(alpha = 0.7f),
+                                tint = itemColor.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(end = 8.dp).size(16.dp)
                             )
                         }
@@ -260,7 +272,7 @@ fun TodoItemRow(
                             Icon(
                                 Icons.Default.Refresh, 
                                 contentDescription = "Daily", 
-                                tint = NeonTeal, 
+                                tint = itemColor, 
                                 modifier = Modifier.padding(start = 4.dp).size(12.dp)
                             )
                         }
@@ -293,7 +305,7 @@ fun TodoItemRow(
                         if (item.scheduledDate != null && showScheduledDate) {
                             Text(
                                 text = "Scheduled: ${item.scheduledDate}",
-                                color = NeonTeal,
+                                color = itemColor,
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 modifier = Modifier.padding(start = 4.dp)
                             )
