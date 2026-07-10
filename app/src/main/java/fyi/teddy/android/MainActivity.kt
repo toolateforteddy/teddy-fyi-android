@@ -122,8 +122,6 @@ class MainActivity : ComponentActivity() {
                             userId = session.userId,
                             userName = session.userName,
                             profilePic = session.profilePictureUri,
-                            onNavigateToWeather = { navController.navigate(Screen.Weather.route) },
-                            onNavigateToAuthed = { navController.navigate(Screen.Authed.route) },
                             onNavigateToTodo = { mode -> 
                                 navController.navigate(Screen.Todo.createRoute(mode)) 
                             },

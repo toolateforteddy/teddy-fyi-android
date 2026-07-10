@@ -1,12 +1,10 @@
 package fyi.teddy.android.ui.screens
 
 import android.util.Log
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -43,8 +41,6 @@ fun HomeScreen(
     userId: String?,
     userName: String?,
     profilePic: String?,
-    onNavigateToWeather: () -> Unit,
-    onNavigateToAuthed: () -> Unit,
     onNavigateToTodo: (String?) -> Unit,
     onNavigateToGrocery: () -> Unit,
     onNavigateToDebug: () -> Unit,
