@@ -5,15 +5,53 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +61,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
-import fyi.teddy.android.todo.ui.components.*
+import fyi.teddy.android.todo.ui.components.AddListDialog
+import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
+import fyi.teddy.android.todo.ui.components.EditListDialog
+import fyi.teddy.android.todo.ui.components.HexTimeline
+import fyi.teddy.android.todo.ui.components.NeonTeal
+import fyi.teddy.android.todo.ui.components.TodoEmptyState
+import fyi.teddy.android.todo.ui.components.TodoInputBar
+import fyi.teddy.android.todo.ui.components.TodoItemIntent
+import fyi.teddy.android.todo.ui.components.TodoItemRow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.dionsegijn.konfetti.compose.KonfettiView
@@ -32,6 +78,7 @@ import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 
 private fun formatDateBucket(date: String): String {
     return try {
@@ -40,7 +87,9 @@ private fun formatDateBucket(date: String): String {
         when {
             localDate == today -> "Today"
             localDate == today.plusDays(1) -> "Tomorrow"
-            localDate.isBefore(today.plusDays(7)) -> localDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+            localDate.isBefore(today.plusDays(7)) -> localDate.dayOfWeek.name.lowercase()
+                .replaceFirstChar { it.uppercase() }
+
             else -> date
         }
     } catch (_: Exception) {
@@ -54,12 +103,16 @@ enum class TodoMode {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) {
+fun TodoScreen(userId: String, initialMode: String? = null) {
     val context = LocalContext.current
     val viewModel: TodoViewModel = viewModel(
-        factory = TodoViewModelFactory(context.applicationContext as android.app.Application, userId, initialMode)
+        factory = TodoViewModelFactory(
+            context.applicationContext as android.app.Application,
+            userId,
+            initialMode
+        )
     )
-    
+
     val currentMode by viewModel.currentMode.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
     val showCompletedOnly by viewModel.showCompletedOnly.collectAsState()
@@ -69,14 +122,13 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
     val displayedLists by viewModel.displayedLists.collectAsState()
     val allLists by viewModel.allLists.collectAsState()
     val selectedListId by viewModel.selectedListId.collectAsState()
-    
+
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     var showPlanningDatePicker by remember { mutableStateOf(false) }
     var showAddListDialog by remember { mutableStateOf(false) }
     var listToEdit by remember { mutableStateOf<fyi.teddy.android.todo.data.TodoList?>(null) }
     val expandedParentIds = remember { mutableStateOf(setOf<String>()) }
     val parties = remember { mutableStateListOf<Party>() }
-    
 
 
     // Collect visual confetti triggers from ViewModel
@@ -93,12 +145,12 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
             )
             parties.add(party)
             launch {
-                delay(3000)
+                delay(3.seconds)
                 parties.remove(party)
             }
         }
     }
-    
+
     val onAddNewItem = { title: String, parentId: String? ->
         if (title.isNotBlank()) {
             val scheduledDate = if (currentMode == TodoMode.PLANNING) selectedPlanningDate else null
@@ -151,7 +203,8 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
             confirmButton = {
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis?.let {
-                        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC)
+                            .toLocalDate().toString()
                     }
                     if (selectedDate != null) {
                         viewModel.setSelectedPlanningDate(selectedDate)
@@ -160,7 +213,9 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                 }) { Text(stringResource(R.string.save), color = NeonTeal) }
             },
             dismissButton = {
-                TextButton(onClick = { showPlanningDatePicker = false }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
+                TextButton(onClick = {
+                    showPlanningDatePicker = false
+                }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
             },
             colors = DatePickerDefaults.colors(
                 containerColor = Color(0xFF121214),
@@ -193,11 +248,15 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { 
+                    title = {
                         val titleText = when (currentMode) {
                             TodoMode.BACKLOG -> if (showCompletedOnly) "Completed Backlog" else "Backlog"
                             TodoMode.SCHEDULED -> if (showCompletedOnly) "Completed Future" else "Future"
@@ -213,23 +272,29 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                     actions = {
                         IconButton(onClick = { viewModel.setShowCompletedOnly(!showCompletedOnly) }) {
                             Icon(
-                                if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle, 
-                                contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(R.string.show_completed),
+                                if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle,
+                                contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(
+                                    R.string.show_completed
+                                ),
                                 tint = if (showCompletedOnly) NeonTeal else Color.White
                             )
                         }
 
                         IconButton(onClick = { viewModel.setEditMode(!isEditMode) }) {
                             Icon(
-                                Icons.Default.Edit, 
+                                Icons.Default.Edit,
                                 contentDescription = stringResource(R.string.edit_mode),
                                 tint = if (isEditMode) NeonTeal else Color.White
                             )
                         }
-                        
+
                         if (isEditMode) {
                             IconButton(onClick = { showClearAllConfirmation = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_all), tint = Color.Red)
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = stringResource(R.string.clear_all),
+                                    tint = Color.Red
+                                )
                             }
                         }
                     },
@@ -259,7 +324,12 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                     NavigationBarItem(
                         selected = currentMode == TodoMode.PLANNING,
                         onClick = { viewModel.setMode(TodoMode.PLANNING) },
-                        icon = { Icon(Icons.Default.EditCalendar, contentDescription = "Planning") },
+                        icon = {
+                            Icon(
+                                Icons.Default.EditCalendar,
+                                contentDescription = "Planning"
+                            )
+                        },
                         label = { Text("Planning") },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = NeonTeal,
@@ -300,11 +370,15 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
             containerColor = Color.Black
         ) { paddingValues ->
             Surface(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
                 color = Color.Black
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
                 ) {
                     if (currentMode == TodoMode.PLANNING) {
                         HexTimeline(
@@ -346,7 +420,9 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                 val isSelected = selectedListId == list.id
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
-                                    color = if (isSelected) NeonTeal.copy(alpha = 0.3f) else Color(android.graphics.Color.parseColor(list.colorHex)).copy(alpha = 0.2f),
+                                    color = if (isSelected) NeonTeal.copy(alpha = 0.3f) else Color(
+                                        android.graphics.Color.parseColor(list.colorHex)
+                                    ).copy(alpha = 0.2f),
                                     modifier = Modifier
                                         .padding(end = 8.dp)
                                         .combinedClickable(
@@ -356,23 +432,31 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp,
+                                            vertical = 6.dp
+                                        )
                                     ) {
                                         // Little color dot for the list
                                         Box(
                                             modifier = Modifier
                                                 .size(8.dp)
                                                 .background(
-                                                    color = Color(android.graphics.Color.parseColor(list.colorHex)),
+                                                    color = Color(
+                                                        android.graphics.Color.parseColor(
+                                                            list.colorHex
+                                                        )
+                                                    ),
                                                     shape = RoundedCornerShape(4.dp)
                                                 )
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        val displayName = if (currentMode == TodoMode.TODAY && uiModel.incompleteCount > 0) {
-                                            "${list.name} (${uiModel.incompleteCount})"
-                                        } else {
-                                            list.name
-                                        }
+                                        val displayName =
+                                            if (currentMode == TodoMode.TODAY && uiModel.incompleteCount > 0) {
+                                                "${list.name} (${uiModel.incompleteCount})"
+                                            } else {
+                                                list.name
+                                            }
                                         Text(
                                             text = displayName,
                                             color = Color.White,
@@ -388,7 +472,11 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                     onClick = { showAddListDialog = true },
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Add Space", tint = NeonTeal)
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Add Space",
+                                        tint = NeonTeal
+                                    )
                                 }
                             }
                         }
@@ -397,13 +485,14 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                     if (!showCompletedOnly && currentMode != TodoMode.TODAY && currentMode != TodoMode.SCHEDULED && !isEditMode) {
                         TodoInputBar(onAddNewItem = { title -> onAddNewItem(title, null) })
                     }
-                    
+
                     if (groupedItems.isEmpty() && currentMode == TodoMode.TODAY && !showCompletedOnly) {
                         TodoEmptyState()
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
                             if (currentMode == TodoMode.SCHEDULED) {
-                                val scheduledGroups = groupedItems.groupBy { it.first.scheduledDate ?: "Unscheduled" }
+                                val scheduledGroups =
+                                    groupedItems.groupBy { it.first.scheduledDate ?: "Unscheduled" }
                                 scheduledGroups.forEach { (date, itemsForDate) ->
                                     @OptIn(ExperimentalFoundationApi::class)
                                     stickyHeader {
@@ -416,11 +505,16 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = NeonTeal,
-                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                                modifier = Modifier.padding(
+                                                    top = 16.dp,
+                                                    bottom = 8.dp
+                                                )
                                             )
                                         }
                                     }
-                                    items(itemsForDate.size, key = { index -> itemsForDate[index].first.id }) { index ->
+                                    items(
+                                        itemsForDate.size,
+                                        key = { index -> itemsForDate[index].first.id }) { index ->
                                         val (parent, children) = itemsForDate[index]
                                         val isExpanded = expandedParentIds.value.contains(parent.id)
                                         TodoItemRow(
@@ -443,56 +537,120 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             showScheduledDate = false,
                                             index = index,
                                             totalItems = itemsForDate.size,
-                                            isRecentlyCompleted = recentlyCompletedIds.contains(parent.id),
+                                            isRecentlyCompleted = recentlyCompletedIds.contains(
+                                                parent.id
+                                            ),
                                             onCheckedChange = { isChecked ->
                                                 viewModel.toggleComplete(parent, isChecked)
                                             },
                                             onIntent = { intent ->
                                                 when (intent) {
-                                                    is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
-                                                    is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
-                                                    is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
-                                                    is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
-                                                    is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
-                                                    is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
-                                                    is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
-                                                    is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
-                                                    is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                    is TodoItemIntent.Delete -> viewModel.deleteItem(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.Update -> viewModel.updateItem(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.AddSubtask -> onAddNewItem(
+                                                        intent.title,
+                                                        intent.parentId
+                                                    )
+
+                                                    is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.MoveUp -> viewModel.moveItemUp(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.MoveDown -> viewModel.moveItemDown(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.AssignIcon -> viewModel.assignIcon(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(
+                                                        intent.item,
+                                                        intent.isChecked
+                                                    )
                                                 }
                                             }
                                         )
-                                        
+
                                         if (isExpanded) {
-                                            children.filter { it.scheduledDate == date }.forEach { child ->
-                                                TodoItemRow(
-                                                    item = child,
-                                                    isSubtask = true,
-                                                    allLists = allLists,
-                                                    isEditing = isEditMode,
-                                                    isPlanningMode = currentMode == TodoMode.PLANNING,
-                                                    planningDate = selectedPlanningDate,
-                                                    showScheduledDate = false,
-                                                    index = 0,
-                                                    totalItems = 1,
-                                                    isRecentlyCompleted = recentlyCompletedIds.contains(child.id),
-                                                    onCheckedChange = { isChecked ->
-                                                        viewModel.toggleComplete(child, isChecked)
-                                                    },
-                                                    onIntent = { intent ->
-                                                        when (intent) {
-                                                            is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
-                                                            is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
-                                                            is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
-                                                            is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
-                                                            is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
-                                                            is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
-                                                            is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
-                                                            is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
-                                                            is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                            children.filter { it.scheduledDate == date }
+                                                .forEach { child ->
+                                                    TodoItemRow(
+                                                        item = child,
+                                                        isSubtask = true,
+                                                        allLists = allLists,
+                                                        isEditing = isEditMode,
+                                                        isPlanningMode = currentMode == TodoMode.PLANNING,
+                                                        planningDate = selectedPlanningDate,
+                                                        showScheduledDate = false,
+                                                        index = 0,
+                                                        totalItems = 1,
+                                                        isRecentlyCompleted = recentlyCompletedIds.contains(
+                                                            child.id
+                                                        ),
+                                                        onCheckedChange = { isChecked ->
+                                                            viewModel.toggleComplete(
+                                                                child,
+                                                                isChecked
+                                                            )
+                                                        },
+                                                        onIntent = { intent ->
+                                                            when (intent) {
+                                                                is TodoItemIntent.Delete -> viewModel.deleteItem(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.Update -> viewModel.updateItem(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.AddSubtask -> onAddNewItem(
+                                                                    intent.title,
+                                                                    intent.parentId
+                                                                )
+
+                                                                is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.MoveUp -> viewModel.moveItemUp(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.MoveDown -> viewModel.moveItemDown(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.AssignIcon -> viewModel.assignIcon(
+                                                                    intent.item
+                                                                )
+
+                                                                is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(
+                                                                    intent.item,
+                                                                    intent.isChecked
+                                                                )
+                                                            }
                                                         }
-                                                    }
-                                                )
-                                            }
+                                                    )
+                                                }
                                         }
                                     }
                                 }
@@ -506,7 +664,10 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = Color(0xFFFFA500),
-                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                                modifier = Modifier.padding(
+                                                    top = 16.dp,
+                                                    bottom = 8.dp
+                                                )
                                             )
                                         }
                                         showedRolloverHeader = true
@@ -533,33 +694,65 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                             showScheduledDate = currentMode != TodoMode.TODAY,
                                             index = parentIndex,
                                             totalItems = groupedItems.size,
-                                            isRecentlyCompleted = recentlyCompletedIds.contains(parent.id),
+                                            isRecentlyCompleted = recentlyCompletedIds.contains(
+                                                parent.id
+                                            ),
                                             onCheckedChange = { isChecked ->
                                                 if (currentMode == TodoMode.PLANNING) {
-                                                    viewModel.updateItem(parent.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
+                                                    viewModel.updateItem(parent.copy(scheduledDate = if (isChecked) selectedPlanningDate else null))
                                                 } else {
                                                     viewModel.toggleComplete(parent, isChecked)
                                                 }
                                             },
                                             onIntent = { intent ->
                                                 when (intent) {
-                                                    is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
-                                                    is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
-                                                    is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
-                                                    is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
-                                                    is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
-                                                    is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
-                                                    is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
-                                                    is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
-                                                    is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                    is TodoItemIntent.Delete -> viewModel.deleteItem(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.Update -> viewModel.updateItem(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.AddSubtask -> onAddNewItem(
+                                                        intent.title,
+                                                        intent.parentId
+                                                    )
+
+                                                    is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.MoveUp -> viewModel.moveItemUp(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.MoveDown -> viewModel.moveItemDown(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.AssignIcon -> viewModel.assignIcon(
+                                                        intent.item
+                                                    )
+
+                                                    is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(
+                                                        intent.item,
+                                                        intent.isChecked
+                                                    )
                                                 }
                                             }
                                         )
                                     }
-                                    
+
                                     val isExpanded = expandedParentIds.value.contains(parent.id)
                                     if (isExpanded) {
-                                        itemsIndexed(children, key = { _, it -> it.id }) { childIndex, child ->
+                                        itemsIndexed(
+                                            children,
+                                            key = { _, it -> it.id }) { childIndex, child ->
                                             TodoItemRow(
                                                 item = child,
                                                 isSubtask = true,
@@ -570,25 +763,59 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 showScheduledDate = currentMode != TodoMode.TODAY,
                                                 index = childIndex,
                                                 totalItems = children.size,
-                                                isRecentlyCompleted = recentlyCompletedIds.contains(child.id),
+                                                isRecentlyCompleted = recentlyCompletedIds.contains(
+                                                    child.id
+                                                ),
                                                 onCheckedChange = { isChecked ->
                                                     if (currentMode == TodoMode.PLANNING) {
-                                                        viewModel.updateItem(child.copy(scheduledDate = if(isChecked) selectedPlanningDate else null))
+                                                        viewModel.updateItem(
+                                                            child.copy(
+                                                                scheduledDate = if (isChecked) selectedPlanningDate else null
+                                                            )
+                                                        )
                                                     } else {
                                                         viewModel.toggleComplete(child, isChecked)
                                                     }
                                                 },
                                                 onIntent = { intent ->
                                                     when (intent) {
-                                                        is TodoItemIntent.Delete -> viewModel.deleteItem(intent.item)
-                                                        is TodoItemIntent.Update -> viewModel.updateItem(intent.item)
-                                                        is TodoItemIntent.AddSubtask -> onAddNewItem(intent.title, intent.parentId)
-                                                        is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(intent.item)
-                                                        is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(intent.item)
-                                                        is TodoItemIntent.MoveUp -> viewModel.moveItemUp(intent.item)
-                                                        is TodoItemIntent.MoveDown -> viewModel.moveItemDown(intent.item)
-                                                        is TodoItemIntent.AssignIcon -> viewModel.assignIcon(intent.item)
-                                                        is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(intent.item, intent.isChecked)
+                                                        is TodoItemIntent.Delete -> viewModel.deleteItem(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.Update -> viewModel.updateItem(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.AddSubtask -> onAddNewItem(
+                                                            intent.title,
+                                                            intent.parentId
+                                                        )
+
+                                                        is TodoItemIntent.MoveToTop -> viewModel.moveItemToTop(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.MoveToBottom -> viewModel.moveItemToBottom(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.MoveUp -> viewModel.moveItemUp(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.MoveDown -> viewModel.moveItemDown(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.AssignIcon -> viewModel.assignIcon(
+                                                            intent.item
+                                                        )
+
+                                                        is TodoItemIntent.ToggleComplete -> viewModel.toggleComplete(
+                                                            intent.item,
+                                                            intent.isChecked
+                                                        )
                                                     }
                                                 }
                                             )

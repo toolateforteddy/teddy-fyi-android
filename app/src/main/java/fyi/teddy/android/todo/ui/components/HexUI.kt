@@ -21,7 +21,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 val NeonTeal = Color(0xFF00F2FE)
-val DeepCharcoal = Color(0xFF0B0B0F)
+
+//val DeepCharcoal = Color(0xFF0B0B0F)
 val MutedGrey = Color(0xFF666666)
 
 class HexagonShape : Shape {
@@ -70,7 +71,6 @@ class ClippedCornerShape(val cornerSize: Float = 12f) : Shape {
 @Composable
 fun HexCheckbox(
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     color: Color = NeonTeal
 ) {
