@@ -12,12 +12,22 @@ import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
+import kotlin.time.Duration.Companion.minutes
 
 @Serializable
 data class LoginRequest(
     @SerialName("user_id") val userId: String,
     @SerialName("client_uuid") val clientUuid: String,
-    @SerialName("google_auth_token") val googleAuthToken: String
+    @SerialName("google_auth_token") val googleAuthToken: String,
+    @SerialName("expires_in_secs") val expiresInSecs: Long? = null,
+)
+
+@Serializable
+data class RefreshRequest(
+    @SerialName("user_id") val userId: String,
+    @SerialName("client_uuid") val clientUuid: String,
+    @SerialName("refresh_token") val refreshToken: String,
+    @SerialName("expires_in_secs") val expiresInSecs: Long? = null,
 )
 
 @Serializable
@@ -27,6 +37,8 @@ data class TokenResponse(
 )
 
 object AuthRepository {
+    val DEBUG_AUTH_EXPIRATION = 1.minutes
+
     suspend fun login(context: Context, session: UserSession, googleToken: String): Boolean {
         return try {
             val clientUuid = session.clientUuid ?: UUID.randomUUID().toString()
@@ -40,7 +52,14 @@ object AuthRepository {
             
             val response = NetworkClient.client.post("https://api-rust.teddy.fyi/auth/login") {
                 contentType(ContentType.Application.Json)
-                setBody(LoginRequest(userIdValue, clientUuid, googleToken))
+                setBody(
+                    LoginRequest(
+                        userId = userIdValue,
+                        clientUuid = clientUuid,
+                        googleAuthToken = googleToken,
+                        expiresInSecs = DEBUG_AUTH_EXPIRATION.inWholeSeconds
+                    )
+                )
             }
             
             if (response.status.value in 200..299) {

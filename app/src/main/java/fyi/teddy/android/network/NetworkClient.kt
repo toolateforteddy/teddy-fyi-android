@@ -64,11 +64,14 @@ object NetworkClient {
                     try {
                         val response = refreshClient.post("https://api-rust.teddy.fyi/auth/refresh") {
                             contentType(ContentType.Application.Json)
-                            setBody(mapOf(
-                                "user_id" to (session.userId ?: ""),
-                                "client_uuid" to (session.clientUuid ?: ""),
-                                "refresh_token" to (session.refreshToken ?: "")
-                            ))
+                            setBody(
+                                RefreshRequest(
+                                    userId = session.userId ?: "",
+                                    clientUuid = session.clientUuid ?: "",
+                                    refreshToken = session.refreshToken ?: "",
+                                    expiresInSecs = AuthRepository.DEBUG_AUTH_EXPIRATION.inWholeSeconds,
+                                )
+                            )
                         }
 
                         if (response.status.value in 200..299) {
