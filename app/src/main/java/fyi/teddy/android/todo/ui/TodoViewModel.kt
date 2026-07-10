@@ -48,6 +48,84 @@ class TodoViewModel(
     val allLists = repository.getAllLists(userId)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    private val todayDateFlow = MutableStateFlow(LocalDate.now().toString())
+
+    // Cold/Hot source flows from repository
+    val allItems = repository.getAllItems(userId)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val todayItems = todayDateFlow.flatMapLatest { today ->
+        repository.getTodayItems(userId, today)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val scheduledItems = todayDateFlow.flatMapLatest { today ->
+        repository.getScheduledItems(userId, today)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    data class TodoListUiModel(
+        val list: fyi.teddy.android.todo.data.TodoList,
+        val incompleteCount: Int = 0
+    )
+
+    /**
+     * Lists to be displayed in the UI. 
+     * In TODAY mode, only shows lists with today's items unless in edit mode.
+     */
+    val displayedLists: StateFlow<List<TodoListUiModel>> = combine(
+        allLists,
+        todayItems,
+        _currentMode,
+        _isEditMode,
+        todayDateFlow
+    ) { lists, todayItemsForCount, mode, isEditMode, todayString ->
+        val incompleteToday = todayItemsForCount.filter { !it.isCompleted }
+        val allParents = incompleteToday.filter { it.parentId == null }
+        val allChildren = incompleteToday.filter { it.parentId != null }.groupBy { it.parentId }
+
+        val todayCountByList = mutableMapOf<String, Int>()
+
+        if (mode == TodoMode.TODAY && !isEditMode) {
+            // Count items that would be shown in Today mode
+            allParents.forEach { parent ->
+                val isParentScheduledToday = parent.scheduledDate == todayString
+                val hasChildrenScheduledToday = allChildren[parent.id]?.any { it.scheduledDate == todayString } == true
+                
+                if (isParentScheduledToday || hasChildrenScheduledToday) {
+                    // Count parent if it belongs to a list
+                    parent.listId?.let { lid ->
+                        todayCountByList[lid] = (todayCountByList[lid] ?: 0) + 1
+                    }
+                    
+                    // Count children that are scheduled for today OR whose parent is scheduled today (and child not explicitly elsewhere)
+                    allChildren[parent.id]?.forEach { child ->
+                        if (child.scheduledDate == todayString || (isParentScheduledToday && child.scheduledDate == null)) {
+                            child.listId?.let { lid ->
+                                todayCountByList[lid] = (todayCountByList[lid] ?: 0) + 1
+                            }
+                        }
+                    }
+                }
+            }
+
+            lists.map { list ->
+                TodoListUiModel(list, todayCountByList[list.id] ?: 0)
+            }.filter { it.incompleteCount > 0 }
+            .sortedByDescending { it.incompleteCount }
+        } else {
+            // In other modes or edit mode, count all incomplete items from todayItemsForCount for info
+            incompleteToday.forEach { item ->
+                item.listId?.let { lid ->
+                    todayCountByList[lid] = (todayCountByList[lid] ?: 0) + 1
+                }
+            }
+            lists.map { list ->
+                TodoListUiModel(list, todayCountByList[list.id] ?: 0)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _recentlyCompletedIds = MutableStateFlow(setOf<String>())
     val recentlyCompletedIds: StateFlow<Set<String>> = _recentlyCompletedIds.asStateFlow()
 
@@ -66,22 +144,6 @@ class TodoViewModel(
     private val moveItemDownUseCase = fyi.teddy.android.todo.domain.MoveItemDownUseCase(repository)
     private val moveItemToTopUseCase = fyi.teddy.android.todo.domain.MoveItemToTopUseCase(repository)
     private val moveItemToBottomUseCase = fyi.teddy.android.todo.domain.MoveItemToBottomUseCase(repository)
-
-    private val todayDateFlow = MutableStateFlow(LocalDate.now().toString())
-
-    // Cold/Hot source flows from repository
-    val allItems = repository.getAllItems(userId)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val todayItems = todayDateFlow.flatMapLatest { today ->
-        repository.getTodayItems(userId, today)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val scheduledItems = todayDateFlow.flatMapLatest { today ->
-        repository.getScheduledItems(userId, today)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     data class TodoFilterSettings(
         val mode: TodoMode,

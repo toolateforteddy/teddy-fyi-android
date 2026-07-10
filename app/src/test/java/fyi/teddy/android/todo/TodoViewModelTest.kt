@@ -218,4 +218,60 @@ class TodoViewModelTest {
         // Then currentMode should be BACKLOG
         assert(viewModel.currentMode.value == fyi.teddy.android.todo.ui.TodoMode.BACKLOG)
     }
+
+    @Test
+    fun `test displayedLists filters and counts correctly in TODAY mode`() = runTest {
+        val today = java.time.LocalDate.now().toString()
+        val list1 = fyi.teddy.android.todo.data.TodoList(id = "list-1", name = "List 1", userId = userId)
+        val list2 = fyi.teddy.android.todo.data.TodoList(id = "list-2", name = "List 2", userId = userId)
+
+        val items = listOf(
+            // Parent and child both scheduled today -> both should be counted
+            TodoItem(id = "p1", title = "P1", listId = "list-1", scheduledDate = today, isCompleted = false),
+            TodoItem(id = "c1", title = "C1", listId = "list-1", parentId = "p1", scheduledDate = today, isCompleted = false),
+            
+            // Parent scheduled today, child NOT scheduled -> both should be counted (child inherits todayness)
+            TodoItem(id = "p2", title = "P2", listId = "list-1", scheduledDate = today, isCompleted = false),
+            TodoItem(id = "c2", title = "C2", listId = "list-1", parentId = "p2", scheduledDate = null, isCompleted = false),
+            
+            // Parent NOT scheduled, child scheduled today -> only child should be counted (parent is hidden or just a container)
+            // Actually, in Today mode logic, if child is scheduled, parent is shown too.
+            TodoItem(id = "p3", title = "P3", listId = "list-2", scheduledDate = null, isCompleted = false),
+            TodoItem(id = "c3", title = "C3", listId = "list-2", parentId = "p3", scheduledDate = today, isCompleted = false),
+            
+            // Item scheduled for tomorrow -> should NOT be counted
+            TodoItem(id = "future", title = "Future", listId = "list-2", scheduledDate = "2099-01-01", isCompleted = false)
+        )
+
+        coEvery { repository.getAllLists(userId) } returns flowOf(listOf(list1, list2))
+        coEvery { repository.getTodayItems(userId, any()) } returns flowOf(items)
+
+        val viewModel = TodoViewModel(application, repository, userId)
+        viewModel.setMode(fyi.teddy.android.todo.ui.TodoMode.TODAY)
+        testScheduler.advanceUntilIdle()
+
+        val displayed = viewModel.displayedLists.value
+        // list-1: P1, C1, P2, C2 = 4
+        // list-2: P3, C3 = 2 (p3 is shown because c3 is scheduled)
+        assert(displayed.size == 2)
+        assert(displayed.find { it.list.id == "list-1" }?.incompleteCount == 4)
+        assert(displayed.find { it.list.id == "list-2" }?.incompleteCount == 2)
+    }
+
+    @Test
+    fun `test displayedLists shows all lists in edit mode`() = runTest {
+        val list1 = fyi.teddy.android.todo.data.TodoList(id = "list-1", name = "List 1", userId = userId)
+        val list2 = fyi.teddy.android.todo.data.TodoList(id = "list-2", name = "List 2", userId = userId)
+
+        coEvery { repository.getAllLists(userId) } returns flowOf(listOf(list1, list2))
+        coEvery { repository.getTodayItems(userId, any()) } returns flowOf(emptyList())
+
+        val viewModel = TodoViewModel(application, repository, userId)
+        viewModel.setMode(fyi.teddy.android.todo.ui.TodoMode.TODAY)
+        viewModel.setEditMode(true)
+        testScheduler.advanceUntilIdle()
+
+        val displayed = viewModel.displayedLists.value
+        assert(displayed.size == 2)
+    }
 }

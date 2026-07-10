@@ -66,6 +66,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
     val groupedItems by viewModel.groupedItems.collectAsState()
     val selectedPlanningDate by viewModel.selectedPlanningDate.collectAsState()
     val recentlyCompletedIds by viewModel.recentlyCompletedIds.collectAsState()
+    val displayedLists by viewModel.displayedLists.collectAsState()
     val allLists by viewModel.allLists.collectAsState()
     val selectedListId by viewModel.selectedListId.collectAsState()
     
@@ -314,7 +315,7 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                     }
 
                     // Space list selection row
-                    if (allLists.isNotEmpty() || isEditMode) {
+                    if (displayedLists.isNotEmpty() || isEditMode) {
                         @OptIn(ExperimentalFoundationApi::class)
                         Row(
                             modifier = Modifier
@@ -340,7 +341,8 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                             }
 
                             // Custom list chips
-                            allLists.forEach { list ->
+                            displayedLists.forEach { uiModel ->
+                                val list = uiModel.list
                                 val isSelected = selectedListId == list.id
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
@@ -366,8 +368,13 @@ fun TodoScreen(userId: String, initialMode: String? = null, onBack: () -> Unit) 
                                                 )
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
+                                        val displayName = if (currentMode == TodoMode.TODAY && uiModel.incompleteCount > 0) {
+                                            "${list.name} (${uiModel.incompleteCount})"
+                                        } else {
+                                            list.name
+                                        }
                                         Text(
-                                            text = list.name,
+                                            text = displayName,
                                             color = Color.White,
                                             style = MaterialTheme.typography.labelLarge
                                         )
