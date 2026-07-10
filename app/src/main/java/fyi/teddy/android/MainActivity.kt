@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NetworkClient.initialize(this)
         setContent {
             TeddyTheme {
                 val navController = rememberNavController()
@@ -115,6 +116,9 @@ class MainActivity : ComponentActivity() {
 
                                     // Save the session state (now including backend tokens and claimed UID)
                                     session.save(context)
+
+                                    // Reset the client to clear any cached "null" tokens from the login attempt
+                                    NetworkClient.resetClient()
 
                                     SyncWorker.enqueue(context)
                                     SyncWorker.schedulePeriodicSync(context)

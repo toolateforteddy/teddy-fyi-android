@@ -80,6 +80,7 @@ class SyncWorker(
     }
 
     override suspend fun doWork(): Result = syncMutex.withLock {
+        NetworkClient.initialize(applicationContext)
         val startTime = System.currentTimeMillis()
         val workerId = id.toString().take(8)
 

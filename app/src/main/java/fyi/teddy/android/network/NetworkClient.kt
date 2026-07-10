@@ -17,9 +17,25 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import fyi.teddy.android.auth.UserSession
 
 object NetworkClient {
+    private var appContext: Context? = null
+
+    fun initialize(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    fun getAuthTimeoutSecs(context: Context): Long {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val capabilities = cm.getNetworkCapabilities(cm.activeNetwork)
+        val isOnWifi = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        return if (isOnWifi) 60L else 3600L
+    }
+
     val session = UserSession()
 
     val syncJson = Json {
@@ -75,7 +91,7 @@ object NetworkClient {
                                     userId = session.userId ?: "",
                                     clientUuid = session.clientUuid ?: "",
                                     refreshToken = session.refreshToken ?: "",
-                                    expiresInSecs = AuthRepository.DEBUG_AUTH_EXPIRATION.inWholeSeconds,
+                                    expiresInSecs = appContext?.let { getAuthTimeoutSecs(it) } ?: 3600L,
                                 )
                             )
                         }

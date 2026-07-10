@@ -4,15 +4,17 @@ package fyi.teddy.android.network
 import android.content.Context
 import fyi.teddy.android.auth.AuthUtils
 import fyi.teddy.android.auth.UserSession
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
-import kotlin.time.Duration.Companion.minutes
 
 @Serializable
 data class LoginRequest(
@@ -37,8 +39,6 @@ data class TokenResponse(
 )
 
 object AuthRepository {
-    val DEBUG_AUTH_EXPIRATION = 1.minutes
-
     suspend fun login(context: Context, session: UserSession, googleToken: String): Boolean {
         return try {
             val clientUuid = session.clientUuid ?: UUID.randomUUID().toString()
@@ -49,15 +49,23 @@ object AuthRepository {
                 android.util.Log.e("AuthRepository", "Could not extract userId from token")
                 return false
             }
+
+            // Use a separate client for login to avoid "priming" the main NetworkClient's
+            // Auth plugin with a null token before we've actually logged in.
+            val loginClient = HttpClient {
+                install(ContentNegotiation) {
+                    json(NetworkClient.syncJson)
+                }
+            }
             
-            val response = NetworkClient.client.post("https://api-rust.teddy.fyi/auth/login") {
+            val response = loginClient.post("https://api-rust.teddy.fyi/auth/login") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     LoginRequest(
                         userId = userIdValue,
                         clientUuid = clientUuid,
                         googleAuthToken = googleToken,
-                        expiresInSecs = DEBUG_AUTH_EXPIRATION.inWholeSeconds
+                        expiresInSecs = NetworkClient.getAuthTimeoutSecs(context)
                     )
                 )
             }
@@ -69,9 +77,11 @@ object AuthRepository {
                 session.refreshToken = tokens.refreshToken
                 session.clientUuid = clientUuid
                 session.save(context)
+                loginClient.close()
                 true
             } else {
                 android.util.Log.e("AuthRepository", "Login failed with status: ${response.status}")
+                loginClient.close()
                 false
             }
         } catch (e: Exception) {
