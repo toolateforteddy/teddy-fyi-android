@@ -1,14 +1,54 @@
 package fyi.teddy.android.todo.ui.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -82,6 +122,7 @@ fun TodoItemMenu(
                                 onShowOverlay = { activeOverlay = it }
                             )
                         }
+
                         TodoMenuContext.LIST_ROW -> {
                             ListRowMenuContent(
                                 item = item,
@@ -136,11 +177,12 @@ fun TodoItemMenu(
             DatePicker(state = datePickerState)
         }
     }
-    
+
     if (activeOverlay == ActiveRowOverlay.ScheduleDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = item.scheduledDate?.let { 
-                LocalDate.parse(it).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+            initialSelectedDateMillis = item.scheduledDate?.let {
+                LocalDate.parse(it).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+                    .toEpochMilli()
             } ?: System.currentTimeMillis()
         )
         DatePickerDialog(
@@ -148,7 +190,8 @@ fun TodoItemMenu(
             confirmButton = {
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis?.let {
-                        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC)
+                            .toLocalDate().toString()
                     }
                     onIntent(TodoItemIntent.Update(item.copy(scheduledDate = selectedDate)))
                     activeOverlay = null
@@ -219,7 +262,8 @@ fun TodoItemMenu(
         SnoozeForDialog(
             onDismiss = { activeOverlay = null },
             onConfirm = { amount, isMonths ->
-                val baseDate = if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()
+                val baseDate =
+                    if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()
                 val newDate = if (isMonths) {
                     fyi.teddy.android.todo.util.TaskSchedulerUtils.snoozeForMonths(baseDate, amount)
                 } else {
@@ -292,9 +336,15 @@ fun DashboardHexMenuContent(
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Icon(if (item.isCompleted) Icons.Default.RadioButtonUnchecked else Icons.Default.CheckCircle, contentDescription = null)
+        Icon(
+            if (item.isCompleted) Icons.Default.RadioButtonUnchecked else Icons.Default.CheckCircle,
+            contentDescription = null
+        )
         Spacer(Modifier.width(8.dp))
-        Text(if (item.isCompleted) "Mark as Active" else "Mark as Completed", style = MaterialTheme.typography.titleMedium)
+        Text(
+            if (item.isCompleted) "Mark as Active" else "Mark as Completed",
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 
     Spacer(Modifier.height(24.dp))
@@ -315,7 +365,10 @@ fun DashboardHexMenuContent(
             icon = Icons.Default.ArrowForward,
             label = "Tomorrow",
             onClick = {
-                val tomorrow = (if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()).plusDays(1)
+                val tomorrow =
+                    (if (item.scheduledDate != null) LocalDate.parse(item.scheduledDate) else LocalDate.now()).plusDays(
+                        1
+                    )
                 onIntent(TodoItemIntent.Update(item.copy(scheduledDate = tomorrow.toString())))
                 onDismissRequest()
             }
@@ -346,7 +399,9 @@ fun DashboardHexMenuContent(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 300.dp)
         ) {
             items(subtasks) { subtask ->
                 val subtaskColor = remember(subtask.listId, allLists) {
@@ -366,9 +421,6 @@ fun DashboardHexMenuContent(
                 ) {
                     HexCheckbox(
                         checked = subtask.isCompleted,
-                        onCheckedChange = { isChecked ->
-                            onIntent(TodoItemIntent.ToggleComplete(subtask, isChecked))
-                        },
                         color = subtaskColor
                     )
                     Spacer(Modifier.width(12.dp))
@@ -427,7 +479,10 @@ fun ListRowMenuContent(
 
         // Visual Action Grid (2x2)
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
                 ActionGridItem(
                     icon = Icons.Default.CalendarMonth,
                     label = "Schedule",
@@ -439,7 +494,10 @@ fun ListRowMenuContent(
                     onClick = { onShowOverlay(ActiveRowOverlay.Recurrence) }
                 )
             }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
                 ActionGridItem(
                     icon = Icons.Default.Face, // Asset cell
                     label = "Icon",
@@ -499,7 +557,9 @@ fun ListRowMenuContent(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth()
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
                 items(subtasks) { subtask ->
                     val subtaskColor = remember(subtask.listId, allLists) {
@@ -519,9 +579,6 @@ fun ListRowMenuContent(
                     ) {
                         HexCheckbox(
                             checked = subtask.isCompleted,
-                            onCheckedChange = { isChecked ->
-                                onIntent(TodoItemIntent.ToggleComplete(subtask, isChecked))
-                            },
                             color = subtaskColor
                         )
                         Spacer(Modifier.width(12.dp))

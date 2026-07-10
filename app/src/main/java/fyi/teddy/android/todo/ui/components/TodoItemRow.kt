@@ -7,11 +7,43 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.material3.DismissDirection
+import androidx.compose.material3.DismissValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismiss
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDismissState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,11 +138,13 @@ fun TodoItemRow(
                             onIntent(TodoItemIntent.Update(item.copy(scheduledDate = today)))
                         }
                     }
+
                     DismissValue.DismissedToStart -> {
                         if (isScheduled) {
                             onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -130,9 +164,11 @@ fun TodoItemRow(
                     DismissValue.DismissedToEnd -> if (!isScheduledForToday) {
                         if (isConfirmed) NeonTeal.copy(alpha = 0.6f) else NeonTeal.copy(alpha = 0.15f)
                     } else Color.Transparent
+
                     DismissValue.DismissedToStart -> if (isScheduled) {
                         if (isConfirmed) Color.Red.copy(alpha = 0.6f) else Color.Red.copy(alpha = 0.15f)
                     } else Color.Transparent
+
                     else -> Color.Transparent
                 },
                 label = "backgroundColor"
@@ -159,6 +195,7 @@ fun TodoItemRow(
                             )
                         }
                     }
+
                     DismissDirection.EndToStart -> {
                         if (dismissState.targetValue == DismissValue.DismissedToStart && isScheduled) {
                             Icon(
@@ -180,7 +217,11 @@ fun TodoItemRow(
                     .clip(ClippedCornerShape(8f))
                     .then(
                         if (item.lastScheduledDate != null && !isScheduled) {
-                            Modifier.border(1.dp, Color(0xFFFFA500).copy(alpha = 0.3f), ClippedCornerShape(8f))
+                            Modifier.border(
+                                1.dp,
+                                Color(0xFFFFA500).copy(alpha = 0.3f),
+                                ClippedCornerShape(8f)
+                            )
                         } else Modifier
                     )
                     .background(if (isSubtask) Color.Transparent else Color(0xFF0B0B0F))
@@ -230,7 +271,6 @@ fun TodoItemRow(
 
                 HexCheckbox(
                     checked = isChecked,
-                    onCheckedChange = onCheckedChange,
                     modifier = Modifier.clickable { onCheckedChange(!isChecked) },
                     color = itemColor
                 )
@@ -247,7 +287,9 @@ fun TodoItemRow(
                                 imageVector = Icons.Default.History,
                                 contentDescription = "Rolled Over",
                                 tint = Color(0xFFFFA500).copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = 4.dp).size(14.dp)
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(14.dp)
                             )
                         }
                         val explicitIcon = getIconByName(item.icon)
@@ -256,7 +298,9 @@ fun TodoItemRow(
                                 imageVector = explicitIcon,
                                 contentDescription = null,
                                 tint = itemColor.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = 8.dp).size(16.dp)
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(16.dp)
                             )
                         }
                         Text(
@@ -270,10 +314,12 @@ fun TodoItemRow(
                         )
                         if (item.isDaily) {
                             Icon(
-                                Icons.Default.Refresh, 
-                                contentDescription = "Daily", 
-                                tint = itemColor, 
-                                modifier = Modifier.padding(start = 4.dp).size(12.dp)
+                                Icons.Default.Refresh,
+                                contentDescription = "Daily",
+                                tint = itemColor,
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .size(12.dp)
                             )
                         }
                         if (!isSubtask && (subtaskCount > 0) && !isExpanded) {
@@ -285,7 +331,7 @@ fun TodoItemRow(
                             )
                         }
                     }
-                    
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (item.recurrenceRule != null) {
                             Text(
@@ -312,7 +358,7 @@ fun TodoItemRow(
                         }
                     }
                 }
-                
+
                 if (!isSubtask && subtaskCount > 0) {
                     IconButton(
                         onClick = onToggleExpand,
@@ -349,7 +395,11 @@ fun TodoItemRow(
                 }
 
                 if (isEditing) {
-                    IconButton(onClick = { onIntent(TodoItemIntent.MoveUp(item)) }, enabled = index > 0, modifier = Modifier.size(32.dp)) {
+                    IconButton(
+                        onClick = { onIntent(TodoItemIntent.MoveUp(item)) },
+                        enabled = index > 0,
+                        modifier = Modifier.size(32.dp)
+                    ) {
                         Icon(
                             Icons.Default.KeyboardArrowUp,
                             contentDescription = "Move Up",
@@ -370,7 +420,12 @@ fun TodoItemRow(
                         )
                     }
                     IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "More",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
 
@@ -403,14 +458,14 @@ fun TodoItemRow(
 }
 
 private fun formatRecurrenceRule(rule: String): String {
-    val parts = rule.split(";").associate { 
+    val parts = rule.split(";").associate {
         val kv = it.split("=")
         if (kv.size == 2) kv[0].uppercase() to kv[1].uppercase() else "" to ""
     }
     val freq = parts["FREQ"]
     val interval = parts["INTERVAL"]?.toIntOrNull() ?: 1
     val byDay = parts["BYDAY"]
-    
+
     return when {
         freq == "DAILY" && interval == 1 -> "Every day"
         freq == "DAILY" && interval == 7 -> "Every week"

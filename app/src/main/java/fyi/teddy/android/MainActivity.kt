@@ -4,8 +4,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.*
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -23,15 +24,16 @@ import fyi.teddy.android.grocery.ui.GroceryConfigScreen
 import fyi.teddy.android.grocery.ui.GroceryScreen
 import fyi.teddy.android.grocery.ui.StoreManagementScreen
 import fyi.teddy.android.network.AuthRepository
-import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.network.NetworkClient
+import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.todo.ui.TodoScreen
 import fyi.teddy.android.ui.navigation.Screen
 import fyi.teddy.android.ui.screens.AuthedHelloScreen
+import fyi.teddy.android.ui.screens.DebugScreen
 import fyi.teddy.android.ui.screens.HomeScreen
 import fyi.teddy.android.ui.screens.WeatherScreen
-import fyi.teddy.android.ui.screens.DebugScreen
 import fyi.teddy.android.ui.theme.TeddyTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,14 +68,22 @@ class MainActivity : ComponentActivity() {
                         db.todoDao().claimUnownedItems(uid)
                         db.groceryDao().claimEverything(uid)
 
-                        if ((session.profilePictureUri == null) || session.profilePictureUri!!.contains("s2/photos/profile")) {
-                            session.profilePictureUri = AuthUtils.extractPictureFromToken(session.idToken!!)?.toString()
+                        if ((session.profilePictureUri == null) || session.profilePictureUri!!.contains(
+                                "s2/photos/profile"
+                            )
+                        ) {
+                            session.profilePictureUri =
+                                AuthUtils.extractPictureFromToken(session.idToken!!)?.toString()
                         }
                         session.save(context)
                     }
                     Log.d(
-                        "MainActivity", 
-                        "Session loaded: name=${session.userName}, tokenPrefix=${session.idToken?.take(10)}, picUri=${session.profilePictureUri}"
+                        "MainActivity",
+                        "Session loaded: name=${session.userName}, tokenPrefix=${
+                            session.idToken?.take(
+                                10
+                            )
+                        }, picUri=${session.profilePictureUri}"
                     )
                     if (session.idToken != null) {
                         SyncWorker.enqueueIfNecessary(context)
@@ -91,7 +101,7 @@ class MainActivity : ComponentActivity() {
                             session.idToken = result.idToken
                             session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
                             session.profilePictureUri = result.profilePictureUri?.toString()
-                            
+
                             scope.launch {
                                 val success = AuthRepository.login(context, session, result.idToken)
                                 if (success) {
@@ -102,7 +112,7 @@ class MainActivity : ComponentActivity() {
                                         db.todoDao().claimUnownedItems(uid)
                                         db.groceryDao().claimEverything(uid)
                                     }
-                                    
+
                                     // Save the session state (now including backend tokens and claimed UID)
                                     session.save(context)
 
@@ -122,13 +132,13 @@ class MainActivity : ComponentActivity() {
                             userId = session.userId,
                             userName = session.userName,
                             profilePic = session.profilePictureUri,
-                            onNavigateToTodo = { mode -> 
-                                navController.navigate(Screen.Todo.createRoute(mode)) 
+                            onNavigateToTodo = { mode ->
+                                navController.navigate(Screen.Todo.createRoute(mode))
                             },
                             onNavigateToGrocery = { navController.navigate(Screen.Grocery.route) },
                             onNavigateToDebug = { navController.navigate(Screen.Debug.route) },
                             onLogout = {
-                                scope.launch { 
+                                scope.launch {
                                     session.clear(context)
                                     NetworkClient.resetClient()
                                     SyncWorker.cancelAllSyncWork(context)
@@ -143,7 +153,9 @@ class MainActivity : ComponentActivity() {
                         WeatherScreen(onBack = { navController.popBackStack() })
                     }
                     composable(Screen.Authed.route) {
-                        AuthedHelloScreen(idToken = session.idToken, onBack = { navController.popBackStack() })
+                        AuthedHelloScreen(
+                            idToken = session.idToken,
+                            onBack = { navController.popBackStack() })
                     }
                     composable(
                         route = Screen.Todo.route,
@@ -158,8 +170,7 @@ class MainActivity : ComponentActivity() {
                         val initialMode = backStackEntry.arguments?.getString("initialMode")
                         TodoScreen(
                             userId = session.userId ?: "unauthed",
-                            initialMode = initialMode,
-                            onBack = { navController.popBackStack() }
+                            initialMode = initialMode
                         )
                     }
                     composable(Screen.Grocery.route) {
@@ -174,8 +185,20 @@ class MainActivity : ComponentActivity() {
                         GroceryConfigScreen(
                             userId = session.userId ?: "unauthed",
                             onBack = { navController.popBackStack() },
-                            onManageStores = { listId -> navController.navigate(Screen.Stores.createRoute(listId)) },
-                            onManageCategories = { listId -> navController.navigate(Screen.Categories.createRoute(listId)) }
+                            onManageStores = { listId ->
+                                navController.navigate(
+                                    Screen.Stores.createRoute(
+                                        listId
+                                    )
+                                )
+                            },
+                            onManageCategories = { listId ->
+                                navController.navigate(
+                                    Screen.Categories.createRoute(
+                                        listId
+                                    )
+                                )
+                            }
                         )
                     }
                     composable(
