@@ -1,11 +1,13 @@
 package fyi.teddy.android
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -17,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import fyi.teddy.android.auth.AuthUtils
+import fyi.teddy.android.auth.GoogleSignInResult
 import fyi.teddy.android.auth.LoginScreen
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.ui.CategoryManagementScreen
@@ -36,9 +39,39 @@ import fyi.teddy.android.ui.theme.TeddyTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private val webAuthResult = mutableStateOf<GoogleSignInResult?>(null)
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleAuthRedirect(intent)
+    }
+
+    private fun handleAuthRedirect(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme == "com.googleusercontent.apps.34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav") {
+            // fragment (after #) usually contains the id_token in response_type=id_token
+            val fragment = data.fragment
+            if (fragment != null) {
+                val params = fragment.split("&").associate {
+                    val parts = it.split("=")
+                    parts[0] to parts.getOrNull(1)
+                }
+                val idToken = params["id_token"]
+                if (idToken != null) {
+                    Log.d("MainActivity", "Extracted ID Token from redirect")
+                    val displayName = "Web User" // We'd need to decode more or use another scope for name
+                    val pic = AuthUtils.extractPictureFromToken(idToken)
+                    webAuthResult.value = GoogleSignInResult(displayName, idToken, pic)
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         NetworkClient.initialize(this)
+        handleAuthRedirect(intent)
+
         setContent {
             TeddyTheme {
                 val navController = rememberNavController()
@@ -46,6 +79,40 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
                 val lifecycleOwner = LocalLifecycleOwner.current
+
+                // Handle web auth result
+                LaunchedEffect(webAuthResult.value) {
+                    val result = webAuthResult.value
+                    if (result != null) {
+                        webAuthResult.value = null // Consume it
+                        
+                        session.userName = result.displayName
+                        session.idToken = result.idToken
+                        session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
+                        session.profilePictureUri = result.profilePictureUri?.toString()
+
+                        scope.launch {
+                            val success = AuthRepository.login(context, session, result.idToken)
+                            if (success) {
+                                val uid = session.userId
+                                if (uid != null && uid.isNotBlank() && uid != "unknown") {
+                                    val db = AppDatabase.getDatabase(context)
+                                    db.todoDao().claimUnownedItems(uid)
+                                    db.groceryDao().claimEverything(uid)
+                                }
+                                session.save(context)
+                                NetworkClient.resetClient()
+                                SyncWorker.enqueue(context)
+                                SyncWorker.schedulePeriodicSync(context)
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                }
+                            } else {
+                                Log.e("MainActivity", "Backend login failed from web fallback")
+                            }
+                        }
+                    }
+                }
 
                 // Global Sync on Resume
                 DisposableEffect(lifecycleOwner) {
