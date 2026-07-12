@@ -52,11 +52,7 @@ object AuthRepository {
 
             // Use a separate client for login to avoid "priming" the main NetworkClient's
             // Auth plugin with a null token before we've actually logged in.
-            val loginClient = HttpClient {
-                install(ContentNegotiation) {
-                    json(NetworkClient.syncJson)
-                }
-            }
+            val loginClient = NetworkClient.loginClient
             
             val response = loginClient.post("https://api-rust.teddy.fyi/auth/login") {
                 contentType(ContentType.Application.Json)
@@ -77,11 +73,9 @@ object AuthRepository {
                 session.refreshToken = tokens.refreshToken
                 session.clientUuid = clientUuid
                 session.save(context)
-                loginClient.close()
                 true
             } else {
                 android.util.Log.e("AuthRepository", "Login failed with status: ${response.status}")
-                loginClient.close()
                 false
             }
         } catch (e: Exception) {

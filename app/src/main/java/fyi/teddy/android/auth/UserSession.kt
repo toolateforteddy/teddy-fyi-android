@@ -5,7 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.core.DataStore
 
 class UserSession {
     var userId by mutableStateOf<String?>(null)
@@ -19,19 +21,23 @@ class UserSession {
     val isLoggedIn: Boolean
         get() = !accessToken.isNullOrBlank()
 
-    suspend fun save(context: Context) {
-        val encryptedStore = EncryptedDataStore(context)
-        encryptedStore.saveEncrypted("user_id", userId)
-        encryptedStore.saveEncrypted("user_name", userName)
-        encryptedStore.saveEncrypted("id_token", idToken)
-        encryptedStore.saveEncrypted("profile_pic", profilePictureUri)
-        encryptedStore.saveEncrypted("access_token", accessToken)
-        encryptedStore.saveEncrypted("refresh_token", refreshToken)
-        encryptedStore.saveEncrypted("client_uuid", clientUuid)
+    suspend fun save(context: Context, dataStore: DataStore<Preferences>? = null) {
+        val encryptedStore = if (dataStore != null) EncryptedDataStore(context, dataStore) else EncryptedDataStore(context)
+        encryptedStore.saveAllEncrypted(
+            mapOf(
+                "user_id" to userId,
+                "user_name" to userName,
+                "id_token" to idToken,
+                "profile_pic" to profilePictureUri,
+                "access_token" to accessToken,
+                "refresh_token" to refreshToken,
+                "client_uuid" to clientUuid
+            )
+        )
     }
 
-    suspend fun load(context: Context) {
-        val encryptedStore = EncryptedDataStore(context)
+    suspend fun load(context: Context, dataStore: DataStore<Preferences>? = null) {
+        val encryptedStore = if (dataStore != null) EncryptedDataStore(context, dataStore) else EncryptedDataStore(context)
         val loadedUserId = encryptedStore.getDecrypted("user_id")
         val loadedUserName = encryptedStore.getDecrypted("user_name")
         val loadedIdToken = encryptedStore.getDecrypted("id_token")
@@ -60,17 +66,18 @@ class UserSession {
             } else {
                 clientUuid = java.util.UUID.randomUUID().toString()
                 // Save it back immediately so it's persisted in the encrypted store
-                save(context)
+                save(context, dataStore)
             }
         }
     }
 
-    suspend fun clear(context: Context) {
+    suspend fun clear(context: Context, dataStore: DataStore<Preferences>? = null) {
         val preservedUuid = clientUuid
         val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
         val preservedLegacyId = sharedPrefs.getString("client_id", null)
 
-        context.dataStore.edit { it.clear() }
+        val ds = dataStore ?: context.dataStore
+        ds.edit { it.clear() }
         sharedPrefs.edit().clear().apply()
 
         userId = null
@@ -83,10 +90,10 @@ class UserSession {
         // Restore and persist the client UUID
         if (preservedUuid != null) {
             clientUuid = preservedUuid
-            save(context)
+            save(context, ds)
         } else if (preservedLegacyId != null) {
             clientUuid = preservedLegacyId
-            save(context)
+            save(context, ds)
         } else {
             clientUuid = null
         }

@@ -44,10 +44,19 @@ object NetworkClient {
     }
 
     var client = createClient()
+    var loginClient = createLoginClient()
 
     fun resetClient() {
         client.close()
         client = createClient()
+        loginClient.close()
+        loginClient = createLoginClient()
+    }
+
+    private fun createLoginClient() = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json(syncJson)
+        }
     }
 
     private fun createClient() = HttpClient(OkHttp) {

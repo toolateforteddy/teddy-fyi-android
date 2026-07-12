@@ -12,6 +12,7 @@ import androidx.work.WorkManager
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import androidx.room.RoomDatabase
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,9 +27,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class RecommendedItemsTestSuite {
 
     private lateinit var database: AppDatabase
@@ -46,21 +49,26 @@ class RecommendedItemsTestSuite {
         every { WorkManager.getInstance(any()) } returns workManager
 
         Dispatchers.setMain(testDispatcher)
-        database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext(),
-            AppDatabase::class.java
-        ).allowMainThreadQueries().build()
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dbFile = context.getDatabasePath("test_db_" + java.util.UUID.randomUUID().toString())
+        database = Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            dbFile.absolutePath
+        ).allowMainThreadQueries()
+        .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+        .build()
         
         groceryDao = database.groceryDao()
-        repository = GroceryRepository(groceryDao, ApplicationProvider.getApplicationContext())
-        viewModel = GroceryViewModel(repository, userId, ApplicationProvider.getApplicationContext())
+        repository = GroceryRepository(groceryDao, context)
+        viewModel = GroceryViewModel(repository, userId, context as android.app.Application, workManager)
     }
 
     @After
     fun teardown() {
         unmockkStatic(WorkManager::class)
-        Dispatchers.resetMain()
         database.close()
+        Dispatchers.resetMain()
     }
 
     private fun idleLooperAndAdvance() {

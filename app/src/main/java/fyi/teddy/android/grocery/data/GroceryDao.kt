@@ -38,7 +38,7 @@ abstract class GroceryDao {
     @Query("DELETE FROM grocery_items WHERE userId = :userId")
     abstract suspend fun deleteAll(userId: String)
 
-    @Query("SELECT * FROM grocery_items WHERE timesBought >= 2 AND userId = :userId AND isActive = 0 ORDER BY timesBought DESC")
+    @Query("SELECT * FROM grocery_items WHERE timesBought >= 1 AND userId = :userId AND isActive = 0 ORDER BY timesBought DESC")
     abstract fun getRecommendedItems(userId: String): Flow<List<GroceryItem>>
 
     @Query("""

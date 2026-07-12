@@ -28,15 +28,21 @@ import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import kotlin.time.Duration.Companion.seconds
 
+import android.content.SharedPreferences
+import fyi.teddy.android.data.SyncLogDao
+import fyi.teddy.android.data.UserSyncMetadataDao
+
 class GroceryViewModel(
     private val repository: GroceryRepository,
     val userId: String,
-    private val application: Application
+    private val application: Application,
+    private val workManager: WorkManager? = null,
+    private val syncLogDao: SyncLogDao = AppDatabase.getDatabase(application).syncLogDao(),
+    private val userSyncMetadataDao: UserSyncMetadataDao = AppDatabase.getDatabase(application).userSyncMetadataDao(),
+    private val prefs: SharedPreferences = application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE)
 ) : ViewModel() {
 
-    private val prefs = application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE)
-    private val db = AppDatabase.getDatabase(application)
-    private val syncLogDao = db.syncLogDao()
+    private val wm: WorkManager? = workManager ?: try { WorkManager.getInstance(application) } catch (e: Exception) { null }
 
     // Internal mutable state flows for UDF compliance
     private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
@@ -89,18 +95,26 @@ class GroceryViewModel(
         .map { log: SyncLog? -> log?.status }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private val _isSyncing = combine(
-        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME),
-        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow("PeriodicSyncWorker")
-    ) { infos1, infos2 ->
-        (infos1 + infos2).any { it.state == WorkInfo.State.RUNNING }
+    private val _isSyncing = if (wm != null) {
+        combine(
+            wm.getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME),
+            wm.getWorkInfosForUniqueWorkFlow("PeriodicSyncWorker")
+        ) { infos1, infos2 ->
+            (infos1 + infos2).any { it.state == WorkInfo.State.RUNNING }
+        }
+    } else {
+        flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private val _isSyncEnqueued = combine(
-        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME),
-        WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow("PeriodicSyncWorker")
-    ) { infos1, infos2 ->
-        (infos1 + infos2).any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+    private val _isSyncEnqueued = if (wm != null) {
+        combine(
+            wm.getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME),
+            wm.getWorkInfosForUniqueWorkFlow("PeriodicSyncWorker")
+        ) { infos1, infos2 ->
+            (infos1 + infos2).any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }
+        }
+    } else {
+        flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     // Combined state for modern UDF support
@@ -721,7 +735,7 @@ class GroceryViewModel(
             if (listId != null) {
                 // Clear user sync metadata to force a full resync from the server for this user.
                 // This ensures we get the metadata (name, owner) for the new list.
-                db.userSyncMetadataDao().clear(userId)
+                userSyncMetadataDao.clear(userId)
                 
                 // Trigger sync immediately
                 SyncWorker.enqueue(application)

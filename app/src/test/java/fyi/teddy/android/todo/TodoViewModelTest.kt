@@ -8,8 +8,10 @@ import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
@@ -247,15 +249,18 @@ class TodoViewModelTest {
         coEvery { repository.getTodayItems(userId, any()) } returns flowOf(items)
 
         val viewModel = TodoViewModel(application, repository, userId)
+        val job = launch { viewModel.displayedLists.collect {} }
+        
         viewModel.setMode(fyi.teddy.android.todo.ui.TodoMode.TODAY)
         testScheduler.advanceUntilIdle()
 
         val displayed = viewModel.displayedLists.value
         // list-1: P1, C1, P2, C2 = 4
         // list-2: P3, C3 = 2 (p3 is shown because c3 is scheduled)
-        assert(displayed.size == 2)
-        assert(displayed.find { it.list.id == "list-1" }?.incompleteCount == 4)
-        assert(displayed.find { it.list.id == "list-2" }?.incompleteCount == 2)
+        assertEquals(2, displayed.size)
+        assertEquals(4, displayed.find { it.list.id == "list-1" }?.incompleteCount)
+        assertEquals(2, displayed.find { it.list.id == "list-2" }?.incompleteCount)
+        job.cancel()
     }
 
     @Test
@@ -267,11 +272,14 @@ class TodoViewModelTest {
         coEvery { repository.getTodayItems(userId, any()) } returns flowOf(emptyList())
 
         val viewModel = TodoViewModel(application, repository, userId)
+        val job = launch { viewModel.displayedLists.collect {} }
+        
         viewModel.setMode(fyi.teddy.android.todo.ui.TodoMode.TODAY)
         viewModel.setEditMode(true)
         testScheduler.advanceUntilIdle()
 
         val displayed = viewModel.displayedLists.value
-        assert(displayed.size == 2)
+        assertEquals(2, displayed.size)
+        job.cancel()
     }
 }

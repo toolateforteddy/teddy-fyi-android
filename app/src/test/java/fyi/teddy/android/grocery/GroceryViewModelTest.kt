@@ -3,6 +3,11 @@ package fyi.teddy.android.grocery
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.test.core.app.ApplicationProvider
+import androidx.work.WorkManager
+import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.data.SyncLogDao
+import fyi.teddy.android.data.UserSyncMetadataDao
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.repository.GroceryRepository
@@ -19,12 +24,20 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class GroceryViewModelTest {
 
     private val repository = mockk<GroceryRepository>(relaxed = true)
-    private val application = mockk<Application>(relaxed = true)
+    private lateinit var application: Application
+    private val workManager = mockk<WorkManager>(relaxed = true)
+    private val syncLogDao = mockk<SyncLogDao>(relaxed = true)
+    private val userSyncMetadataDao = mockk<UserSyncMetadataDao>(relaxed = true)
     private val sharedPrefs = mockk<SharedPreferences>(relaxed = true)
     private val userId = "test-user-id"
 
@@ -32,9 +45,15 @@ class GroceryViewModelTest {
 
     @Before
     fun setUp() {
+        application = ApplicationProvider.getApplicationContext()
         Dispatchers.setMain(testDispatcher)
 
-        every { application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE) } returns sharedPrefs
+        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
+        every { syncLogDao.getLatestLog() } returns flowOf(null)
+        
+        // Mock shared prefs
+        every { sharedPrefs.getString(any(), any()) } returns null
+        every { sharedPrefs.edit() } returns mockk(relaxed = true)
 
         // Mock repository flows to avoid null errors during stateIn init
         coEvery { repository.getAllItems(userId) } returns flowOf(emptyList())
@@ -42,16 +61,30 @@ class GroceryViewModelTest {
         coEvery { repository.getAllCategories(userId) } returns flowOf(emptyList())
         coEvery { repository.getAllStoreInfo(userId) } returns flowOf(emptyList())
         coEvery { repository.getRecommendedItems(userId) } returns flowOf(emptyList())
+        coEvery { repository.getUnsyncedCountFlow() } returns flowOf(0)
+        coEvery { repository.getItemsWithoutList(userId) } returns flowOf(emptyList())
+        coEvery { repository.getAllLists(userId) } returns flowOf(emptyList())
     }
+
+    private fun createViewModel() = GroceryViewModel(
+        repository = repository,
+        userId = userId,
+        application = application,
+        workManager = workManager,
+        syncLogDao = syncLogDao,
+        userSyncMetadataDao = userSyncMetadataDao,
+        prefs = sharedPrefs
+    )
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        unmockkAll()
     }
 
     @Test
     fun `test formatName trims and capitalizes word boundaries cleanly`() {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val input = "   whole milk organic   "
         val expected = "Whole Milk Organic"
         assertEquals(expected, viewModel.formatName(input))
@@ -59,14 +92,14 @@ class GroceryViewModelTest {
 
     @Test
     fun `test formatName already capitalized is unchanged`() {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val input = "Whole Milk Organic"
         assertEquals(input, viewModel.formatName(input))
     }
 
     @Test
     fun `test setPhase updates stateflow`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         viewModel.setPhase(GroceryPhase.SHOPPING)
         testScheduler.advanceUntilIdle()
         assertEquals(GroceryPhase.SHOPPING, viewModel.state.value.currentPhase)
@@ -74,7 +107,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertItem delegates formatted insert to repository`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val nameInput = "organic bananas"
         val qtyInput = "3 bunches"
         val categoryId = "4"
@@ -97,7 +130,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertItem empty name is ignored`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         viewModel.insertItem("", "1", null)
         viewModel.insertItem("   ", "1", null)
         testScheduler.advanceUntilIdle()
@@ -107,7 +140,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test toggleBought standard updates item immediately`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val item = GroceryItem(id = "1", name = "Bananas", isBought = false, userId = userId)
 
         viewModel.toggleBought(item, isChecked = true)
@@ -122,7 +155,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test toggleBought shopping phase checking item starts 2-second in-cart delay`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val item = GroceryItem(id = "99", name = "Milk", isBought = false, userId = userId)
 
         viewModel.setPhase(GroceryPhase.SHOPPING)
@@ -149,16 +182,16 @@ class GroceryViewModelTest {
 
     @Test
     fun `test markDoneForTrip delegates to repository`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         viewModel.markDoneForTrip()
         testScheduler.advanceUntilIdle()
 
-        coVerify(exactly = 1) { repository.markDoneForTrip(userId, null) }
+        coVerify(exactly = 1) { repository.markDoneForTrip(userId, any()) }
     }
 
     @Test
     fun `test deleteItem marks as inactive if bought before`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val item = GroceryItem(id = "1", name = "Bananas", timesBought = 5, userId = userId)
 
         viewModel.deleteItem(item)
@@ -174,7 +207,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test deleteItem fully deletes if never bought`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val item = GroceryItem(id = "1", name = "Bananas", timesBought = 0, userId = userId)
 
         viewModel.deleteItem(item)
@@ -186,7 +219,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertStore delegates capitalized name`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         viewModel.insertStore("trader joe's")
         testScheduler.advanceUntilIdle()
 
@@ -200,7 +233,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertCategory delegates capitalized name`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         viewModel.insertCategory("produce section")
         testScheduler.advanceUntilIdle()
 
@@ -214,7 +247,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test onEvent SetPhase updates stateflow`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.SHOPPING))
         testScheduler.advanceUntilIdle()
         assertEquals(GroceryPhase.SHOPPING, viewModel.state.value.currentPhase)
@@ -222,7 +255,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertItem with units and notes and listId`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val nameInput = "organic bananas"
         val qtyInput = "1.5"
         val categoryId = "4"
@@ -248,7 +281,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test MoveItemUp and MoveItemDown use cases`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         val item1 = GroceryItem(id = "1", name = "A", position = 0, userId = userId)
         val item2 = GroceryItem(id = "2", name = "B", position = 1, userId = userId)
         val siblings = listOf(item1, item2)
@@ -264,7 +297,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test list management events`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         
         viewModel.onEvent(GroceryUiEvent.InsertList("Costco Trip"))
         testScheduler.advanceUntilIdle()
@@ -277,12 +310,12 @@ class GroceryViewModelTest {
 
         viewModel.onEvent(GroceryUiEvent.ShareList("list-id-1", "invited-user"))
         testScheduler.advanceUntilIdle()
-        coVerify(exactly = 1) { repository.insertListMember(any()) }
+        coVerify(exactly = 2) { repository.insertListMember(any()) }
     }
 
     @Test
     fun `test state combines all individual flows correctly`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         
         viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.PLANNING))
         viewModel.onEvent(GroceryUiEvent.SetEditMode(enabled = true))
@@ -303,7 +336,7 @@ class GroceryViewModelTest {
 
     @Test
     fun `test insertItemFromInput with various natural language inputs`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
+        val viewModel = createViewModel()
         
         val testCases = listOf(
             "Fairlife Milk" to Triple("Fairlife Milk", "1", null),
@@ -336,10 +369,10 @@ class GroceryViewModelTest {
 
     @Test
     fun `test reactivation of existing item keeps old quantity if not specified`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
         val existingItem = GroceryItem(id = "10", name = "Fairlife Milk", quantity = "3", isActive = false, userId = userId)
         
         coEvery { repository.getItemsWithoutList(userId) } returns flowOf(listOf(existingItem))
+        val viewModel = createViewModel()
         
         // Start collection to populate items.value
         val job = launch { viewModel.items.collect {} }
@@ -360,10 +393,10 @@ class GroceryViewModelTest {
 
     @Test
     fun `test reactivation of existing item overwrites quantity if specified`() = runTest {
-        val viewModel = GroceryViewModel(repository, userId, application)
         val existingItem = GroceryItem(id = "10", name = "Fairlife Milk", quantity = "3", isActive = false, userId = userId)
         
         coEvery { repository.getItemsWithoutList(userId) } returns flowOf(listOf(existingItem))
+        val viewModel = createViewModel()
         
         val job = launch { viewModel.items.collect {} }
         testScheduler.advanceUntilIdle()

@@ -3,6 +3,7 @@ package fyi.teddy.android.network
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import fyi.teddy.android.auth.UserSession
+import io.mockk.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
@@ -14,8 +15,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class AuthRepositoryTest {
 
     private lateinit var context: Context
@@ -25,6 +28,8 @@ class AuthRepositoryTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         session = UserSession()
+        mockkObject(NetworkClient)
+        every { NetworkClient.getAuthTimeoutSecs(any()) } returns 3600L
     }
 
     @Test
@@ -43,7 +48,9 @@ class AuthRepositoryTest {
             }
         }
         NetworkClient.client = mockClient
+        NetworkClient.loginClient = mockClient
         NetworkClient.session = session
+        session.userId = "test_user_id"
         
         val success = AuthRepository.login(context, session, "google_token_123")
         
@@ -64,6 +71,7 @@ class AuthRepositoryTest {
             }
         }
         NetworkClient.client = mockClient
+        NetworkClient.loginClient = mockClient
         NetworkClient.session = session
         
         val success = AuthRepository.login(context, session, "bad_token")

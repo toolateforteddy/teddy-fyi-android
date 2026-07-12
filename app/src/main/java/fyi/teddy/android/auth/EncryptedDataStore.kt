@@ -1,6 +1,7 @@
 package fyi.teddy.android.auth
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -10,10 +11,14 @@ import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import com.google.crypto.tink.KeyTemplates
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import androidx.datastore.core.DataStore
 
 val Context.dataStore by preferencesDataStore(name = "user_session_datastore")
 
-class EncryptedDataStore(private val context: Context) {
+class EncryptedDataStore(
+    private val context: Context,
+    private val dataStore: DataStore<Preferences> = context.dataStore
+) {
     private val aead: Aead?
 
     init {
@@ -38,26 +43,30 @@ class EncryptedDataStore(private val context: Context) {
     }
 
     suspend fun saveEncrypted(keyName: String, value: String?) {
+        saveAllEncrypted(mapOf(keyName to value))
+    }
+
+    suspend fun saveAllEncrypted(pairs: Map<String, String?>) {
         val aead = aead ?: return
-        if (value == null) {
-            context.dataStore.edit { preferences ->
-                preferences.remove(stringPreferencesKey(keyName))
+        dataStore.edit { preferences ->
+            pairs.forEach { (keyName, value) ->
+                if (value == null) {
+                    preferences.remove(stringPreferencesKey(keyName))
+                } else {
+                    val encryptedValue = aead.encrypt(value.toByteArray(), null)
+                    val encoded = android.util.Base64.encodeToString(
+                        encryptedValue, 
+                        android.util.Base64.DEFAULT
+                    )
+                    preferences[stringPreferencesKey(keyName)] = encoded
+                }
             }
-            return
-        }
-        val encryptedValue = aead.encrypt(value.toByteArray(), null)
-        context.dataStore.edit { preferences ->
-            val encoded = android.util.Base64.encodeToString(
-                encryptedValue, 
-                android.util.Base64.DEFAULT
-            )
-            preferences[stringPreferencesKey(keyName)] = encoded
         }
     }
 
     suspend fun getDecrypted(keyName: String): String? {
         val aead = aead ?: return null
-        val encryptedValue = context.dataStore.data.map { it[stringPreferencesKey(keyName)] }.first()
+        val encryptedValue = dataStore.data.map { it[stringPreferencesKey(keyName)] }.first()
         return encryptedValue?.let {
             try {
                 val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
@@ -73,6 +82,6 @@ class EncryptedDataStore(private val context: Context) {
     private suspend fun forceReset() {
         context.getSharedPreferences("tink_keyset", Context.MODE_PRIVATE).edit().clear().apply()
         context.getSharedPreferences("master_key", Context.MODE_PRIVATE).edit().clear().apply()
-        context.dataStore.edit { it.clear() }
+        dataStore.edit { it.clear() }
     }
 }
