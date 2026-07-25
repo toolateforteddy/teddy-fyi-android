@@ -71,18 +71,18 @@ object TodoSyncManager {
         val todoDao = db.todoDao()
         Log.d(TAG, "handleSyncSuccess: processing ${remoteListChanges.size} remote lists and ${remoteChanges.size} remote items")
 
+        processUploadedItems(todoDao, successIds, isFirstSync)
+        processUploadedLists(todoDao, successIds, isFirstSync)
+        processRemoteLists(todoDao, remoteListChanges)
+        processRemoteItems(todoDao, remoteChanges)
+    }
+
+    private suspend fun processUploadedItems(todoDao: TodoDao, successIds: List<String>, isFirstSync: Boolean) {
         val unsyncedItems = if (isFirstSync) {
             todoDao.getAllItemsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
         } else {
             todoDao.getUnsyncedItems()
         }
-        val unsyncedLists = if (isFirstSync) {
-            todoDao.getAllListsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
-        } else {
-            todoDao.getUnsyncedLists()
-        }
-
-        // Transition successfully uploaded items back to sync_state = SYNCED
         var itemsUploaded = 0
         unsyncedItems.forEach { localItem ->
             if (successIds.contains(localItem.id)) {
@@ -95,8 +95,14 @@ object TodoSyncManager {
             }
         }
         if (itemsUploaded > 0) Log.d(TAG, "Marked $itemsUploaded local items as SYNCED")
+    }
 
-        // Transition successfully uploaded lists back to sync_state = SYNCED
+    private suspend fun processUploadedLists(todoDao: TodoDao, successIds: List<String>, isFirstSync: Boolean) {
+        val unsyncedLists = if (isFirstSync) {
+            todoDao.getAllListsOneShot().map { it.copy(syncState = "PENDING_INSERT") }
+        } else {
+            todoDao.getUnsyncedLists()
+        }
         var listsUploaded = 0
         unsyncedLists.forEach { localList ->
             if (successIds.contains(localList.id)) {
@@ -109,8 +115,9 @@ object TodoSyncManager {
             }
         }
         if (listsUploaded > 0) Log.d(TAG, "Marked $listsUploaded local lists as SYNCED")
+    }
 
-        // 1. Upsert incoming remote_todo_list_changes into local Room DB (Parent)
+    private suspend fun processRemoteLists(todoDao: TodoDao, remoteListChanges: List<TodoListChangeDelta>) {
         var remoteListsUpserted = 0
         var remoteListsDeleted = 0
         remoteListChanges.forEach { changeDelta ->
@@ -127,8 +134,9 @@ object TodoSyncManager {
         if (remoteListsUpserted > 0 || remoteListsDeleted > 0) {
             Log.d(TAG, "Applied remote list changes: upserted=$remoteListsUpserted, deleted=$remoteListsDeleted")
         }
+    }
 
-        // 2. Upsert incoming remote_todo_changes into local Room DB (Child)
+    private suspend fun processRemoteItems(todoDao: TodoDao, remoteChanges: List<TodoChangeDelta>) {
         var remoteItemsUpserted = 0
         var remoteItemsDeleted = 0
         remoteChanges.forEach { changeDelta ->
@@ -153,7 +161,10 @@ object TodoSyncManager {
         return data?.let {
             try {
                 NetworkClient.syncJson.decodeFromJsonElement(serializer, it)
-            } catch (e: Exception) {
+            } catch (e: kotlinx.serialization.SerializationException) {
+                Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
+                null
+            } catch (e: IllegalArgumentException) {
                 Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
                 null
             }

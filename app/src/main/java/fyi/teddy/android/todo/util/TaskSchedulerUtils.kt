@@ -31,58 +31,52 @@ object TaskSchedulerUtils {
         return LocalDate.now().toString()
     }
 
-    /**
-     * Safely calculates the next recurrence time in milliseconds from a base epoch time
-     * using iCalendar RFC 5545 RRULE string instructions.
-     */
     fun calculateNextRecurrenceTime(baseTimeMs: Long, rrule: String): Long {
-        val parts = rrule.split(";").associate { 
-            val kv = it.split("=")
-            if (kv.size == 2) kv[0].uppercase() to kv[1].uppercase() else "" to ""
-        }
+        val parts = parseRrule(rrule)
         val freq = parts["FREQ"] ?: "DAILY"
         val interval = parts["INTERVAL"]?.toIntOrNull() ?: 1
-        
+
         val baseDate = java.time.Instant.ofEpochMilli(baseTimeMs)
             .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            
+
         val nextDate = when (freq) {
-            "DAILY" -> {
-                baseDate.plusDays(interval.toLong())
-            }
-            "WEEKLY" -> {
-                val byDay = parts["BYDAY"]
-                if (byDay != null) {
-                    val targetDays = byDay.split(",").mapNotNull { 
-                        when (it) {
-                            "MO" -> java.time.DayOfWeek.MONDAY
-                            "TU" -> java.time.DayOfWeek.TUESDAY
-                            "WE" -> java.time.DayOfWeek.WEDNESDAY
-                            "TH" -> java.time.DayOfWeek.THURSDAY
-                            "FR" -> java.time.DayOfWeek.FRIDAY
-                            "SA" -> java.time.DayOfWeek.SATURDAY
-                            "SU" -> java.time.DayOfWeek.SUNDAY
-                            else -> null
-                        }
-                    }
-                    if (targetDays.isNotEmpty()) {
-                        var candidate = baseDate.plusDays(1)
-                        while (!targetDays.contains(candidate.dayOfWeek)) {
-                            candidate = candidate.plusDays(1)
-                        }
-                        candidate
-                    } else {
-                        baseDate.plusWeeks(interval.toLong())
-                    }
-                } else {
-                    baseDate.plusWeeks(interval.toLong())
-                }
-            }
-            "MONTHLY" -> {
-                baseDate.plusMonths(interval.toLong())
-            }
+            "DAILY" -> baseDate.plusDays(interval.toLong())
+            "WEEKLY" -> calculateNextWeeklyDate(baseDate, interval, parts["BYDAY"])
+            "MONTHLY" -> baseDate.plusMonths(interval.toLong())
             else -> baseDate.plusDays(interval.toLong())
         }
         return nextDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    private fun parseRrule(rrule: String): Map<String, String> {
+        return rrule.split(";").associate {
+            val kv = it.split("=")
+            if (kv.size == 2) kv[0].uppercase() to kv[1].uppercase() else "" to ""
+        }
+    }
+
+    private fun calculateNextWeeklyDate(baseDate: LocalDate, interval: Int, byDayStr: String?): LocalDate {
+        if (byDayStr == null) return baseDate.plusWeeks(interval.toLong())
+        val targetDays = byDayStr.split(",").mapNotNull { parseDayOfWeek(it) }
+        if (targetDays.isEmpty()) return baseDate.plusWeeks(interval.toLong())
+
+        var candidate = baseDate.plusDays(1)
+        while (!targetDays.contains(candidate.dayOfWeek)) {
+            candidate = candidate.plusDays(1)
+        }
+        return candidate
+    }
+
+    private fun parseDayOfWeek(dayCode: String): java.time.DayOfWeek? {
+        return when (dayCode) {
+            "MO" -> java.time.DayOfWeek.MONDAY
+            "TU" -> java.time.DayOfWeek.TUESDAY
+            "WE" -> java.time.DayOfWeek.WEDNESDAY
+            "TH" -> java.time.DayOfWeek.THURSDAY
+            "FR" -> java.time.DayOfWeek.FRIDAY
+            "SA" -> java.time.DayOfWeek.SATURDAY
+            "SU" -> java.time.DayOfWeek.SUNDAY
+            else -> null
+        }
     }
 }

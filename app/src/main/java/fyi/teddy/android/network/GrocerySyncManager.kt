@@ -1,15 +1,30 @@
 package fyi.teddy.android.network
 
+import android.util.Log
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.GroceryDao
-import android.util.Log
 import kotlinx.serialization.json.JsonElement
+
+data class RemoteGroceryChanges(
+    val items: List<GroceryChangeDelta> = emptyList(),
+    val stores: List<StoreChangeDelta> = emptyList(),
+    val categories: List<CategoryChangeDelta> = emptyList(),
+    val lists: List<GroceryListChangeDelta> = emptyList(),
+    val members: List<GroceryListMemberChangeDelta> = emptyList(),
+    val storeInfos: List<GroceryItemStoreInfoChangeDelta> = emptyList()
+)
 
 object GrocerySyncManager {
 
     private const val TAG = "GrocerySyncManager"
 
-    // --- COLLECTION OF LOCAL CHANGES ---
+    private fun determineOpType(isDeleted: Boolean, syncState: String): OperationType {
+        return when {
+            isDeleted -> OperationType.DELETE
+            syncState == "PENDING_INSERT" -> OperationType.INSERT
+            else -> OperationType.UPDATE
+        }
+    }
 
     suspend fun collectLocalChanges(db: AppDatabase, isFirstSync: Boolean): List<GroceryChangeDelta> {
         val dao = db.groceryDao()
@@ -80,16 +95,15 @@ object GrocerySyncManager {
                 id = item.id,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
-                       else NetworkClient.syncJson.encodeToJsonElement(CategoryDto.serializer(), item.toDto())
+                data = if (op == OperationType.DELETE) null else NetworkClient.syncJson.encodeToJsonElement(CategoryDto.serializer(), item.toDto())
             )
         }
     }
 
     suspend fun collectLocalStoreInfoChanges(db: AppDatabase, isFirstSync: Boolean): List<GroceryItemStoreInfoChangeDelta> {
         val dao = db.groceryDao()
-        val items = if (isFirstSync) dao.getAllStoreInfosOneShot().map { it.copy(syncState = "PENDING_INSERT") } else dao.getUnsyncedStoreInfos()
-        return items.map { item ->
+        val storeInfos = if (isFirstSync) dao.getAllStoreInfosOneShot().map { it.copy(syncState = "PENDING_INSERT") } else dao.getUnsyncedStoreInfos()
+        return storeInfos.map { item ->
             val op = determineOpType(item.isDeleted, item.syncState)
             GroceryItemStoreInfoChangeDelta(
                 id = item.id,
@@ -97,13 +111,11 @@ object GrocerySyncManager {
                 storeId = item.storeId,
                 operationType = op,
                 version = item.version,
-                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null 
+                data = if (op == OperationType.DELETE || item.syncState == "NEED_UPDATE") null
                        else NetworkClient.syncJson.encodeToJsonElement(GroceryItemStoreInfoDto.serializer(), item.toDto())
             )
         }
     }
-
-    // --- SYNC SUCCESS HANDLER ---
 
     suspend fun handleSyncSuccess(
         db: AppDatabase,
@@ -117,236 +129,159 @@ object GrocerySyncManager {
         isFirstSync: Boolean
     ) {
         val dao = db.groceryDao()
-
-        // 1. Process local changes that were successfully uploaded
         processSuccessfulUploads(dao, successIds, isFirstSync)
-
-        // 2. Apply changes received from the server
         applyRemoteChanges(
             dao,
-            remoteChanges,
-            remoteStoreChanges,
-            remoteCategoryChanges,
-            remoteListChanges,
-            remoteListMemberChanges,
-            remoteStoreInfoChanges
+            RemoteGroceryChanges(
+                items = remoteChanges,
+                stores = remoteStoreChanges,
+                categories = remoteCategoryChanges,
+                lists = remoteListChanges,
+                members = remoteListMemberChanges,
+                storeInfos = remoteStoreInfoChanges
+            )
         )
     }
 
-    private suspend fun processSuccessfulUploads(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        Log.d(TAG, "processSuccessfulUploads: successIds count = ${successIds.size}")
-        // Order matches dependency hierarchy where possible
-        processSuccessfulLists(dao, successIds, isFirstSync)
-        processSuccessfulListMembers(dao, successIds, isFirstSync)
-        processSuccessfulStores(dao, successIds, isFirstSync)
-        processSuccessfulCategories(dao, successIds, isFirstSync)
-        processSuccessfulItems(dao, successIds, isFirstSync)
-        processSuccessfulStoreInfos(dao, successIds, isFirstSync)
+    private suspend fun applyRemoteChanges(dao: GroceryDao, remote: RemoteGroceryChanges) {
+        applyRemoteLists(dao, remote.lists)
+        applyRemoteMembers(dao, remote.members)
+        applyRemoteStores(dao, remote.stores)
+        applyRemoteCategories(dao, remote.categories)
+        applyRemoteItems(dao, remote.items)
+        applyRemoteStoreInfos(dao, remote.storeInfos)
     }
 
-    private suspend fun processSuccessfulLists(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        val items = if (isFirstSync) dao.getAllListsOneShot() else dao.getUnsyncedLists()
-        items.forEach { local ->
-            if (successIds.contains(local.id)) {
-                if (local.isDeleted) dao.hardDeleteList(local.id)
-                else dao.upsertList(local.copy(syncState = "SYNCED"))
-            }
-        }
-    }
-
-    private suspend fun processSuccessfulListMembers(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        val items = if (isFirstSync) dao.getAllListMembersOneShot() else dao.getUnsyncedListMembers()
-        items.forEach { local ->
-            if (successIds.contains(local.id)) {
-                if (local.isDeleted) dao.hardDeleteListMember(local.id)
-                else dao.upsertListMember(local.copy(syncState = "SYNCED"))
-            }
-        }
-    }
-
-    private suspend fun processSuccessfulStores(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        val items = if (isFirstSync) dao.getAllStoresOneShot() else dao.getUnsyncedStores()
-        items.forEach { local ->
-            if (successIds.contains(local.id)) {
-                if (local.isDeleted) dao.hardDeleteStore(local.id)
-                else dao.upsertStore(local.copy(syncState = "SYNCED"))
-            }
-        }
-    }
-
-    private suspend fun processSuccessfulCategories(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        val items = if (isFirstSync) dao.getAllCategoriesOneShot() else dao.getUnsyncedCategories()
-        items.forEach { local ->
-            if (successIds.contains(local.id)) {
-                if (local.isDeleted) dao.hardDeleteCategory(local.id)
-                else dao.upsertCategory(local.copy(syncState = "SYNCED"))
-            }
-        }
-    }
-
-    private suspend fun processSuccessfulItems(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        val items = if (isFirstSync) dao.getAllItemsOneShot() else dao.getUnsyncedItems()
-        items.forEach { local ->
-            if (successIds.contains(local.id)) {
-                if (local.isDeleted) dao.hardDeleteItem(local.id)
-                else dao.upsertItem(local.copy(syncState = "SYNCED"))
-            }
-        }
-    }
-
-    private suspend fun processSuccessfulStoreInfos(dao: GroceryDao, successIds: List<String>, isFirstSync: Boolean) {
-        val items = if (isFirstSync) dao.getAllStoreInfosOneShot() else dao.getUnsyncedStoreInfos()
-        items.forEach { local ->
-            // Store info uses a composite key (itemId, storeId). 
-            // The server might return the client-side 'id' UUID OR the natural composite 'itemId_storeId'.
-            val compositeId = "${local.groceryItemId}-${local.storeId}"
-            if (successIds.contains(local.id) || successIds.contains(compositeId)) {
-                if (local.isDeleted) dao.hardDeleteStoreInfo(local.groceryItemId, local.storeId)
-                else dao.upsertStoreInfo(local.copy(syncState = "SYNCED"))
-            } else {
-                Log.d(TAG, "processSuccessfulStoreInfos: id ${local.id} (composite: $compositeId) not found in successIds ($successIds)")
-            }
-        }
-    }
-
-    private suspend fun applyRemoteChanges(
-        dao: GroceryDao,
-        remoteItems: List<GroceryChangeDelta>,
-        remoteStores: List<StoreChangeDelta>,
-        remoteCategories: List<CategoryChangeDelta>,
-        remoteLists: List<GroceryListChangeDelta>,
-        remoteMembers: List<GroceryListMemberChangeDelta>,
-        remoteStoreInfos: List<GroceryItemStoreInfoChangeDelta>
-    ) {
-        Log.d(TAG, "applyRemoteChanges: lists=${remoteLists.size}, items=${remoteItems.size}, stores=${remoteStores.size}, categories=${remoteCategories.size}")
-        // Order matches dependency hierarchy: Lists -> (Members, Stores, Categories) -> Items -> StoreInfos
-        
-        var listsUpserted = 0
-        var listsDeleted = 0
+    private suspend fun applyRemoteLists(dao: GroceryDao, remoteLists: List<GroceryListChangeDelta>) {
+        var upserted = 0
+        var deleted = 0
         remoteLists.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteList(change.id)
-                listsDeleted++
+                deleted++
             } else {
                 decodeDto(change.data, GroceryListDto.serializer())?.let { dto ->
                     dao.upsertList(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                    listsUpserted++
+                    upserted++
                 }
             }
         }
-        if (listsUpserted > 0 || listsDeleted > 0) Log.d(TAG, "Applied remote grocery lists: upserted=$listsUpserted, deleted=$listsDeleted")
+        if (upserted > 0 || deleted > 0) Log.d(TAG, "Applied remote grocery lists: upserted=$upserted, deleted=$deleted")
+    }
 
-        var membersUpserted = 0
-        var membersDeleted = 0
+    private suspend fun applyRemoteMembers(dao: GroceryDao, remoteMembers: List<GroceryListMemberChangeDelta>) {
+        var upserted = 0
+        var deleted = 0
         remoteMembers.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteListMember(change.id)
-                membersDeleted++
+                deleted++
             } else {
                 decodeDto(change.data, GroceryListMemberDto.serializer())?.let { dto ->
                     if (listExists(dao, dto.listId)) {
                         dao.upsertListMember(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                        membersUpserted++
+                        upserted++
                     } else {
-                        Log.e(TAG, "INCONSISTENCY: Ignoring GroceryMember ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                        Log.e(TAG, "INCONSISTENCY: Ignoring GroceryMember ${change.id} because Parent List ${dto.listId} is missing.")
                     }
                 }
             }
         }
-        if (membersUpserted > 0 || membersDeleted > 0) Log.d(TAG, "Applied remote grocery members: upserted=$membersUpserted, deleted=$membersDeleted")
+        if (upserted > 0 || deleted > 0) Log.d(TAG, "Applied remote grocery members: upserted=$upserted, deleted=$deleted")
+    }
 
-        var storesUpserted = 0
-        var storesDeleted = 0
+    private suspend fun applyRemoteStores(dao: GroceryDao, remoteStores: List<StoreChangeDelta>) {
+        var upserted = 0
+        var deleted = 0
         remoteStores.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteStore(change.id)
-                storesDeleted++
+                deleted++
             } else {
                 decodeDto(change.data, StoreDto.serializer())?.let { dto ->
                     if (listExists(dao, dto.listId)) {
                         dao.upsertStore(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                        storesUpserted++
+                        upserted++
                     } else {
-                        Log.e(TAG, "INCONSISTENCY: Ignoring Store ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                        Log.e(TAG, "INCONSISTENCY: Ignoring Store ${change.id} because Parent List ${dto.listId} is missing.")
                     }
                 }
             }
         }
-        if (storesUpserted > 0 || storesDeleted > 0) Log.d(TAG, "Applied remote stores: upserted=$storesUpserted, deleted=$storesDeleted")
+        if (upserted > 0 || deleted > 0) Log.d(TAG, "Applied remote stores: upserted=$upserted, deleted=$deleted")
+    }
 
-        var categoriesUpserted = 0
-        var categoriesDeleted = 0
+    private suspend fun applyRemoteCategories(dao: GroceryDao, remoteCategories: List<CategoryChangeDelta>) {
+        var upserted = 0
+        var deleted = 0
         remoteCategories.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteCategory(change.id)
-                categoriesDeleted++
+                deleted++
             } else {
                 decodeDto(change.data, CategoryDto.serializer())?.let { dto ->
                     if (listExists(dao, dto.listId)) {
                         dao.upsertCategory(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                        categoriesUpserted++
+                        upserted++
                     } else {
-                        Log.e(TAG, "INCONSISTENCY: Ignoring Category ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                        Log.e(TAG, "INCONSISTENCY: Ignoring Category ${change.id} because Parent List ${dto.listId} is missing.")
                     }
                 }
             }
         }
-        if (categoriesUpserted > 0 || categoriesDeleted > 0) Log.d(TAG, "Applied remote categories: upserted=$categoriesUpserted, deleted=$categoriesDeleted")
+        if (upserted > 0 || deleted > 0) Log.d(TAG, "Applied remote categories: upserted=$upserted, deleted=$deleted")
+    }
 
-        var itemsUpserted = 0
-        var itemsDeleted = 0
+    private suspend fun applyRemoteItems(dao: GroceryDao, remoteItems: List<GroceryChangeDelta>) {
+        var upserted = 0
+        var deleted = 0
         remoteItems.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteItem(change.id)
-                itemsDeleted++
+                deleted++
             } else {
                 decodeDto(change.data, GroceryItemDto.serializer())?.let { dto ->
                     if (listExists(dao, dto.listId)) {
                         dao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                        itemsUpserted++
+                        upserted++
                     } else {
-                        Log.e(TAG, "INCONSISTENCY: Ignoring GroceryItem ${change.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                        Log.e(TAG, "INCONSISTENCY: Ignoring GroceryItem ${change.id} because Parent List ${dto.listId} is missing.")
                     }
                 }
             }
         }
-        if (itemsUpserted > 0 || itemsDeleted > 0) Log.d(TAG, "Applied remote grocery items: upserted=$itemsUpserted, deleted=$itemsDeleted")
+        if (upserted > 0 || deleted > 0) Log.d(TAG, "Applied remote grocery items: upserted=$upserted, deleted=$deleted")
+    }
 
-        var storeInfosUpserted = 0
-        var storeInfosDeleted = 0
+    private suspend fun applyRemoteStoreInfos(dao: GroceryDao, remoteStoreInfos: List<GroceryItemStoreInfoChangeDelta>) {
+        var upserted = 0
+        var deleted = 0
         remoteStoreInfos.forEach { change ->
             if (change.operationType == OperationType.DELETE) {
                 dao.hardDeleteStoreInfo(change.groceryItemId, change.storeId)
-                storeInfosDeleted++
+                deleted++
             } else {
                 decodeDto(change.data, GroceryItemStoreInfoDto.serializer())?.let { dto ->
                     if (itemExists(dao, change.groceryItemId) && storeExists(dao, change.storeId)) {
                         dao.upsertStoreInfo(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
-                        storeInfosUpserted++
+                        upserted++
                     } else {
-                        Log.e(TAG, "INCONSISTENCY: Ignoring StoreInfo because dependencies are missing. ItemId: ${change.groceryItemId}, StoreId: ${change.storeId}. Item: $dto")
+                        Log.e(TAG, "INCONSISTENCY: Ignoring StoreInfo because dependencies are missing.")
                     }
                 }
             }
         }
-        if (storeInfosUpserted > 0 || storeInfosDeleted > 0) Log.d(TAG, "Applied remote store infos: upserted=$storeInfosUpserted, deleted=$storeInfosDeleted")
-    }
-
-    // --- HELPERS ---
-
-    private fun determineOpType(isDeleted: Boolean, syncState: String): OperationType {
-        return when {
-            isDeleted -> OperationType.DELETE
-            syncState == "PENDING_INSERT" -> OperationType.INSERT
-            else -> OperationType.UPDATE
-        }
+        if (upserted > 0 || deleted > 0) Log.d(TAG, "Applied remote store infos: upserted=$upserted, deleted=$deleted")
     }
 
     private fun <T> decodeDto(data: JsonElement?, serializer: kotlinx.serialization.KSerializer<T>): T? {
         return data?.let {
             try {
                 NetworkClient.syncJson.decodeFromJsonElement(serializer, it)
-            } catch (e: Exception) {
+            } catch (e: kotlinx.serialization.SerializationException) {
+                Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
+                null
+            } catch (e: IllegalArgumentException) {
                 Log.e(TAG, "Failed to decode DTO: ${e.message}", e)
                 null
             }

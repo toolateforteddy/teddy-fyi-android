@@ -2,85 +2,74 @@ package fyi.teddy.android.grocery.ui
 
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import fyi.teddy.android.grocery.data.Category
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.data.SyncLog
+import fyi.teddy.android.data.SyncLogDao
+import fyi.teddy.android.data.UserSyncMetadataDao
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
-import fyi.teddy.android.grocery.data.GroceryList
-import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.domain.MoveGroceryItemDownUseCase
 import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
 import fyi.teddy.android.grocery.domain.ai.GroceryCategorizer
 import fyi.teddy.android.grocery.repository.GroceryRepository
-import fyi.teddy.android.data.AppDatabase
-import fyi.teddy.android.data.SyncLog
-import fyi.teddy.android.network.GroceryNetworkRepository
 import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.util.StringUtils
-import androidx.work.WorkInfo
-import androidx.work.WorkManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import androidx.core.content.edit
-import kotlin.time.Duration.Companion.seconds
-
-import android.content.SharedPreferences
-import fyi.teddy.android.data.SyncLogDao
-import fyi.teddy.android.data.UserSyncMetadataDao
 
 class GroceryViewModel(
-    private val repository: GroceryRepository,
+    internal val repository: GroceryRepository,
     val userId: String,
-    private val application: Application,
-    private val workManager: WorkManager? = null,
-    private val syncLogDao: SyncLogDao = AppDatabase.getDatabase(application).syncLogDao(),
-    private val userSyncMetadataDao: UserSyncMetadataDao = AppDatabase.getDatabase(application).userSyncMetadataDao(),
+    internal val application: Application,
+    workManager: WorkManager? = null,
+    internal val userSyncMetadataDao: UserSyncMetadataDao = AppDatabase.getDatabase(application).userSyncMetadataDao(),
     private val prefs: SharedPreferences = application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE)
 ) : ViewModel() {
 
-    private val wm: WorkManager? = workManager ?: try { WorkManager.getInstance(application) } catch (e: Exception) { null }
+    private val wm: WorkManager? = workManager ?: try { WorkManager.getInstance(application) } catch (_: Exception) { null }
 
-    // Internal mutable state flows for UDF compliance
-    private val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
-    private val _selectedStoreIds = MutableStateFlow(setOf<String>())
-    private val _planningStoreContextId = MutableStateFlow<String?>(null)
-    private val _shoppingStoreId = MutableStateFlow(
+    internal val _currentPhase = MutableStateFlow(GroceryPhase.NEED)
+    internal val _selectedStoreIds = MutableStateFlow(setOf<String>())
+    internal val _planningStoreContextId = MutableStateFlow<String?>(null)
+    internal val _shoppingStoreId = MutableStateFlow(
         try {
             prefs.getString("last_shopping_store_id", null)
         } catch (_: ClassCastException) {
-            // Handle legacy Int values by clearing them
             prefs.edit { remove("last_shopping_store_id") }
             null
         }
     )
-    private val _isEditMode = MutableStateFlow(false)
-    private val _showRecommendedDialog = MutableStateFlow(false)
-    private val _newItemName = MutableStateFlow("")
-    private val _newItemQuantity = MutableStateFlow("1")
-    private val _newItemUnit = MutableStateFlow<String?>(null)
-    private val _newItemInput = MutableStateFlow("")
-    private val _selectedCategoryId = MutableStateFlow<String?>(null)
-    private val _recentlyCheckedIds = MutableStateFlow(setOf<String>())
-    private val _selectedListId = MutableStateFlow(
+    internal val _isEditMode = MutableStateFlow(false)
+    internal val _showRecommendedDialog = MutableStateFlow(false)
+    internal val _newItemName = MutableStateFlow("")
+    internal val _newItemQuantity = MutableStateFlow("1")
+    internal val _newItemUnit = MutableStateFlow<String?>(null)
+    internal val _newItemInput = MutableStateFlow("")
+    internal val _selectedCategoryId = MutableStateFlow<String?>(null)
+    internal val _recentlyCheckedIds = MutableStateFlow(setOf<String>())
+    internal val _selectedListId = MutableStateFlow(
         try {
             prefs.getString("selected_list_id", null)
         } catch (_: ClassCastException) {
-            // Handle legacy Int values by clearing them
             prefs.edit { remove("selected_list_id") }
             null
         }
     )
-    private val _activeInviteCode = MutableStateFlow<String?>(null)
-    private val _snackbarMessage = MutableStateFlow<GrocerySnackbarMessage?>(null)
-    private val _isCategorizing = MutableStateFlow(false)
+    internal val _activeInviteCode = MutableStateFlow<String?>(null)
+    internal val _snackbarMessage = MutableStateFlow<GrocerySnackbarMessage?>(null)
+    internal val _isCategorizing = MutableStateFlow(false)
 
-    private val categorizer = GroceryCategorizer(application)
+    internal val categorizer = GroceryCategorizer(application)
 
-    private val _hasDefaultItems = combine(
+    internal val _hasDefaultItems = combine(
         repository.getItemsWithoutList(userId),
         repository.getAllStores(userId).map { all -> all.any { it.listId == null && !it.isDeleted } },
         repository.getAllCategories(userId).map { all -> all.any { it.listId == null && !it.isDeleted } }
@@ -91,6 +80,7 @@ class GroceryViewModel(
     private val _unsyncedCount = repository.getUnsyncedCountFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    private val syncLogDao: SyncLogDao = AppDatabase.getDatabase(application).syncLogDao()
     private val _lastSyncStatus = syncLogDao.getLatestLog()
         .map { log: SyncLog? -> log?.status }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -117,7 +107,6 @@ class GroceryViewModel(
         flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // Combined state for modern UDF support
     val state: StateFlow<GroceryUiState> = combine(
         _currentPhase,
         _selectedStoreIds,
@@ -169,11 +158,23 @@ class GroceryViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
-    // Instantiate use cases
+
+
+    internal fun setActiveInviteCode(code: String?) { _activeInviteCode.value = code }
+    internal fun setSnackbarMessage(msg: GrocerySnackbarMessage?) { _snackbarMessage.value = msg }
+
     private val moveGroceryItemUpUseCase = MoveGroceryItemUpUseCase(repository)
     private val moveGroceryItemDownUseCase = MoveGroceryItemDownUseCase(repository)
 
     fun onEvent(event: GroceryUiEvent) {
+        if (handleNavigationAndInputEvents(event)) return
+        if (handleItemEvents(event)) return
+        if (handleStoreEvents(event)) return
+        if (handleCategoryEvents(event)) return
+        handleListAndOtherEvents(event)
+    }
+
+    private fun handleNavigationAndInputEvents(event: GroceryUiEvent): Boolean {
         when (event) {
             is GroceryUiEvent.SetPhase -> setPhase(event.phase)
             is GroceryUiEvent.ToggleStoreSelection -> toggleStoreSelection(event.storeId)
@@ -188,35 +189,51 @@ class GroceryViewModel(
             is GroceryUiEvent.SetSelectedCategoryId -> setSelectedCategoryId(event.categoryId)
             is GroceryUiEvent.SetSelectedListId -> setSelectedListId(event.listId)
             is GroceryUiEvent.InsertItemFromInput -> insertItemFromInput(event.input)
-            
-            // Item Mutators
+            else -> return false
+        }
+        return true
+    }
+
+    private fun handleItemEvents(event: GroceryUiEvent): Boolean {
+        when (event) {
             is GroceryUiEvent.InsertItem -> insertItem(event.name, event.quantity, event.categoryId, event.unit)
             is GroceryUiEvent.UpdateItem -> updateItem(event.item)
             is GroceryUiEvent.DeleteItem -> deleteItem(event.item)
-            is GroceryUiEvent.MoveItemUp -> {
-                viewModelScope.launch { moveGroceryItemUpUseCase(event.item, event.siblings) }
-            }
-            is GroceryUiEvent.MoveItemDown -> {
-                viewModelScope.launch { moveGroceryItemDownUseCase(event.item, event.siblings) }
-            }
+            is GroceryUiEvent.MoveItemUp -> viewModelScope.launch { moveGroceryItemUpUseCase(event.item, event.siblings) }
+            is GroceryUiEvent.MoveItemDown -> viewModelScope.launch { moveGroceryItemDownUseCase(event.item, event.siblings) }
             is GroceryUiEvent.UpdateStoreInfo -> updateStoreInfo(event.info)
             is GroceryUiEvent.DeleteStoreInfo -> deleteStoreInfo(event.info)
             is GroceryUiEvent.ToggleBought -> toggleBought(event.item, event.isChecked)
             is GroceryUiEvent.MarkDoneForTrip -> markDoneForTrip()
-            
-            // Store Mutators
+            else -> return false
+        }
+        return true
+    }
+
+    private fun handleStoreEvents(event: GroceryUiEvent): Boolean {
+        when (event) {
             is GroceryUiEvent.InsertStore -> insertStore(event.name)
             is GroceryUiEvent.DeleteStore -> deleteStore(event.store)
             is GroceryUiEvent.UpdateStore -> updateStore(event.store)
             is GroceryUiEvent.SwapStorePositions -> swapStorePositions(event.store1, event.store2)
-            
-            // Category Mutators
+            else -> return false
+        }
+        return true
+    }
+
+    private fun handleCategoryEvents(event: GroceryUiEvent): Boolean {
+        when (event) {
             is GroceryUiEvent.InsertCategory -> insertCategory(event.name)
             is GroceryUiEvent.UpdateCategory -> updateCategory(event.category)
             is GroceryUiEvent.DeleteCategory -> deleteCategory(event.category)
             is GroceryUiEvent.SwapCategoryPositions -> swapCategoryPositions(event.cat1, event.cat2)
-            
-            // List Mutators
+            else -> return false
+        }
+        return true
+    }
+
+    private fun handleListAndOtherEvents(event: GroceryUiEvent) {
+        when (event) {
             is GroceryUiEvent.InsertList -> insertList(event.name)
             is GroceryUiEvent.DeleteList -> deleteList(event.list)
             is GroceryUiEvent.UpdateList -> updateList(event.list)
@@ -230,6 +247,7 @@ class GroceryViewModel(
             }
             is GroceryUiEvent.RemoveListMember -> removeListMember(event.member)
             is GroceryUiEvent.AddRecommendedItems -> addRecommendedItems(event.selectedIds)
+            else -> {}
         }
     }
 
@@ -547,122 +565,6 @@ class GroceryViewModel(
         }
     }
 
-    fun updateItem(item: GroceryItem) {
-        viewModelScope.launch { repository.updateItem(item) }
-    }
-
-    fun deleteItem(item: GroceryItem) {
-        viewModelScope.launch {
-            if (item.timesBought > 0) {
-                // If it has been bought before, just deactivate it instead of deleting.
-                // This keeps it in the database for history/recommendations.
-                repository.updateItem(item.copy(isActive = false))
-            } else {
-                // Never bought, safe to delete.
-                repository.deleteItem(item)
-            }
-        }
-    }
-
-    fun updateStoreInfo(info: GroceryItemStoreInfo) {
-        viewModelScope.launch { repository.insertStoreInfo(info.copy(userId = userId)) }
-    }
-
-    fun deleteStoreInfo(info: GroceryItemStoreInfo) {
-        viewModelScope.launch { repository.deleteStoreInfo(info) }
-    }
-
-    fun toggleBought(item: GroceryItem, isChecked: Boolean) {
-        val updatedItem = item.copy(isBought = isChecked)
-        
-        if (isChecked && _currentPhase.value == GroceryPhase.SHOPPING) {
-            // Immediately mark as checked, and add to recentlyCheckedIds to start 2-second transition
-            _recentlyCheckedIds.update { it + item.id }
-            updateItem(updatedItem)
-            
-            viewModelScope.launch {
-                delay(2.seconds)
-                _recentlyCheckedIds.update { it - item.id }
-            }
-        } else {
-            _recentlyCheckedIds.update { it - item.id }
-            updateItem(updatedItem)
-        }
-    }
-
-    fun markDoneForTrip() {
-        val listId = _selectedListId.value
-        viewModelScope.launch {
-            repository.markDoneForTrip(userId, listId)
-            setShoppingStoreId(null)
-        }
-    }
-
-    // Store operations
-    fun insertStore(name: String) {
-        if (name.isNotBlank()) {
-            val capitalized = formatName(name)
-            viewModelScope.launch {
-                repository.insertStore(
-                    Store(
-                        name = capitalized, 
-                        userId = userId,
-                        listId = _selectedListId.value
-                    )
-                )
-            }
-        }
-    }
-
-    fun deleteStore(store: Store) {
-        viewModelScope.launch { repository.deleteStore(store) }
-    }
-
-    fun updateStore(store: Store) {
-        viewModelScope.launch { repository.updateStore(store) }
-    }
-
-    fun swapStorePositions(store1: Store, store2: Store) {
-        viewModelScope.launch { repository.swapStorePositions(store1, store2) }
-    }
-
-    // Category operations
-    fun insertCategory(name: String) {
-        if (name.isNotBlank()) {
-            val capitalized = formatName(name)
-            viewModelScope.launch {
-                repository.insertCategory(
-                    Category(
-                        name = capitalized, 
-                        userId = userId,
-                        listId = _selectedListId.value
-                    )
-                )
-            }
-        }
-    }
-
-    fun updateCategory(category: Category) {
-        viewModelScope.launch { repository.updateCategory(category) }
-    }
-
-    fun deleteCategory(category: Category) {
-        viewModelScope.launch { repository.deleteCategory(category) }
-    }
-
-    fun swapCategoryPositions(cat1: Category, cat2: Category) {
-        viewModelScope.launch { repository.swapCategoryPositions(cat1, cat2) }
-    }
-
-    fun addRecommendedItems(selectedItemIds: List<String>) {
-        viewModelScope.launch {
-            recommendedItems.value.filter { selectedItemIds.contains(it.id) }.forEach { item ->
-                repository.updateItem(item.copy(isBought = false, isActive = true))
-            }
-        }
-    }
-
-    // List and Collaboration operations
     fun setSelectedListId(listId: String?) {
         _selectedListId.value = listId
         if (listId != null) {
@@ -671,93 +573,4 @@ class GroceryViewModel(
             prefs.edit { remove("selected_list_id") }
         }
     }
-
-    fun insertList(name: String) {
-        if (name.isNotBlank()) {
-            val capitalized = formatName(name)
-            viewModelScope.launch {
-                val newList = GroceryList(
-                    name = capitalized,
-                    ownerId = userId
-                )
-                repository.insertList(newList)
-                // Grant ourselves access as ADMIN
-                repository.insertListMember(
-                    GroceryListMember(
-                        listId = newList.id,
-                        userId = userId,
-                        role = "ADMIN"
-                    )
-                )
-                setSelectedListId(newList.id)
-            }
-        }
-    }
-
-    fun deleteList(list: GroceryList) {
-        viewModelScope.launch {
-            repository.deleteList(list)
-            if (_selectedListId.value == list.id) {
-                setSelectedListId(null)
-            }
-        }
-    }
-
-    fun updateList(list: GroceryList) {
-        viewModelScope.launch {
-            repository.updateList(list)
-        }
-    }
-
-    fun shareListWithUser(listId: String, memberUserId: String) {
-        if (memberUserId.isNotBlank()) {
-            viewModelScope.launch {
-                repository.insertListMember(
-                    GroceryListMember(
-                        listId = listId,
-                        userId = memberUserId
-                    )
-                )
-            }
-        }
-    }
-
-    fun createInvite(listId: String) {
-        viewModelScope.launch {
-            val code = GroceryNetworkRepository.createInvite(listId)
-            _activeInviteCode.value = code
-        }
-    }
-
-    fun joinList(code: String) {
-        viewModelScope.launch {
-            val listId = GroceryNetworkRepository.joinList(code)
-            if (listId != null) {
-                // Clear user sync metadata to force a full resync from the server for this user.
-                // This ensures we get the metadata (name, owner) for the new list.
-                userSyncMetadataDao.clear(userId)
-                
-                // Trigger sync immediately
-                SyncWorker.enqueue(application)
-                setSelectedListId(listId)
-                _snackbarMessage.value = GrocerySnackbarMessage(
-                    message = "Successfully joined the list!",
-                    isError = false
-                )
-            } else {
-                _snackbarMessage.value = GrocerySnackbarMessage(
-                    message = "Failed to join list. Check the code and try again.",
-                    isError = true
-                )
-            }
-        }
-    }
-
-    fun removeListMember(member: GroceryListMember) {
-        viewModelScope.launch {
-            repository.deleteListMember(member)
-        }
-    }
-
-    fun getListMembers(listId: String) = repository.getListMembers(listId)
 }

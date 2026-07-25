@@ -86,48 +86,47 @@ object NetworkClient {
                     }
                 }
                 sendWithoutRequest { true }
-                refreshTokens {
-                    // Try to refresh the token using an internal client instance to avoid recursion
-                    val refreshClient = HttpClient(OkHttp) {
-                        install(ContentNegotiation) { json() }
-                    }
-                    
-                    try {
-                        val response = refreshClient.post("https://api-rust.teddy.fyi/auth/refresh") {
-                            contentType(ContentType.Application.Json)
-                            setBody(
-                                RefreshRequest(
-                                    userId = session.userId ?: "",
-                                    clientUuid = session.clientUuid ?: "",
-                                    refreshToken = session.refreshToken ?: "",
-                                    expiresInSecs = appContext?.let { getAuthTimeoutSecs(it) } ?: 3600L,
-                                )
-                            )
-                        }
-
-                        if (response.status.value in 200..299) {
-                            val tokens = response.body<TokenResponse>()
-                            session.accessToken = tokens.accessToken
-                            session.refreshToken = tokens.refreshToken
-                            BearerTokens(tokens.accessToken, tokens.refreshToken)
-                        } else {
-                            if (response.status.value == 401) {
-                                // Terminal auth failure: clear tokens in memory
-                                session.accessToken = null
-                                session.refreshToken = null
-                            }
-                            null
-                        }
-                    } catch (_: Exception) {
-                        null
-                    } finally {
-                        refreshClient.close()
-                    }
-                }
+                refreshTokens { performRefreshToken() }
             }
         }
         defaultRequest {
             session.clientUuid?.let { header("X-Client-UUID", it) }
+        }
+    }
+
+    private suspend fun performRefreshToken(): BearerTokens? {
+        val refreshClient = HttpClient(OkHttp) {
+            install(ContentNegotiation) { json() }
+        }
+        return try {
+            val response = refreshClient.post("https://api-rust.teddy.fyi/auth/refresh") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    RefreshRequest(
+                        userId = session.userId ?: "",
+                        clientUuid = session.clientUuid ?: "",
+                        refreshToken = session.refreshToken ?: "",
+                        expiresInSecs = appContext?.let { getAuthTimeoutSecs(it) } ?: 3600L,
+                    )
+                )
+            }
+
+            if (response.status.value in 200..299) {
+                val tokens = response.body<TokenResponse>()
+                session.accessToken = tokens.accessToken
+                session.refreshToken = tokens.refreshToken
+                BearerTokens(tokens.accessToken, tokens.refreshToken)
+            } else {
+                if (response.status.value == 401) {
+                    session.accessToken = null
+                    session.refreshToken = null
+                }
+                null
+            }
+        } catch (_: Exception) {
+            null
+        } finally {
+            refreshClient.close()
         }
     }
 }
