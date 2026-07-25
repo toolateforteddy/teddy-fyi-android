@@ -56,13 +56,14 @@ abstract class TodoDao {
     abstract suspend fun resetDailyItems(userId: String, today: String)
 
     @Transaction
-    open suspend fun insertWithNextPosition(item: TodoItem) {
+    open suspend fun insertWithNextPosition(item: TodoItem): Int {
         val maxPos = if (item.parentId == null) {
             getMaxPositionNullParent(item.userId ?: "")
         } else {
             getMaxPosition(item.userId ?: "", item.parentId)
         } ?: -1
         insertItem(item.copy(position = maxPos + 1))
+        return 1
     }
 
     @Query("SELECT MAX(position) FROM todo_items WHERE userId = :userId AND parentId = :parentId AND is_deleted = 0")
@@ -72,11 +73,12 @@ abstract class TodoDao {
     protected abstract suspend fun getMaxPositionNullParent(userId: String): Int?
 
     @Transaction
-    open suspend fun swapPositions(item1: TodoItem, item2: TodoItem) {
+    open suspend fun swapPositions(item1: TodoItem, item2: TodoItem): Int {
         val pos1 = item1.position
         val pos2 = item2.position
         updateItem(item1.copy(position = pos2))
         updateItem(item2.copy(position = pos1))
+        return 1
     }
 
     @Query("SELECT * FROM todo_lists WHERE userId = :userId AND is_deleted = 0 ORDER BY createdAt ASC")
@@ -86,22 +88,23 @@ abstract class TodoDao {
     abstract suspend fun getListByIdOneShot(id: String): TodoList?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun insertList(list: TodoList)
+    abstract suspend fun insertList(list: TodoList): Long
 
     @Update
-    abstract suspend fun updateList(list: TodoList)
+    abstract suspend fun updateList(list: TodoList): Int
 
     @Delete
-    abstract suspend fun deleteList(list: TodoList)
+    abstract suspend fun deleteList(list: TodoList): Int
 
     @Transaction
-    open suspend fun deleteListAndNullifyItems(list: TodoList) {
+    open suspend fun deleteListAndNullifyItems(list: TodoList): Int {
         nullifyListIdForItems(list.id)
         deleteList(list)
+        return 1
     }
 
     @Query("UPDATE todo_items SET listId = NULL WHERE listId = :listId")
-    abstract suspend fun nullifyListIdForItems(listId: String)
+    abstract suspend fun nullifyListIdForItems(listId: String): Int
 
     @Query("SELECT * FROM todo_items WHERE sync_state != 'SYNCED' OR is_deleted = 1")
     abstract suspend fun getUnsyncedItems(): List<TodoItem>

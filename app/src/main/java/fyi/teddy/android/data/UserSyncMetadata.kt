@@ -16,14 +16,14 @@ data class UserSyncMetadata(
 @Dao
 interface UserSyncMetadataDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(metadata: UserSyncMetadata)
+    suspend fun upsert(metadata: UserSyncMetadata): Long
 
     @Query("SELECT lastSyncedAt FROM user_sync_metadata WHERE userId = :userId")
     suspend fun getLastSyncedAt(userId: String): String?
 
     @Query("DELETE FROM user_sync_metadata WHERE userId = :userId")
-    suspend fun clear(userId: String)
+    suspend fun clear(userId: String): Int
 
     @Query("DELETE FROM user_sync_metadata")
-    suspend fun clearAll()
+    suspend fun clearAll(): Int
 }

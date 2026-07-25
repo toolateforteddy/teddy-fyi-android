@@ -1,0 +1,6 @@
+- [x] Fix Room KSP "unexpected jvm signature V" error
+    - [x] Update `SyncLogDao` (remove default param, return `Int`, fix `Long?` to `Long`)
+    - [x] Update `UserSyncMetadataDao` (return `Long`/`Int`)
+    - [x] Update `GroceryDao` (return `Long`/`Int` for all mutation methods, fix formatting)
+    - [x] Update `TodoDao` (return `Long`/`Int` for all mutation methods)
+- [x] Verify build with `./gradlew :app:kspDebugKotlin`

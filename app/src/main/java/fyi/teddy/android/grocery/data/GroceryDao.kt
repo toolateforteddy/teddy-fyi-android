@@ -99,16 +99,17 @@ abstract class GroceryDao {
     abstract suspend fun updateCategory(category: Category)
 
     @Transaction
-    open suspend fun deleteCategoryAndCleanup(category: Category) {
+    open suspend fun deleteCategoryAndCleanup(category: Category): Int {
         clearItemCategories(category.id)
         deleteCategory(category)
+        return 1
     }
 
     @Delete
-    protected abstract suspend fun deleteCategory(category: Category)
+    protected abstract suspend fun deleteCategory(category: Category): Int
 
     @Query("UPDATE grocery_items SET categoryId = NULL WHERE categoryId = :categoryId")
-    protected abstract suspend fun clearItemCategories(categoryId: String)
+    protected abstract suspend fun clearItemCategories(categoryId: String): Int
 
     @Transaction
     open suspend fun insertItemWithNextPosition(item: GroceryItem): Long {
@@ -120,45 +121,50 @@ abstract class GroceryDao {
     protected abstract suspend fun getMaxItemPosition(userId: String, listId: String?): Int?
 
     @Transaction
-    open suspend fun insertStoreWithNextPosition(store: Store) {
+    open suspend fun insertStoreWithNextPosition(store: Store): Int {
         val maxPos = getMaxStorePosition(store.userId ?: "", store.listId) ?: -1
         insertStore(store.copy(position = maxPos + 1))
+        return 1
     }
 
     @Query("SELECT MAX(position) FROM stores WHERE (userId = :userId AND listId IS NULL) OR (listId = :listId AND listId IS NOT NULL)")
     protected abstract suspend fun getMaxStorePosition(userId: String, listId: String?): Int?
 
     @Transaction
-    open suspend fun insertCategoryWithNextPosition(category: Category) {
+    open suspend fun insertCategoryWithNextPosition(category: Category): Int {
         val maxPos = getMaxCategoryPosition(category.userId ?: "", category.listId) ?: -1
         insertCategory(category.copy(position = maxPos + 1))
+        return 1
     }
 
     @Query("SELECT MAX(position) FROM categories WHERE (userId = :userId AND listId IS NULL) OR (listId = :listId AND listId IS NOT NULL)")
     protected abstract suspend fun getMaxCategoryPosition(userId: String, listId: String?): Int?
 
     @Transaction
-    open suspend fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) {
+    open suspend fun swapItemPositions(item1: GroceryItem, item2: GroceryItem): Int {
         val pos1 = item1.position
         val pos2 = item2.position
         updateItem(item1.copy(position = pos2))
         updateItem(item2.copy(position = pos1))
+        return 1
     }
 
     @Transaction
-    open suspend fun swapStorePositions(store1: Store, store2: Store) {
+    open suspend fun swapStorePositions(store1: Store, store2: Store): Int {
         val pos1 = store1.position
         val pos2 = store2.position
         updateStore(store1.copy(position = pos2))
         updateStore(store2.copy(position = pos1))
+        return 1
     }
 
     @Transaction
-    open suspend fun swapCategoryPositions(cat1: Category, cat2: Category) {
+    open suspend fun swapCategoryPositions(cat1: Category, cat2: Category): Int {
         val pos1 = cat1.position
         val pos2 = cat2.position
         updateCategory(cat1.copy(position = pos2))
         updateCategory(cat2.copy(position = pos1))
+        return 1
     }
 
     @Query("UPDATE grocery_lists SET ownerId = :userId WHERE ownerId IS NULL OR ownerId = 'unauthed'")
@@ -177,13 +183,14 @@ abstract class GroceryDao {
     abstract suspend fun claimUnownedMembers(userId: String)
 
     @Transaction
-    open suspend fun claimEverything(userId: String) {
+    open suspend fun claimEverything(userId: String): Int {
         claimUnownedLists(userId)
         claimUnownedItems(userId)
         claimUnownedStores(userId)
         claimUnownedCategories(userId)
         claimUnownedStoreInfo(userId)
         claimUnownedMembers(userId)
+        return 1
     }
 
     @Query("""
@@ -338,16 +345,16 @@ abstract class GroceryDao {
     abstract suspend fun hasOrphanedCategories(userId: String): Boolean
 
     @Query("UPDATE grocery_items SET listId = :listId, sync_state = 'PENDING_UPDATE' WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0")
-    abstract suspend fun moveOrphanedItemsToList(userId: String, listId: String)
+    abstract suspend fun moveOrphanedItemsToList(userId: String, listId: String): Int
 
     @Query("UPDATE stores SET listId = :listId, sync_state = 'PENDING_UPDATE' WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0")
-    abstract suspend fun moveOrphanedStoresToList(userId: String, listId: String)
+    abstract suspend fun moveOrphanedStoresToList(userId: String, listId: String): Int
 
     @Query("UPDATE categories SET listId = :listId, sync_state = 'PENDING_UPDATE' WHERE (userId = :userId OR userId IS NULL) AND listId IS NULL AND is_deleted = 0")
-    abstract suspend fun moveOrphanedCategoriesToList(userId: String, listId: String)
+    abstract suspend fun moveOrphanedCategoriesToList(userId: String, listId: String): Int
 
     @Transaction
-    open suspend fun ensureDefaultListAndClaimOrphanedItems(userId: String) {
+    open suspend fun ensureDefaultListAndClaimOrphanedItems(userId: String): Int {
         val listCount = getGroceryListsCountOneShot(userId)
         val orphanedItems = hasOrphanedItems(userId)
         val orphanedStores = hasOrphanedStores(userId)
@@ -372,6 +379,7 @@ abstract class GroceryDao {
             // Re-claim everything to be sure IDs match
             claimEverything(userId)
         }
+        return 1
     }
 
     @Query("SELECT COUNT(*) FROM grocery_items")

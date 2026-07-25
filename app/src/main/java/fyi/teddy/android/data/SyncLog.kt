@@ -37,17 +37,17 @@ interface SyncLogDao {
     suspend fun insert(log: SyncLog): Long
 
     @Query("SELECT * FROM sync_logs ORDER BY timestamp DESC LIMIT :limit")
-    fun getRecentLogs(limit: Int = 50): Flow<List<SyncLog>>
+    fun getRecentLogs(limit: Int): Flow<List<SyncLog>>
 
     @Query("SELECT * FROM sync_logs ORDER BY timestamp DESC LIMIT 1")
     fun getLatestLog(): Flow<SyncLog?>
 
-    @Query("SELECT timestamp FROM sync_logs WHERE status = 'SUCCESS' ORDER BY timestamp DESC LIMIT 1")
-    suspend fun getLastSuccessTimestamp(): Long?
+    @Query("SELECT COALESCE(MAX(timestamp), 0) FROM sync_logs WHERE status = 'SUCCESS'")
+    suspend fun getLastSuccessTimestamp(): Long
 
     @Query("DELETE FROM sync_logs WHERE timestamp < :cutoff")
-    suspend fun pruneLogs(cutoff: Long)
+    suspend fun pruneLogs(cutoff: Long): Int
 
     @Query("DELETE FROM sync_logs")
-    suspend fun clearAll()
+    suspend fun clearAll(): Int
 }
