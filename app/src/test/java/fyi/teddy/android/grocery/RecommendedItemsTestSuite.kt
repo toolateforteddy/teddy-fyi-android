@@ -2,6 +2,8 @@ package fyi.teddy.android.grocery
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.WorkManager
+import androidx.work.testing.WorkManagerTestInitHelper
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.GroceryDao
 import fyi.teddy.android.grocery.data.GroceryItem
@@ -11,19 +13,19 @@ import fyi.teddy.android.grocery.ui.GroceryViewModel
 import fyi.teddy.android.grocery.ui.addRecommendedItems
 import fyi.teddy.android.grocery.ui.markDoneForTrip
 import fyi.teddy.android.grocery.ui.toggleBought
-import androidx.work.WorkManager
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,17 +46,16 @@ class RecommendedItemsTestSuite {
 
     @Before
     fun setup() {
-        val workManager = mockk<WorkManager>(relaxed = true)
-        mockkStatic(WorkManager::class)
-        every { WorkManager.getInstance(any()) } returns workManager
-
         Dispatchers.setMain(testDispatcher)
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        WorkManagerTestInitHelper.initializeTestWorkManager(context)
+        val workManager = WorkManager.getInstance(context)
+
         database = Room.inMemoryDatabaseBuilder(
             context,
             AppDatabase::class.java
         ).allowMainThreadQueries().build()
-        
+
         groceryDao = database.groceryDao()
         repository = GroceryRepository(groceryDao, context)
         viewModel = GroceryViewModel(
@@ -69,7 +70,6 @@ class RecommendedItemsTestSuite {
 
     @After
     fun teardown() {
-        unmockkStatic(WorkManager::class)
         Dispatchers.resetMain()
     }
 
@@ -85,9 +85,27 @@ class RecommendedItemsTestSuite {
 
         try {
             // Given
-            val item1 = GroceryItem(id = "1", name = "Eggs", timesBought = 3, isActive = false, userId = userId)
-            val item2 = GroceryItem(id = "2", name = "Milk", timesBought = 0, isActive = false, userId = userId)
-            val item3 = GroceryItem(id = "3", name = "Bread", timesBought = 5, isActive = true, userId = userId)
+            val item1 = GroceryItem(
+                id = "1",
+                name = "Eggs",
+                timesBought = 3,
+                isActive = false,
+                userId = userId
+            )
+            val item2 = GroceryItem(
+                id = "2",
+                name = "Milk",
+                timesBought = 0,
+                isActive = false,
+                userId = userId
+            )
+            val item3 = GroceryItem(
+                id = "3",
+                name = "Bread",
+                timesBought = 5,
+                isActive = true,
+                userId = userId
+            )
 
             groceryDao.insertItem(item1)
             groceryDao.insertItem(item2)
@@ -112,9 +130,27 @@ class RecommendedItemsTestSuite {
 
         try {
             // Given
-            val item1 = GroceryItem(id = "1", name = "Eggs", timesBought = 3, isActive = false, userId = userId)
-            val item2 = GroceryItem(id = "2", name = "Milk", timesBought = 10, isActive = false, userId = userId)
-            val item3 = GroceryItem(id = "3", name = "Bread", timesBought = 1, isActive = false, userId = userId)
+            val item1 = GroceryItem(
+                id = "1",
+                name = "Eggs",
+                timesBought = 3,
+                isActive = false,
+                userId = userId
+            )
+            val item2 = GroceryItem(
+                id = "2",
+                name = "Milk",
+                timesBought = 10,
+                isActive = false,
+                userId = userId
+            )
+            val item3 = GroceryItem(
+                id = "3",
+                name = "Bread",
+                timesBought = 1,
+                isActive = false,
+                userId = userId
+            )
 
             groceryDao.insertItem(item1)
             groceryDao.insertItem(item2)
@@ -141,8 +177,22 @@ class RecommendedItemsTestSuite {
 
         try {
             // Given
-            val activeBoughtItem = GroceryItem(id = "1", name = "Apples", isBought = true, isActive = true, timesBought = 1, userId = userId)
-            val activeUnboughtItem = GroceryItem(id = "2", name = "Bananas", isBought = false, isActive = true, timesBought = 0, userId = userId)
+            val activeBoughtItem = GroceryItem(
+                id = "1",
+                name = "Apples",
+                isBought = true,
+                isActive = true,
+                timesBought = 1,
+                userId = userId
+            )
+            val activeUnboughtItem = GroceryItem(
+                id = "2",
+                name = "Bananas",
+                isBought = false,
+                isActive = true,
+                timesBought = 0,
+                userId = userId
+            )
 
             groceryDao.insertItem(activeBoughtItem)
             groceryDao.insertItem(activeUnboughtItem)
@@ -154,7 +204,8 @@ class RecommendedItemsTestSuite {
             idleLooperAndAdvance()
 
             // Then apples should become inactive, isBought reset, and timesBought incremented
-            val allItems = viewModel.items.filter { list -> list.any { it.id == "1" && !it.isActive } }.first()
+            val allItems =
+                viewModel.items.filter { list -> list.any { it.id == "1" && !it.isActive } }.first()
             val apple = allItems.find { it.id == "1" }!!
             assertFalse(apple.isActive)
             assertFalse(apple.isBought)
@@ -183,7 +234,14 @@ class RecommendedItemsTestSuite {
 
         try {
             // Given
-            val recommendedItem = GroceryItem(id = "5", name = "Butter", timesBought = 2, isBought = true, isActive = false, userId = userId)
+            val recommendedItem = GroceryItem(
+                id = "5",
+                name = "Butter",
+                timesBought = 2,
+                isBought = true,
+                isActive = false,
+                userId = userId
+            )
             groceryDao.insertItem(recommendedItem)
 
             idleLooperAndAdvance()
@@ -193,7 +251,8 @@ class RecommendedItemsTestSuite {
             idleLooperAndAdvance()
 
             // Then butter should become active, unbought, and timesBought preserved
-            val allItems = viewModel.items.filter { list -> list.any { it.id == "5" && it.isActive } }.first()
+            val allItems =
+                viewModel.items.filter { list -> list.any { it.id == "5" && it.isActive } }.first()
             val butter = allItems.find { it.id == "5" }!!
             assertTrue(butter.isActive)
             assertFalse(butter.isBought)
@@ -244,14 +303,29 @@ class RecommendedItemsTestSuite {
     @Test
     fun testDialogFilteringExcludesActiveUnboughtButIncludesInactiveCompleted() {
         // Given
-        val activeUnboughtItem = GroceryItem(id = "1", name = "Bananas", isBought = false, isActive = true, timesBought = 0, userId = userId)
-        val inactiveCompletedItem = GroceryItem(id = "2", name = "Coffee", isBought = false, isActive = false, timesBought = 1, userId = userId)
+        val activeUnboughtItem = GroceryItem(
+            id = "1",
+            name = "Bananas",
+            isBought = false,
+            isActive = true,
+            timesBought = 0,
+            userId = userId
+        )
+        val inactiveCompletedItem = GroceryItem(
+            id = "2",
+            name = "Coffee",
+            isBought = false,
+            isActive = false,
+            timesBought = 1,
+            userId = userId
+        )
 
         val activeItemsList = listOf(activeUnboughtItem, inactiveCompletedItem)
         val recommendedList = listOf(inactiveCompletedItem)
 
         // When - Dialog filtering
-        val unboughtNames = activeItemsList.filter { it.isActive && !it.isBought }.map { it.name }.toSet()
+        val unboughtNames =
+            activeItemsList.filter { it.isActive && !it.isBought }.map { it.name }.toSet()
         val availableRecommendations = recommendedList.filter { !unboughtNames.contains(it.name) }
 
         // Then
