@@ -44,8 +44,8 @@ class RecommendedItemsTestSuite {
 
     @Before
     fun setup() {
-        mockkStatic(WorkManager::class)
         val workManager = mockk<WorkManager>(relaxed = true)
+        mockkStatic(WorkManager::class)
         every { WorkManager.getInstance(any()) } returns workManager
 
         Dispatchers.setMain(testDispatcher)

@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
@@ -163,21 +162,21 @@ fun NeedItemTile(
     onEditCategory: () -> Unit,
     onTagStores: () -> Unit
 ) {
-    val dismissState = rememberDismissState(
-        confirmValueChange = {
-            if (it == DismissValue.DismissedToStart) {
-                onDelete()
-                true
-            } else false
-        },
-        positionalThreshold = { it * 0.25f } // More sensitive threshold (25%)
-    )
+    val dismissState = rememberSwipeToDismissBoxState()
 
-    SwipeToDismiss(
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            onDelete()
+            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+        }
+    }
+
+    SwipeToDismissBox(
         state = dismissState,
-        directions = setOf(DismissDirection.EndToStart),
-        background = {
-            val color = if (dismissState.dismissDirection == DismissDirection.EndToStart) Color.Red else Color.Transparent
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) Color.Red else Color.Transparent
             Box(
                 Modifier
                     .fillMaxSize()
@@ -189,7 +188,7 @@ fun NeedItemTile(
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
             }
         },
-        dismissContent = {
+        content = {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -213,20 +212,22 @@ fun NeedItemTile(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.Remove, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            IconButton(onClick = onDecrement) {
+                                Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = Color.White)
                             }
                             Text(
                                 text = item.quantity,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.White
                             )
-                            IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            IconButton(onClick = onIncrement) {
+                                Icon(Icons.Default.Add, contentDescription = "Increase", tint = Color.White)
                             }
-                            IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.Category, contentDescription = "Change Category", tint = Color.LightGray, modifier = Modifier.size(18.dp))
+                            IconButton(onClick = onEditCategory) {
+                                Icon(Icons.Default.Category, contentDescription = "Category", tint = Color.White)
+                            }
+                            IconButton(onClick = onDelete) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                             }
                         }
                     } else {
@@ -238,7 +239,7 @@ fun NeedItemTile(
                         ) {
                             Text(
                                 text = item.name,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,

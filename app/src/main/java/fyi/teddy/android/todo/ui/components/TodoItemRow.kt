@@ -1,6 +1,8 @@
 @file:Suppress("MatchingDeclarationName")
 package fyi.teddy.android.todo.ui.components
 
+import androidx.core.graphics.toColorInt
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -30,15 +32,14 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Today
-import androidx.compose.material3.DismissDirection
-import androidx.compose.material3.DismissValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismiss
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDismissState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,7 +104,7 @@ fun TodoItemRow(
     val itemColor = remember(item.listId, allLists) {
         allLists.find { it.id == item.listId }?.let { list ->
             try {
-                Color(android.graphics.Color.parseColor(list.colorHex))
+                Color(list.colorHex.toColorInt())
             } catch (_: Exception) {
                 NeonTeal
             }
@@ -114,14 +115,12 @@ fun TodoItemRow(
     val isScheduledForToday = item.scheduledDate == today
     val isScheduled = item.scheduledDate != null
 
-    val dismissState = rememberDismissState(
-        confirmValueChange = { true }
-    )
+    val dismissState = rememberSwipeToDismissBoxState()
 
     LaunchedEffect(dismissState.targetValue) {
-        if (dismissState.targetValue != DismissValue.Default) {
+        if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
             delay(1000.milliseconds)
-            if (dismissState.targetValue != DismissValue.Default) {
+            if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
                 isConfirmed = true
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
@@ -131,16 +130,16 @@ fun TodoItemRow(
     }
 
     LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue != DismissValue.Default) {
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
             if (isConfirmed) {
                 when (dismissState.currentValue) {
-                    DismissValue.DismissedToEnd -> {
+                    SwipeToDismissBoxValue.StartToEnd -> {
                         if (!isScheduledForToday) {
                             onIntent(TodoItemIntent.Update(item.copy(scheduledDate = today)))
                         }
                     }
 
-                    DismissValue.DismissedToStart -> {
+                    SwipeToDismissBoxValue.EndToStart -> {
                         if (isScheduled) {
                             onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
                         }
@@ -156,17 +155,19 @@ fun TodoItemRow(
 
     val iconScale by animateFloatAsState(if (isConfirmed) 1.3f else 1.0f, label = "iconScale")
 
-    SwipeToDismiss(
+    SwipeToDismissBox(
         state = dismissState,
-        background = {
-            val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
+        enableDismissFromStartToEnd = !isScheduledForToday,
+        enableDismissFromEndToStart = isScheduled,
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
             val color by animateColorAsState(
                 when (dismissState.targetValue) {
-                    DismissValue.DismissedToEnd -> if (!isScheduledForToday) {
+                    SwipeToDismissBoxValue.StartToEnd -> if (!isScheduledForToday) {
                         if (isConfirmed) NeonTeal.copy(alpha = 0.6f) else NeonTeal.copy(alpha = 0.15f)
                     } else Color.Transparent
 
-                    DismissValue.DismissedToStart -> if (isScheduled) {
+                    SwipeToDismissBoxValue.EndToStart -> if (isScheduled) {
                         if (isConfirmed) Color.Red.copy(alpha = 0.6f) else Color.Red.copy(alpha = 0.15f)
                     } else Color.Transparent
 
@@ -181,13 +182,14 @@ fun TodoItemRow(
                     .background(color)
                     .padding(horizontal = 20.dp),
                 contentAlignment = when (direction) {
-                    DismissDirection.StartToEnd -> Alignment.CenterStart
-                    DismissDirection.EndToStart -> Alignment.CenterEnd
+                    SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                    else -> Alignment.CenterStart
                 }
             ) {
                 when (direction) {
-                    DismissDirection.StartToEnd -> {
-                        if (dismissState.targetValue == DismissValue.DismissedToEnd && !isScheduledForToday) {
+                    SwipeToDismissBoxValue.StartToEnd -> {
+                        if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd && !isScheduledForToday) {
                             Icon(
                                 Icons.Default.Today,
                                 contentDescription = "Schedule for Today",
@@ -197,8 +199,8 @@ fun TodoItemRow(
                         }
                     }
 
-                    DismissDirection.EndToStart -> {
-                        if (dismissState.targetValue == DismissValue.DismissedToStart && isScheduled) {
+                    SwipeToDismissBoxValue.EndToStart -> {
+                        if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart && isScheduled) {
                             Icon(
                                 Icons.Default.EventBusy,
                                 contentDescription = "Unschedule",
@@ -207,10 +209,12 @@ fun TodoItemRow(
                             )
                         }
                     }
+
+                    else -> {}
                 }
             }
         },
-        dismissContent = {
+        content = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -449,10 +453,6 @@ fun TodoItemRow(
                     )
                 }
             }
-        },
-        directions = buildSet {
-            if (!isScheduledForToday) add(DismissDirection.StartToEnd)
-            if (isScheduled) add(DismissDirection.EndToStart)
         },
         modifier = Modifier.padding(vertical = 4.dp)
     )
