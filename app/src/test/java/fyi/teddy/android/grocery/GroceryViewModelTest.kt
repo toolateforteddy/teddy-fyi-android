@@ -1,11 +1,9 @@
 package fyi.teddy.android.grocery
 
 import android.app.Application
-import android.content.Context
 import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.WorkManager
-import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLogDao
 import fyi.teddy.android.data.UserSyncMetadataDao
 import fyi.teddy.android.grocery.data.GroceryItem
@@ -14,6 +12,11 @@ import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.GroceryPhase
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryViewModel
+import fyi.teddy.android.grocery.ui.deleteItem
+import fyi.teddy.android.grocery.ui.insertCategory
+import fyi.teddy.android.grocery.ui.insertStore
+import fyi.teddy.android.grocery.ui.markDoneForTrip
+import fyi.teddy.android.grocery.ui.toggleBought
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

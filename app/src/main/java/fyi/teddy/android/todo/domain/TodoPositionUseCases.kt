@@ -2,6 +2,7 @@ package fyi.teddy.android.todo.domain
 
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.repository.TodoRepository
+import fyi.teddy.android.todo.repository.swapPositions
 import kotlinx.coroutines.flow.first
 
 class MoveItemUpUseCase(private val repository: TodoRepository) {

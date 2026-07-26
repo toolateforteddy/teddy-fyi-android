@@ -3,6 +3,7 @@ package fyi.teddy.android.todo.repository
 import android.content.Context
 import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.util.TaskSchedulerUtils
 import fyi.teddy.android.network.NetworkClient
 import fyi.teddy.android.network.SyncWorker
@@ -32,6 +33,11 @@ class TodoRepository(
     internal fun scheduleSync() {
         context?.let { SyncWorker.enqueue(it) }
     }
+
+    /**
+     * Retrieves all [TodoList]s for a specific user, sorted by position.
+     */
+    fun getAllLists(userId: String): Flow<List<TodoList>> = todoDao.getAllLists(userId)
 
     /**
      * Retrieves all [TodoItem]s for a specific user, sorted by position and creation date.

@@ -22,7 +22,16 @@ import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.util.StringUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class GroceryViewModel(
@@ -31,6 +40,7 @@ class GroceryViewModel(
     internal val application: Application,
     workManager: WorkManager? = null,
     internal val userSyncMetadataDao: UserSyncMetadataDao = AppDatabase.getDatabase(application).userSyncMetadataDao(),
+    internal val syncLogDao: SyncLogDao = AppDatabase.getDatabase(application).syncLogDao(),
     private val prefs: SharedPreferences = application.getSharedPreferences("grocery_prefs", Context.MODE_PRIVATE)
 ) : ViewModel() {
 
@@ -80,7 +90,6 @@ class GroceryViewModel(
     private val _unsyncedCount = repository.getUnsyncedCountFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val syncLogDao: SyncLogDao = AppDatabase.getDatabase(application).syncLogDao()
     private val _lastSyncStatus = syncLogDao.getLatestLog()
         .map { log: SyncLog? -> log?.status }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -291,7 +300,7 @@ class GroceryViewModel(
                 if (_selectedListId.value == null && !hasDefault && availableLists.isNotEmpty()) {
                     setSelectedListId(availableLists.first().id)
                 }
-            }.collect()
+            }.first()
         }
     }
 

@@ -24,13 +24,13 @@ class EncryptedDataStore(
     init {
         aead = try {
             AeadConfig.register()
-            AndroidKeysetManager.Builder()
+            val keysetHandle = AndroidKeysetManager.Builder()
                 .withSharedPref(context, "tink_keyset", "master_key")
                 .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
                 .withMasterKeyUri("android-keystore://tink_master_key")
                 .build()
                 .keysetHandle
-                .getPrimitive(Aead::class.java)
+            keysetHandle.getPrimitive(com.google.crypto.tink.RegistryConfiguration.get(), Aead::class.java)
         } catch (e: Exception) {
             android.util.Log.e("EncryptedDataStore", "Failed to initialize Aead. Resetting all.", e)
             
@@ -42,6 +42,7 @@ class EncryptedDataStore(
         }
     }
 
+    @Suppress("unused")
     suspend fun saveEncrypted(keyName: String, value: String?) {
         saveAllEncrypted(mapOf(keyName to value))
     }

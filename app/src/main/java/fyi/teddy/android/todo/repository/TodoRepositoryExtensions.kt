@@ -4,9 +4,6 @@ package fyi.teddy.android.todo.repository
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.util.TaskSchedulerUtils
-import kotlinx.coroutines.flow.Flow
-
-fun TodoRepository.getAllLists(userId: String): Flow<List<TodoList>> = todoDao.getAllLists(userId)
 
 suspend fun TodoRepository.insertList(list: TodoList) {
     todoDao.insertList(list)

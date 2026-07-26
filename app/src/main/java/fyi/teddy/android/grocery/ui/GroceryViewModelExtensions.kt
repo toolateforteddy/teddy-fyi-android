@@ -12,6 +12,7 @@ import fyi.teddy.android.network.GroceryNetworkRepository
 import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
@@ -155,7 +156,8 @@ fun GroceryViewModel.markDoneForTrip() {
 
 fun GroceryViewModel.addRecommendedItems(selectedItemIds: List<String>) {
     viewModelScope.launch {
-        recommendedItems.value.filter { selectedItemIds.contains(it.id) }.forEach { item ->
+        val currentRecommended = repository.getRecommendedItems(userId).first()
+        currentRecommended.filter { selectedItemIds.contains(it.id) }.forEach { item ->
             repository.updateItem(item.copy(isBought = false, isActive = true))
         }
     }

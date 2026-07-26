@@ -8,11 +8,13 @@ import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.GroceryPhase
 import fyi.teddy.android.grocery.ui.GroceryViewModel
+import fyi.teddy.android.grocery.ui.addRecommendedItems
+import fyi.teddy.android.grocery.ui.markDoneForTrip
+import fyi.teddy.android.grocery.ui.toggleBought
 import androidx.work.WorkManager
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
-import androidx.room.RoomDatabase
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,11 +29,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
 class RecommendedItemsTestSuite {
 
     private lateinit var database: AppDatabase
@@ -50,24 +50,26 @@ class RecommendedItemsTestSuite {
 
         Dispatchers.setMain(testDispatcher)
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val dbFile = context.getDatabasePath("test_db_" + java.util.UUID.randomUUID().toString())
-        database = Room.databaseBuilder(
+        database = Room.inMemoryDatabaseBuilder(
             context,
-            AppDatabase::class.java,
-            dbFile.absolutePath
-        ).allowMainThreadQueries()
-        .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
-        .build()
+            AppDatabase::class.java
+        ).allowMainThreadQueries().build()
         
         groceryDao = database.groceryDao()
         repository = GroceryRepository(groceryDao, context)
-        viewModel = GroceryViewModel(repository, userId, context as android.app.Application, workManager)
+        viewModel = GroceryViewModel(
+            repository = repository,
+            userId = userId,
+            application = context as android.app.Application,
+            workManager = workManager,
+            userSyncMetadataDao = database.userSyncMetadataDao(),
+            syncLogDao = database.syncLogDao()
+        )
     }
 
     @After
     fun teardown() {
         unmockkStatic(WorkManager::class)
-        database.close()
         Dispatchers.resetMain()
     }
 
@@ -78,140 +80,165 @@ class RecommendedItemsTestSuite {
 
     @Test
     fun testOnlyInactiveAndBoughtItemsAreRecommended() = runTest {
-        backgroundScope.launch { viewModel.items.collect {} }
-        backgroundScope.launch { viewModel.recommendedItems.collect {} }
+        val job1 = launch { viewModel.items.collect {} }
+        val job2 = launch { viewModel.recommendedItems.collect {} }
 
-        // Given
-        val item1 = GroceryItem(id = "1", name = "Eggs", timesBought = 3, isActive = false, userId = userId)
-        val item2 = GroceryItem(id = "2", name = "Milk", timesBought = 0, isActive = false, userId = userId)
-        val item3 = GroceryItem(id = "3", name = "Bread", timesBought = 5, isActive = true, userId = userId)
+        try {
+            // Given
+            val item1 = GroceryItem(id = "1", name = "Eggs", timesBought = 3, isActive = false, userId = userId)
+            val item2 = GroceryItem(id = "2", name = "Milk", timesBought = 0, isActive = false, userId = userId)
+            val item3 = GroceryItem(id = "3", name = "Bread", timesBought = 5, isActive = true, userId = userId)
 
-        groceryDao.insertItem(item1)
-        groceryDao.insertItem(item2)
-        groceryDao.insertItem(item3)
+            groceryDao.insertItem(item1)
+            groceryDao.insertItem(item2)
+            groceryDao.insertItem(item3)
 
-        idleLooperAndAdvance()
+            idleLooperAndAdvance()
 
-        // When/Then - Wait for exact emission size
-        val recommended = viewModel.recommendedItems.filter { it.size == 1 }.first()
-        assertEquals(1, recommended.size)
-        assertEquals("Eggs", recommended[0].name)
+            // When/Then - Wait for exact emission size
+            val recommended = viewModel.recommendedItems.filter { it.size == 1 }.first()
+            assertEquals(1, recommended.size)
+            assertEquals("Eggs", recommended[0].name)
+        } finally {
+            job1.cancel()
+            job2.cancel()
+        }
     }
 
     @Test
     fun testRecommendedItemsAreSortedByTimesBoughtDescending() = runTest {
-        backgroundScope.launch { viewModel.items.collect {} }
-        backgroundScope.launch { viewModel.recommendedItems.collect {} }
+        val job1 = launch { viewModel.items.collect {} }
+        val job2 = launch { viewModel.recommendedItems.collect {} }
 
-        // Given
-        val item1 = GroceryItem(id = "1", name = "Eggs", timesBought = 3, isActive = false, userId = userId)
-        val item2 = GroceryItem(id = "2", name = "Milk", timesBought = 10, isActive = false, userId = userId)
-        val item3 = GroceryItem(id = "3", name = "Bread", timesBought = 1, isActive = false, userId = userId)
+        try {
+            // Given
+            val item1 = GroceryItem(id = "1", name = "Eggs", timesBought = 3, isActive = false, userId = userId)
+            val item2 = GroceryItem(id = "2", name = "Milk", timesBought = 10, isActive = false, userId = userId)
+            val item3 = GroceryItem(id = "3", name = "Bread", timesBought = 1, isActive = false, userId = userId)
 
-        groceryDao.insertItem(item1)
-        groceryDao.insertItem(item2)
-        groceryDao.insertItem(item3)
+            groceryDao.insertItem(item1)
+            groceryDao.insertItem(item2)
+            groceryDao.insertItem(item3)
 
-        idleLooperAndAdvance()
+            idleLooperAndAdvance()
 
-        // When/Then - Wait for exact emission size
-        val recommended = viewModel.recommendedItems.filter { it.size == 3 }.first()
-        assertEquals(3, recommended.size)
-        assertEquals("Milk", recommended[0].name) // 10 times
-        assertEquals("Eggs", recommended[1].name) // 3 times
-        assertEquals("Bread", recommended[2].name) // 1 time
+            // When/Then - Wait for exact emission size
+            val recommended = viewModel.recommendedItems.filter { it.size == 3 }.first()
+            assertEquals(3, recommended.size)
+            assertEquals("Milk", recommended[0].name) // 10 times
+            assertEquals("Eggs", recommended[1].name) // 3 times
+            assertEquals("Bread", recommended[2].name) // 1 time
+        } finally {
+            job1.cancel()
+            job2.cancel()
+        }
     }
 
     @Test
     fun testCompletingATripConvertsCheckedItemsToRecommendations() = runTest {
-        backgroundScope.launch { viewModel.items.collect {} }
-        backgroundScope.launch { viewModel.recommendedItems.collect {} }
+        val job1 = launch { viewModel.items.collect {} }
+        val job2 = launch { viewModel.recommendedItems.collect {} }
 
-        // Given
-        val activeBoughtItem = GroceryItem(id = "1", name = "Apples", isBought = true, isActive = true, timesBought = 1, userId = userId)
-        val activeUnboughtItem = GroceryItem(id = "2", name = "Bananas", isBought = false, isActive = true, timesBought = 0, userId = userId)
+        try {
+            // Given
+            val activeBoughtItem = GroceryItem(id = "1", name = "Apples", isBought = true, isActive = true, timesBought = 1, userId = userId)
+            val activeUnboughtItem = GroceryItem(id = "2", name = "Bananas", isBought = false, isActive = true, timesBought = 0, userId = userId)
 
-        groceryDao.insertItem(activeBoughtItem)
-        groceryDao.insertItem(activeUnboughtItem)
+            groceryDao.insertItem(activeBoughtItem)
+            groceryDao.insertItem(activeUnboughtItem)
 
-        idleLooperAndAdvance()
+            idleLooperAndAdvance()
 
-        // When completing trip
-        viewModel.markDoneForTrip()
-        idleLooperAndAdvance()
+            // When completing trip
+            viewModel.markDoneForTrip()
+            idleLooperAndAdvance()
 
-        // Then apples should become inactive, isBought reset, and timesBought incremented
-        val allItems = viewModel.items.filter { list -> list.any { it.id == "1" && !it.isActive } }.first()
-        val apple = allItems.find { it.id == "1" }!!
-        assertFalse(apple.isActive)
-        assertFalse(apple.isBought)
-        assertEquals(2, apple.timesBought)
+            // Then apples should become inactive, isBought reset, and timesBought incremented
+            val allItems = viewModel.items.filter { list -> list.any { it.id == "1" && !it.isActive } }.first()
+            val apple = allItems.find { it.id == "1" }!!
+            assertFalse(apple.isActive)
+            assertFalse(apple.isBought)
+            assertEquals(2, apple.timesBought)
 
-        // Bananas should remain active and unchanged
-        val banana = allItems.find { it.id == "2" }!!
-        assertTrue(banana.isActive)
-        assertFalse(banana.isBought)
-        assertEquals(0, banana.timesBought)
+            // Bananas should remain active and unchanged
+            val banana = allItems.find { it.id == "2" }!!
+            assertTrue(banana.isActive)
+            assertFalse(banana.isBought)
+            assertEquals(0, banana.timesBought)
 
-        // Apple should now be recommended
-        val recommended = viewModel.recommendedItems.filter { it.size == 1 }.first()
-        assertEquals(1, recommended.size)
-        assertEquals("Apples", recommended[0].name)
+            // Apple should now be recommended
+            val recommended = viewModel.recommendedItems.filter { it.size == 1 }.first()
+            assertEquals(1, recommended.size)
+            assertEquals("Apples", recommended[0].name)
+        } finally {
+            job1.cancel()
+            job2.cancel()
+        }
     }
 
     @Test
     fun testAddRecommendedItemsResetsStateToActiveAndUnbought() = runTest {
-        backgroundScope.launch { viewModel.items.collect {} }
-        backgroundScope.launch { viewModel.recommendedItems.collect {} }
+        val job1 = launch { viewModel.items.collect {} }
+        val job2 = launch { viewModel.recommendedItems.collect {} }
 
-        // Given
-        val recommendedItem = GroceryItem(id = "5", name = "Butter", timesBought = 2, isBought = true, isActive = false, userId = userId)
-        groceryDao.insertItem(recommendedItem)
+        try {
+            // Given
+            val recommendedItem = GroceryItem(id = "5", name = "Butter", timesBought = 2, isBought = true, isActive = false, userId = userId)
+            groceryDao.insertItem(recommendedItem)
 
-        idleLooperAndAdvance()
+            idleLooperAndAdvance()
 
-        // When adding recommendation back
-        viewModel.addRecommendedItems(listOf("5"))
-        idleLooperAndAdvance()
+            // When adding recommendation back
+            viewModel.addRecommendedItems(listOf("5"))
+            idleLooperAndAdvance()
 
-        // Then butter should become active, unbought, and timesBought preserved
-        val allItems = viewModel.items.filter { list -> list.any { it.id == "5" && it.isActive } }.first()
-        val butter = allItems.find { it.id == "5" }!!
-        assertTrue(butter.isActive)
-        assertFalse(butter.isBought)
-        assertEquals(2, butter.timesBought)
+            // Then butter should become active, unbought, and timesBought preserved
+            val allItems = viewModel.items.filter { list -> list.any { it.id == "5" && it.isActive } }.first()
+            val butter = allItems.find { it.id == "5" }!!
+            assertTrue(butter.isActive)
+            assertFalse(butter.isBought)
+            assertEquals(2, butter.timesBought)
+        } finally {
+            job1.cancel()
+            job2.cancel()
+        }
     }
 
     @Test
     fun testUserExactFlowCompletingTrip() = runTest {
-        backgroundScope.launch { viewModel.items.collect {} }
-        backgroundScope.launch { viewModel.recommendedItems.collect {} }
+        val job1 = launch { viewModel.items.collect {} }
+        val job2 = launch { viewModel.recommendedItems.collect {} }
 
-        // 1) Add a new item, "Coffee".
-        viewModel.insertItem("Coffee", "1", null)
-        idleLooperAndAdvance()
+        try {
+            // 1) Add a new item, "Coffee".
+            viewModel.insertItem("Coffee", "1", null)
+            idleLooperAndAdvance()
 
-        // Get inserted item
-        val itemsAfterAdd = viewModel.items.filter { it.isNotEmpty() }.first()
-        val coffeeItem = itemsAfterAdd.find { it.name == "Coffee" }!!
+            // Get inserted item
+            val itemsAfterAdd = viewModel.items.filter { it.isNotEmpty() }.first()
+            val coffeeItem = itemsAfterAdd.find { it.name == "Coffee" }!!
 
-        // 2) Go to the Shopping tab, and check off the item.
-        viewModel.setPhase(GroceryPhase.SHOPPING)
-        viewModel.toggleBought(coffeeItem, isChecked = true)
-        idleLooperAndAdvance()
+            // 2) Go to the Shopping tab, and check off the item.
+            viewModel.setPhase(GroceryPhase.SHOPPING)
+            viewModel.toggleBought(coffeeItem, isChecked = true)
+            idleLooperAndAdvance()
 
-        // 3) Tap Complete Trip, and confirm in the modal.
-        viewModel.markDoneForTrip()
-        idleLooperAndAdvance()
+            // 3) Tap Complete Trip, and confirm in the modal.
+            viewModel.markDoneForTrip()
+            idleLooperAndAdvance()
 
-        // 4) Go back to Planning
-        viewModel.setPhase(GroceryPhase.PLANNING)
-        idleLooperAndAdvance()
+            // 4) Go back to Planning
+            viewModel.setPhase(GroceryPhase.PLANNING)
+            idleLooperAndAdvance()
 
-        // 5) Verify recommended items lists Coffee
-        val recommended = viewModel.recommendedItems.filter { it.isNotEmpty() }.first()
-        assertEquals(1, recommended.size)
-        assertEquals("Coffee", recommended[0].name)
+            // 5) Verify recommended items lists Coffee
+            val recommended = viewModel.recommendedItems.filter { it.isNotEmpty() }.first()
+            assertEquals(1, recommended.size)
+            assertEquals("Coffee", recommended[0].name)
+        } finally {
+            job1.cancel()
+            job2.cancel()
+        }
     }
 
     @Test

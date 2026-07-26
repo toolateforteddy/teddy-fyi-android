@@ -1,7 +1,10 @@
 package fyi.teddy.android.todo.util
 
 import android.content.Context
+import androidx.core.content.edit
 import fyi.teddy.android.todo.repository.TodoRepository
+import fyi.teddy.android.todo.repository.resetDailyItems
+import fyi.teddy.android.todo.repository.resetPlannedItems
 import java.util.Calendar
 
 /**
@@ -39,6 +42,6 @@ class TodoResetScheduler(
         if (now >= eightAm && lastReset < eightAm) {
             repository.resetDailyItems(userId)
         }
-        sharedPref.edit().putLong("last_reset_time", now).apply()
+        sharedPref.edit { putLong("last_reset_time", now) }
     }
 }
