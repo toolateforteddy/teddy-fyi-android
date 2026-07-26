@@ -1,0 +1,3 @@
+- [x] Update `app/build.gradle` to JDK 21
+- [x] Perform Gradle Sync
+- [x] Verify build configuration

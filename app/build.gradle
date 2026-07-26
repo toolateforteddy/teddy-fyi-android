@@ -14,12 +14,12 @@ android {
         androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
     }
     namespace 'fyi.teddy.android'
-    compileSdk 37
+    compileSdk 36
 
     defaultConfig {
         applicationId "fyi.teddy.android"
         minSdk 24
-        targetSdk 37
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 
@@ -50,8 +50,8 @@ android {
     }
     compileOptions {
         coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
     buildFeatures {
         compose true
@@ -76,7 +76,7 @@ tasks.withType(Test).configureEach {
 
 tasks.withType(KotlinCompile).configureEach {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
+        jvmTarget = JvmTarget.JVM_21
     }
 }
 
