@@ -14,7 +14,7 @@ android {
         androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
     }
     namespace 'fyi.teddy.android'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId "fyi.teddy.android"
