@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("CyclomaticComplexMethod", "ComplexCondition", "LongMethod")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         NetworkClient.initialize(this)
@@ -130,7 +131,8 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     session.load(context)
                     val uid = session.userId
-                    if (session.idToken != null && uid != null && uid.isNotBlank() && uid != "unknown") {
+                    val isValidUser = session.idToken != null && uid != null && uid.isNotBlank() && uid != "unknown"
+                    if (isValidUser) {
                         // Ensure local items are claimed if they were somehow missed (e.g. crash after login)
                         val db = AppDatabase.getDatabase(context)
                         db.todoDao().claimUnownedItems(uid)

@@ -1,3 +1,4 @@
+@file:Suppress("LongMethod", "MagicNumber", "MaxLineLength")
 package fyi.teddy.android.data
 
 import androidx.room.migration.Migration

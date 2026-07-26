@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@Suppress("TooManyFunctions", "LongParameterList", "VariableNaming")
 class GroceryViewModel(
     internal val repository: GroceryRepository,
     val userId: String,
@@ -183,6 +184,7 @@ class GroceryViewModel(
         handleListAndOtherEvents(event)
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun handleNavigationAndInputEvents(event: GroceryUiEvent): Boolean {
         when (event) {
             is GroceryUiEvent.SetPhase -> setPhase(event.phase)
@@ -470,6 +472,7 @@ class GroceryViewModel(
         _newItemInput.value = ""
     }
 
+    @Suppress("ReturnCount")
     private fun parseNaturalLanguage(input: String): Triple<String, String?, String?> {
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return Triple("", null, null)

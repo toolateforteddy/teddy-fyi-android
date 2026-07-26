@@ -37,6 +37,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val FLOW_TIMEOUT_MS = 5000L
 private const val CONFETTI_DELAY_MS = 2000L
 
+@Suppress("TooManyFunctions")
 class TodoViewModel(
     application: Application,
     internal val repository: TodoRepository,

@@ -360,7 +360,8 @@ abstract class GroceryDao {
         val orphanedStores = hasOrphanedStores(userId)
         val orphanedCategories = hasOrphanedCategories(userId)
 
-        if (listCount == 0 || orphanedItems || orphanedStores || orphanedCategories) {
+        val hasAnyOrphans = orphanedItems || orphanedStores || orphanedCategories
+        if (listCount == 0 || hasAnyOrphans) {
             val defaultList = getListByNameOneShot(userId, "My List")
             val defaultListId = if (defaultList == null) {
                 val newList = GroceryList(name = "My List", ownerId = userId)

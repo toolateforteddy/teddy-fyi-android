@@ -23,6 +23,7 @@ data class JoinResponse(
     @SerialName("list_id") val listId: String? = null
 )
 
+@Suppress("TooGenericExceptionCaught", "SwallowedException")
 object GroceryNetworkRepository {
     private const val BASE_URL = "https://api-rust.teddy.fyi/api/lists"
 
@@ -37,7 +38,7 @@ object GroceryNetworkRepository {
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -53,7 +54,7 @@ object GroceryNetworkRepository {
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

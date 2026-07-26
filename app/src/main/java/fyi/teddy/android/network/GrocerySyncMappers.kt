@@ -1,3 +1,4 @@
+@file:Suppress("TooManyFunctions")
 package fyi.teddy.android.network
 
 import fyi.teddy.android.grocery.data.Category

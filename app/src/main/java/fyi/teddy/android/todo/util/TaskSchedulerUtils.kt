@@ -56,10 +56,10 @@ object TaskSchedulerUtils {
     }
 
     private fun calculateNextWeeklyDate(baseDate: LocalDate, interval: Int, byDayStr: String?): LocalDate {
-        if (byDayStr == null) return baseDate.plusWeeks(interval.toLong())
-        val targetDays = byDayStr.split(",").mapNotNull { parseDayOfWeek(it) }
-        if (targetDays.isEmpty()) return baseDate.plusWeeks(interval.toLong())
-
+        val targetDays = byDayStr?.split(",")?.mapNotNull { parseDayOfWeek(it) }.orEmpty()
+        if (targetDays.isEmpty()) {
+            return baseDate.plusWeeks(interval.toLong())
+        }
         var candidate = baseDate.plusDays(1)
         while (!targetDays.contains(candidate.dayOfWeek)) {
             candidate = candidate.plusDays(1)

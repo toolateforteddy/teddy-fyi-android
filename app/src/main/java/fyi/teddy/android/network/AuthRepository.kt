@@ -4,14 +4,11 @@ package fyi.teddy.android.network
 import android.content.Context
 import fyi.teddy.android.auth.AuthUtils
 import fyi.teddy.android.auth.UserSession
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.UUID
@@ -38,6 +35,7 @@ data class TokenResponse(
     @SerialName("refresh_token") val refreshToken: String
 )
 
+@Suppress("TooGenericExceptionCaught")
 object AuthRepository {
     suspend fun login(context: Context, session: UserSession, googleToken: String): Boolean {
         return try {

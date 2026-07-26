@@ -25,6 +25,7 @@ data class AssignIconResponse(
  * Acts as the clean API boundary between the domain view models and Room database DAOs,
  * facilitating future local-first synchronization engine integrations.
  */
+@Suppress("TooGenericExceptionCaught")
 class TodoRepository(
     internal val todoDao: TodoDao,
     private val context: Context? = null

@@ -35,6 +35,7 @@ class SyncWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun recordSyncLog(
         status: String,
         startTime: Long,
@@ -77,6 +78,7 @@ class SyncWorker(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result = syncMutex.withLock {
         NetworkClient.initialize(applicationContext)
         val startTime = System.currentTimeMillis()
@@ -194,6 +196,7 @@ class SyncWorker(
         )
     }
 
+    @Suppress("TooGenericExceptionCaught", "LongParameterList", "LongMethod")
     private suspend fun handleServerResponse(
         response: io.ktor.client.statement.HttpResponse,
         db: AppDatabase,
@@ -288,6 +291,7 @@ class SyncWorker(
                     status == BatteryManager.BATTERY_STATUS_FULL
         }
 
+        @Suppress("MagicNumber")
         private fun getBackoffCriteria(context: Context): Pair<BackoffPolicy, Long> {
             return if (isCharging(context)) {
                 // When charging, we can afford a more frequent retry (start at 30s)

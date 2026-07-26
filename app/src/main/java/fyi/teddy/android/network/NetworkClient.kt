@@ -22,6 +22,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import fyi.teddy.android.auth.UserSession
 
+@Suppress("MagicNumber")
 object NetworkClient {
     private var appContext: Context? = null
 

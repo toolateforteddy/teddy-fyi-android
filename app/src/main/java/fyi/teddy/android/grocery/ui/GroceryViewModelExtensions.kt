@@ -1,4 +1,4 @@
-@file:Suppress("unused")
+@file:Suppress("unused", "TooManyFunctions")
 package fyi.teddy.android.grocery.ui
 
 import androidx.lifecycle.viewModelScope

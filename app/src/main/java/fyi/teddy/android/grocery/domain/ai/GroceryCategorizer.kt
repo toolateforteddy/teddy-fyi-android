@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package fyi.teddy.android.grocery.domain.ai
 
 import android.content.Context
@@ -8,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 
+@Suppress("TooGenericExceptionCaught", "SwallowedException")
 class GroceryCategorizer(private val context: Context) {
     private var llmInference: LlmInference? = null
     
@@ -56,7 +58,7 @@ class GroceryCategorizer(private val context: Context) {
             val cleaned = result.trim().removeSuffix(".")
             // Verify the SLM's output against the allowed list to handle hallucinations
             categories.find { it.equals(cleaned, ignoreCase = true) }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

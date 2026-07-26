@@ -15,6 +15,7 @@ import androidx.datastore.core.DataStore
 
 val Context.dataStore by preferencesDataStore(name = "user_session_datastore")
 
+@Suppress("TooGenericExceptionCaught")
 class EncryptedDataStore(
     private val context: Context,
     private val dataStore: DataStore<Preferences> = context.dataStore

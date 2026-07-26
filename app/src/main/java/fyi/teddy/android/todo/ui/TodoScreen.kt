@@ -482,7 +482,8 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         }
                     }
 
-                    if (!showCompletedOnly && currentMode != TodoMode.TODAY && currentMode != TodoMode.SCHEDULED && !isEditMode) {
+                    val canShowInputBar = !showCompletedOnly && currentMode != TodoMode.TODAY && currentMode != TodoMode.SCHEDULED && !isEditMode
+                    if (canShowInputBar) {
                         TodoInputBar(onAddNewItem = { title -> onAddNewItem(title, null) })
                     }
 
@@ -532,7 +533,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                                 }
                                             },
                                             isEditing = isEditMode,
-                                            isPlanningMode = currentMode == TodoMode.PLANNING,
+                                            isPlanningMode = false,
                                             planningDate = selectedPlanningDate,
                                             showScheduledDate = false,
                                             index = index,
@@ -594,7 +595,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                                         isSubtask = true,
                                                         allLists = allLists,
                                                         isEditing = isEditMode,
-                                                        isPlanningMode = currentMode == TodoMode.PLANNING,
+                                                        isPlanningMode = false,
                                                         planningDate = selectedPlanningDate,
                                                         showScheduledDate = false,
                                                         index = 0,

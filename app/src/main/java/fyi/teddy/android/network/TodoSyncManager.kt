@@ -143,16 +143,15 @@ object TodoSyncManager {
             if (changeDelta.operationType == OperationType.DELETE) {
                 todoDao.hardDeleteItem(changeDelta.id)
                 remoteItemsDeleted++
-            } else {
-                decodeDto(changeDelta.data, TodoItemDto.serializer())?.let { dto ->
-                    if (listExists(todoDao, dto.listId)) {
-                        todoDao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
-                        remoteItemsUpserted++
-                    } else {
-                        Log.e(TAG, "INCONSISTENCY: Ignoring TodoItem ${changeDelta.id} because Parent List ${dto.listId} is missing. Item: $dto")
-                    }
-                }
+                return@forEach
             }
+            val dto = decodeDto(changeDelta.data, TodoItemDto.serializer()) ?: return@forEach
+            if (!listExists(todoDao, dto.listId)) {
+                Log.e(TAG, "INCONSISTENCY: Ignoring TodoItem ${changeDelta.id} because Parent List ${dto.listId} is missing. Item: $dto")
+                return@forEach
+            }
+            todoDao.upsertItem(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+            remoteItemsUpserted++
         }
         Log.d(TAG, "Applied remote item changes: upserted=$remoteItemsUpserted, deleted=$remoteItemsDeleted (out of ${remoteChanges.size})")
     }

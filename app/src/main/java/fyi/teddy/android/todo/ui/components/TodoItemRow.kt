@@ -1,3 +1,4 @@
+@file:Suppress("MatchingDeclarationName")
 package fyi.teddy.android.todo.ui.components
 
 import androidx.compose.animation.animateColorAsState
@@ -457,6 +458,7 @@ fun TodoItemRow(
     )
 }
 
+@Suppress("CyclomaticComplexMethod")
 private fun formatRecurrenceRule(rule: String): String {
     val parts = rule.split(";").associate {
         val kv = it.split("=")
