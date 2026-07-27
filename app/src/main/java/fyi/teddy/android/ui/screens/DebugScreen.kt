@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -275,9 +277,10 @@ fun DebugScreen(
         else -> Color.Gray
     }
 
+    val locale = LocalConfiguration.current.locales[0]
     fun formatTime(timeMillis: Long): String {
         if (timeMillis == 0L) return "Never"
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", locale)
         return sdf.format(Date(timeMillis))
     }
 
@@ -297,7 +300,7 @@ fun DebugScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
@@ -474,7 +477,7 @@ fun DebugScreen(
                                     .fillMaxWidth()
                                     .padding(top = 16.dp)
                             ) {
-                                Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 // Last Succeeded
@@ -599,7 +602,7 @@ fun DebugScreen(
 
                                 if (recentLogs.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(20.dp))
-                                    Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                    HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = "EXECUTION LOG HISTORY",
@@ -678,7 +681,7 @@ fun DebugScreen(
                                     .padding(top = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
                                 Text(
                                     "Force items in these tables to re-sync as new insertions.",
                                     color = Color.Gray,
@@ -841,7 +844,7 @@ fun DebugScreen(
                             }
                             
                             Spacer(modifier = Modifier.height(12.dp))
-                            Divider(color = Color(0xFF3700B3), thickness = 1.dp)
+                            HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Column(
@@ -1040,7 +1043,8 @@ fun SyncLogItemRow(log: SyncLog) {
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            val locale = LocalConfiguration.current.locales[0]
+            val sdf = remember(locale) { SimpleDateFormat("HH:mm:ss", locale) }
             Text(
                 text = sdf.format(Date(log.timestamp)),
                 color = Color.White,

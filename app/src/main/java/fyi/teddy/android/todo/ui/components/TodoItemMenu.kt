@@ -17,9 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,8 +33,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.core.graphics.toColorInt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -362,7 +363,7 @@ fun DashboardHexMenuContent(
             }
         )
         MenuIconButton(
-            icon = Icons.Default.ArrowForward,
+            icon = Icons.AutoMirrored.Filled.ArrowForward,
             label = "Tomorrow",
             onClick = {
                 val tomorrow =
@@ -374,7 +375,7 @@ fun DashboardHexMenuContent(
             }
         )
         MenuIconButton(
-            icon = Icons.Default.Assignment,
+            icon = Icons.AutoMirrored.Filled.Assignment,
             label = if (subtasks.isNotEmpty()) "Subtasks (${subtasks.size})" else "Subtasks",
             onClick = {
                 onShowOverlay(ActiveRowOverlay.AddSubtask)
@@ -392,7 +393,7 @@ fun DashboardHexMenuContent(
     }
 
     if (subtasks.isNotEmpty()) {
-        Divider(modifier = Modifier.padding(vertical = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
         Text(
             text = "Subtasks",
             style = MaterialTheme.typography.titleSmall,
@@ -407,7 +408,7 @@ fun DashboardHexMenuContent(
                 val subtaskColor = remember(subtask.listId, allLists) {
                     allLists.find { it.id == subtask.listId }?.let { list ->
                         try {
-                            Color(android.graphics.Color.parseColor(list.colorHex))
+                            Color(list.colorHex.toColorInt())
                         } catch (_: Exception) {
                             NeonTeal
                         }
@@ -475,7 +476,7 @@ fun ListRowMenuContent(
             }
         }
 
-        Divider(modifier = Modifier.padding(vertical = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         // Visual Action Grid (2x2)
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -520,7 +521,7 @@ fun ListRowMenuContent(
 //            }
         }
 
-        Divider(modifier = Modifier.padding(vertical = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         // Management Tray
         Row(
@@ -550,7 +551,7 @@ fun ListRowMenuContent(
         }
 
         if (subtasks.isNotEmpty()) {
-            Divider(modifier = Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
             Text(
                 text = "Subtasks",
                 style = MaterialTheme.typography.titleSmall,
@@ -565,7 +566,7 @@ fun ListRowMenuContent(
                     val subtaskColor = remember(subtask.listId, allLists) {
                         allLists.find { it.id == subtask.listId }?.let { list ->
                             try {
-                                Color(android.graphics.Color.parseColor(list.colorHex))
+                                Color(list.colorHex.toColorInt())
                             } catch (_: Exception) {
                                 NeonTeal
                             }

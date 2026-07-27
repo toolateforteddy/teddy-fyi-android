@@ -99,8 +99,8 @@ fun StylizedShoppingCart(modifier: Modifier = Modifier) {
         // 5. Draw the bottom support bar
         val supportPath = Path().apply {
             moveTo(w * 0.35f, h * 0.52f)
-            quadraticBezierTo(w * 0.27f, h * 0.52f, w * 0.27f, h * 0.59f)
-            quadraticBezierTo(w * 0.27f, h * 0.65f, w * 0.35f, h * 0.65f)
+            quadraticTo(w * 0.27f, h * 0.52f, w * 0.27f, h * 0.59f)
+            quadraticTo(w * 0.27f, h * 0.65f, w * 0.35f, h * 0.65f)
             lineTo(w * 0.64f, h * 0.65f)
         }
         drawPath(
@@ -212,19 +212,19 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
                     // Top edge
                     lineTo(w - (inset + r), inset)
                     // Top-Right corner notch
-                    quadraticBezierTo(w - (inset + r), inset + r, w - inset, inset + r)
+                    quadraticTo(w - (inset + r), inset + r, w - inset, inset + r)
                     // Right edge
                     lineTo(w - inset, h - (inset + r))
                     // Bottom-Right corner notch
-                    quadraticBezierTo(w - (inset + r), h - (inset + r), w - (inset + r), h - inset)
+                    quadraticTo(w - (inset + r), h - (inset + r), w - (inset + r), h - inset)
                     // Bottom edge
                     lineTo(inset + r, h - inset)
                     // Bottom-Left corner notch
-                    quadraticBezierTo(inset + r, h - (inset + r), inset, h - (inset + r))
+                    quadraticTo(inset + r, h - (inset + r), inset, h - (inset + r))
                     // Left edge
                     lineTo(inset, inset + r)
                     // Top-Left corner notch
-                    quadraticBezierTo(inset + r, inset + r, inset + r, inset)
+                    quadraticTo(inset + r, inset + r, inset + r, inset)
                     close()
                 }
                 

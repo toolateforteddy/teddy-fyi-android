@@ -1,6 +1,11 @@
 package fyi.teddy.android.utils
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -14,7 +19,7 @@ private val ICON_CATEGORIES = mapOf(
         "car", "cars", "maintain", "maintenance", "vehicle", "drive", "driving",
         "tire", "tires", "oil", "wash", "mechanic"
     ),
-    Icons.Default.DirectionsBike to setOf(
+    Icons.AutoMirrored.Filled.DirectionsBike to setOf(
         "bike", "bicycle"
     ),
     Icons.Default.Shower to setOf(
@@ -50,7 +55,7 @@ private val MATERIAL_ICON_MAP = mapOf(
     "Work" to Icons.Default.Work,
     "AttachMoney" to Icons.Default.AttachMoney,
     "CreditCard" to Icons.Default.CreditCard,
-    "ReceiptLong" to Icons.Default.ReceiptLong,
+    "ReceiptLong" to Icons.AutoMirrored.Filled.ReceiptLong,
     "Email" to Icons.Default.Email,
     "Phone" to Icons.Default.Phone,
     "Analytics" to Icons.Default.Analytics,
@@ -60,19 +65,19 @@ private val MATERIAL_ICON_MAP = mapOf(
     "Storefront" to Icons.Default.Storefront,
     "LocalPharmacy" to Icons.Default.LocalPharmacy,
     "FitnessCenter" to Icons.Default.FitnessCenter,
-    "DirectionsBike" to Icons.Default.DirectionsBike,
-    "DirectionsRun" to Icons.Default.DirectionsRun,
+    "DirectionsBike" to Icons.AutoMirrored.Filled.DirectionsBike,
+    "DirectionsRun" to Icons.AutoMirrored.Filled.DirectionsRun,
     "MedicalInformation" to Icons.Default.MedicalInformation,
     "Restaurant" to Icons.Default.Restaurant,
     "Bed" to Icons.Default.Bed,
     "Event" to Icons.Default.Event,
     "Schedule" to Icons.Default.Schedule,
-    "List" to Icons.Default.List,
+    "List" to Icons.AutoMirrored.Filled.List,
     "Group" to Icons.Default.Group,
     "Person" to Icons.Default.Person,
     "Settings" to Icons.Default.Settings,
     "Computer" to Icons.Default.Computer,
-    "MenuBook" to Icons.Default.MenuBook,
+    "MenuBook" to Icons.AutoMirrored.Filled.MenuBook,
     "Movie" to Icons.Default.Movie,
     "Palette" to Icons.Default.Palette,
     "MusicNote" to Icons.Default.MusicNote,

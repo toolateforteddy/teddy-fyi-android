@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.core.graphics.toColorInt
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -25,7 +26,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditCalendar
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -272,7 +273,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                     actions = {
                         IconButton(onClick = { viewModel.setShowCompletedOnly(!showCompletedOnly) }) {
                             Icon(
-                                if (showCompletedOnly) Icons.Default.List else Icons.Default.CheckCircle,
+                                if (showCompletedOnly) Icons.AutoMirrored.Filled.List else Icons.Default.CheckCircle,
                                 contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(
                                     R.string.show_completed
                                 ),
@@ -311,7 +312,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                     NavigationBarItem(
                         selected = currentMode == TodoMode.BACKLOG,
                         onClick = { viewModel.setMode(TodoMode.BACKLOG) },
-                        icon = { Icon(Icons.Default.List, contentDescription = "Backlog") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Backlog") },
                         label = { Text("Backlog") },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = NeonTeal,
@@ -421,7 +422,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
                                     color = if (isSelected) NeonTeal.copy(alpha = 0.3f) else Color(
-                                        android.graphics.Color.parseColor(list.colorHex)
+                                        list.colorHex.toColorInt()
                                     ).copy(alpha = 0.2f),
                                     modifier = Modifier
                                         .padding(end = 8.dp)
@@ -442,11 +443,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                             modifier = Modifier
                                                 .size(8.dp)
                                                 .background(
-                                                    color = Color(
-                                                        android.graphics.Color.parseColor(
-                                                            list.colorHex
-                                                        )
-                                                    ),
+                                                    color = Color(list.colorHex.toColorInt()),
                                                     shape = RoundedCornerShape(4.dp)
                                                 )
                                         )

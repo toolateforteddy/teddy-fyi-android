@@ -4,17 +4,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import fyi.teddy.android.todo.data.TodoItem
 
+@Suppress("unused")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduledTasksScreen(userId: String, onBack: () -> Unit) {
@@ -37,7 +36,7 @@ fun ScheduledTasksScreen(userId: String, onBack: () -> Unit) {
                 title = { Text("Scheduled Tasks") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black, titleContentColor = Color.White)
@@ -57,7 +56,7 @@ fun ScheduledTasksScreen(userId: String, onBack: () -> Unit) {
                             headlineContent = { Text(item.title, color = Color.White) },
                             supportingContent = { Text("Scheduled for: ${item.scheduledDate}", color = Color.Cyan) }
                         )
-                        Divider(color = Color.DarkGray)
+                        HorizontalDivider(color = Color.DarkGray)
                     }
                 }
             }

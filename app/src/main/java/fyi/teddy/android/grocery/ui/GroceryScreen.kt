@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,7 +49,7 @@ enum class GroceryPhase {
 @Composable
 fun GroceryScreen(
     userId: String, 
-    onBack: () -> Unit, 
+    @Suppress("UNUSED_PARAMETER") onBack: () -> Unit, 
     onManageConfig: () -> Unit,
     onNavigateToDebug: () -> Unit
 ) {
@@ -229,7 +230,7 @@ fun GroceryScreen(
                 NavigationBarItem(
                     selected = state.currentPhase == GroceryPhase.NEED,
                     onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.NEED)) },
-                    icon = { Icon(Icons.Default.List, contentDescription = "Need") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Need") },
                     label = { Text("Need") }
                 )
                 NavigationBarItem(

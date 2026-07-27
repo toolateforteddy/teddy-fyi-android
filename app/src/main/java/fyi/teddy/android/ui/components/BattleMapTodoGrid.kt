@@ -23,11 +23,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
@@ -66,24 +67,24 @@ fun Modifier.neonGlow(
 ) = this.drawBehind {
     val outline = shape.createOutline(size, layoutDirection, this)
     drawIntoCanvas { canvas ->
-        val paint = Paint().apply {
-            this.color = color
-            asFrameworkPaint().apply {
-                setShadowLayer(blurRadius.toPx(), 0f, 0f, color.toArgb())
-            }
+        val frameworkPaint = android.graphics.Paint().apply {
+            this.color = color.toArgb()
+            setShadowLayer(blurRadius.toPx(), 0f, 0f, color.toArgb())
         }
+        val nativeCanvas = canvas.nativeCanvas
         when (outline) {
             is Outline.Generic -> {
-                canvas.drawPath(outline.path, paint)
+                nativeCanvas.drawPath(outline.path.asAndroidPath(), frameworkPaint)
             }
             is Outline.Rectangle -> {
-                canvas.drawRect(outline.rect, paint)
+                val rect = outline.rect
+                nativeCanvas.drawRect(rect.left, rect.top, rect.right, rect.bottom, frameworkPaint)
             }
             is Outline.Rounded -> {
                 val path = Path().apply {
                     addRoundRect(outline.roundRect)
                 }
-                canvas.drawPath(path, paint)
+                nativeCanvas.drawPath(path.asAndroidPath(), frameworkPaint)
             }
         }
     }
@@ -102,8 +103,8 @@ fun BattleMapTodoGrid(
     todoItems: List<TodoItem>,
     backlogCount: Int,
     onNavigateToTodo: (String?) -> Unit,
-    onTodoLongClick: (TodoItem) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTodoLongClick: (TodoItem) -> Unit = {}
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
