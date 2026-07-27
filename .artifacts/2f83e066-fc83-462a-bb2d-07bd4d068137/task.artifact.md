@@ -1,0 +1,4 @@
+- [x] Modify `HomeScreen.kt` to handle system insets
+    - [x] Apply `statusBarsPadding()` to the inner container
+    - [x] Apply `navigationBarsPadding()` to the outer container or ensure bottom content is safe
+- [x] Verify the change

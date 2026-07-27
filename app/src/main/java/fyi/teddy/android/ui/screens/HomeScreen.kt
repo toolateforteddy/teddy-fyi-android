@@ -123,6 +123,8 @@ fun HomeScreen(
                         colors = listOf(Color(0xFF0A0814), Color(0xFF050508))
                     )
                 )
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(16.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
