@@ -70,20 +70,8 @@ class EncryptedDataStore(
         val aead = aead ?: return null
         val encryptedValue = dataStore.data.map { it[stringPreferencesKey(keyName)] }.first()
         return encryptedValue?.let {
-            try {
-                val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
-                String(aead.decrypt(decoded, null))
-            } catch (e: Exception) {
-                android.util.Log.e("EncryptedDataStore", "Failed to decrypt. Wiping data.", e)
-                forceReset()
-                null
-            }
+            val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
+            String(aead.decrypt(decoded, null))
         }
-    }
-
-    private suspend fun forceReset() {
-        context.getSharedPreferences("tink_keyset", Context.MODE_PRIVATE).edit().clear().apply()
-        context.getSharedPreferences("master_key", Context.MODE_PRIVATE).edit().clear().apply()
-        dataStore.edit { it.clear() }
     }
 }

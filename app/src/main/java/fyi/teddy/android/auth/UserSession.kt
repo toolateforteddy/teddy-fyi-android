@@ -5,59 +5,89 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.core.DataStore
 
-class UserSession {
+@Suppress("TooGenericExceptionCaught")
+class UserSession(
+    val tokenStorage: TokenStorage = TokenStorage()
+) {
     var userId by mutableStateOf<String?>(null)
     var userName by mutableStateOf<String?>(null)
     var idToken by mutableStateOf<String?>(null)
     var profilePictureUri by mutableStateOf<String?>(null)
-    var accessToken by mutableStateOf<String?>(null)
-    var refreshToken by mutableStateOf<String?>(null)
+
+    private var _accessToken by mutableStateOf<String?>(null)
+    private var _refreshToken by mutableStateOf<String?>(null)
+
+    var accessToken: String?
+        get() = _accessToken
+        set(value) {
+            _accessToken = value
+            tokenStorage.updateInMemoryTokens(_accessToken, _refreshToken)
+        }
+
+    var refreshToken: String?
+        get() = _refreshToken
+        set(value) {
+            _refreshToken = value
+            tokenStorage.updateInMemoryTokens(_accessToken, _refreshToken)
+        }
+
     var clientUuid by mutableStateOf<String?>(null)
 
+    @Suppress("unused")
     val isLoggedIn: Boolean
         get() = !accessToken.isNullOrBlank()
 
+    fun updateTokens(access: String?, refresh: String?) {
+        _accessToken = access
+        _refreshToken = refresh
+        tokenStorage.updateInMemoryTokens(access, refresh)
+    }
+
     suspend fun save(context: Context, dataStore: DataStore<Preferences>? = null) {
         val encryptedStore = if (dataStore != null) EncryptedDataStore(context, dataStore) else EncryptedDataStore(context)
-        encryptedStore.saveAllEncrypted(
-            mapOf(
-                "user_id" to userId,
-                "user_name" to userName,
-                "id_token" to idToken,
-                "profile_pic" to profilePictureUri,
-                "access_token" to accessToken,
-                "refresh_token" to refreshToken,
-                "client_uuid" to clientUuid
+        try {
+            encryptedStore.saveAllEncrypted(
+                mapOf(
+                    "user_id" to userId,
+                    "user_name" to userName,
+                    "id_token" to idToken,
+                    "profile_pic" to profilePictureUri,
+                    "access_token" to accessToken,
+                    "refresh_token" to refreshToken,
+                    "client_uuid" to clientUuid
+                )
             )
-        )
+            tokenStorage.saveTokens(context, accessToken, refreshToken, dataStore)
+            AuthTelemetry.logBreadcrumb("USER_SESSION_SAVE", "UserSession saved to disk and TokenStorage")
+        } catch (e: Exception) {
+            AuthTelemetry.logBreadcrumb("USER_SESSION_SAVE_EXCEPTION", "Exception: ${e.javaClass.simpleName}")
+        }
     }
 
     suspend fun load(context: Context, dataStore: DataStore<Preferences>? = null) {
         val encryptedStore = if (dataStore != null) EncryptedDataStore(context, dataStore) else EncryptedDataStore(context)
-        val loadedUserId = encryptedStore.getDecrypted("user_id")
-        val loadedUserName = encryptedStore.getDecrypted("user_name")
-        val loadedIdToken = encryptedStore.getDecrypted("id_token")
-        val loadedProfilePic = encryptedStore.getDecrypted("profile_pic")
-        val loadedAccessToken = encryptedStore.getDecrypted("access_token")
-        val loadedRefreshToken = encryptedStore.getDecrypted("refresh_token")
-        val loadedClientUuid = encryptedStore.getDecrypted("client_uuid")
+        val loadedUserId = tryGetDecrypted(encryptedStore, "user_id")
+        val loadedUserName = tryGetDecrypted(encryptedStore, "user_name")
+        val loadedIdToken = tryGetDecrypted(encryptedStore, "id_token")
+        val loadedProfilePic = tryGetDecrypted(encryptedStore, "profile_pic")
 
-        // Only overwrite if currently null or if the loaded value is not null
-        // This avoids race conditions where a background load might overwrite 
-        // a freshly set in-memory value during login with an old null from disk.
+        val (loadedAccessToken, loadedRefreshToken) = tokenStorage.loadTokensFromDisk(context, dataStore)
+        val loadedClientUuid = tryGetDecrypted(encryptedStore, "client_uuid")
+
         if (loadedUserId != null) userId = loadedUserId
         if (loadedUserName != null) userName = loadedUserName
         if (loadedIdToken != null) idToken = loadedIdToken
         if (loadedProfilePic != null) profilePictureUri = loadedProfilePic
-        if (loadedAccessToken != null) accessToken = loadedAccessToken
-        if (loadedRefreshToken != null) refreshToken = loadedRefreshToken
+        if (loadedAccessToken != null) _accessToken = loadedAccessToken
+        if (loadedRefreshToken != null) _refreshToken = loadedRefreshToken
         if (loadedClientUuid != null) clientUuid = loadedClientUuid
 
-        // Ensure we always have a client UUID if we are loaded
+        tokenStorage.updateInMemoryTokens(_accessToken, _refreshToken)
+
         if (clientUuid == null) {
             val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
             val legacyId = sharedPrefs.getString("client_id", null)
@@ -65,29 +95,43 @@ class UserSession {
                 clientUuid = legacyId
             } else {
                 clientUuid = java.util.UUID.randomUUID().toString()
-                // Save it back immediately so it's persisted in the encrypted store
                 save(context, dataStore)
             }
         }
     }
 
-    suspend fun clear(context: Context, dataStore: DataStore<Preferences>? = null) {
+    private suspend fun tryGetDecrypted(store: EncryptedDataStore, key: String): String? {
+        return try {
+            store.getDecrypted(key)
+        } catch (e: Exception) {
+            AuthTelemetry.logBreadcrumb("SESSION_READ_EXCEPTION", "Key: $key, Exception: ${e.javaClass.simpleName}")
+            null
+        }
+    }
+
+    suspend fun clear(context: Context, dataStore: DataStore<Preferences>? = null, reason: String = "User session cleared") {
+        AuthTelemetry.flushBreadcrumbs(reason)
+
         val preservedUuid = clientUuid
         val sharedPrefs = context.getSharedPreferences("sync_metadata", Context.MODE_PRIVATE)
         val preservedLegacyId = sharedPrefs.getString("client_id", null)
 
         val ds = dataStore ?: context.dataStore
-        ds.edit { it.clear() }
-        sharedPrefs.edit().clear().apply()
+        try {
+            ds.edit { it.clear() }
+        } catch (e: Exception) {
+            AuthTelemetry.logBreadcrumb("CLEAR_DATASTORE_EXCEPTION", "Exception: ${e.javaClass.simpleName}")
+        }
+        sharedPrefs.edit { clear() }
 
         userId = null
         userName = null
         idToken = null
         profilePictureUri = null
-        accessToken = null
-        refreshToken = null
-        
-        // Restore and persist the client UUID
+        _accessToken = null
+        _refreshToken = null
+        tokenStorage.clear(context, ds)
+
         if (preservedUuid != null) {
             clientUuid = preservedUuid
             save(context, ds)
@@ -98,7 +142,6 @@ class UserSession {
             clientUuid = null
         }
 
-        // Restore legacy ID for compatibility if it existed
         if (preservedLegacyId != null) {
             sharedPrefs.edit(commit = true) { putString("client_id", preservedLegacyId) }
         }
