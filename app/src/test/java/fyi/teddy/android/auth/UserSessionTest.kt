@@ -7,7 +7,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,7 +31,11 @@ class UserSessionTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         testDataStore = PreferenceDataStoreFactory.create(
-            produceFile = { context.preferencesDataStoreFile("test_session_" + UUID.randomUUID().toString()) }
+            produceFile = {
+                context.preferencesDataStoreFile(
+                    "test_session_" + UUID.randomUUID().toString()
+                )
+            }
         )
         tokenStorage = TokenStorage(testDataStore)
         userSession = UserSession(tokenStorage)
