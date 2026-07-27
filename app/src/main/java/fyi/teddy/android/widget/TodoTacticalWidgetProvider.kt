@@ -13,7 +13,6 @@ import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.data.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class TodoTacticalWidgetProvider : AppWidgetProvider() {

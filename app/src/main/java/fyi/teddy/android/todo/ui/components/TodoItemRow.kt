@@ -115,6 +115,7 @@ fun TodoItemRow(
     val isScheduledForToday = item.scheduledDate == today
     val isScheduled = item.scheduledDate != null
 
+    @Suppress("DEPRECATION")
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value != SwipeToDismissBoxValue.Settled) {
@@ -132,7 +133,7 @@ fun TodoItemRow(
                             }
                         }
 
-                        else -> {}
+                        SwipeToDismissBoxValue.Settled -> {}
                     }
                     isConfirmed = false
                 }

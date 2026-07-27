@@ -27,4 +27,6 @@
     <string name="close">Close</string>
     <string name="share">Share</string>
     <string name="create">Create</string>
+    <string name="widget_todo_tactical_description">Tactical Todo Hex Grid Widget</string>
+    <string name="widget_grocery_description">Grocery List Widget</string>
 </resources>

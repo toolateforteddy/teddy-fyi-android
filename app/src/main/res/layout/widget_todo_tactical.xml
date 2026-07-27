@@ -10,6 +10,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitXY"
-        android:contentDescription="Tactical Todo Hex Grid Widget" />
+        android:contentDescription="@string/widget_todo_tactical_description" />
 
 </FrameLayout>

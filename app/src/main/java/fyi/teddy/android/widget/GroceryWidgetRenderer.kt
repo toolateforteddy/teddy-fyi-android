@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
 import fyi.teddy.android.grocery.data.GroceryItem
 
 object GroceryWidgetRenderer {
@@ -18,19 +20,19 @@ object GroceryWidgetRenderer {
     ): Bitmap {
         val width = widthPx.coerceAtLeast(100)
         val height = heightPx.coerceAtLeast(60)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
 
         // 1. Fill Tactical dark background (#161424)
         val bgPaint = Paint().apply {
-            color = Color.parseColor("#161424")
+            color = "#161424".toColorInt()
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
         // Outer glow border (#03DAC5)
         val borderPaint = Paint().apply {
-            color = Color.parseColor("#03DAC5")
+            color = "#03DAC5".toColorInt()
             style = Paint.Style.STROKE
             strokeWidth = 2.5f * density
             isAntiAlias = true
@@ -49,14 +51,14 @@ object GroceryWidgetRenderer {
         if (isCompact) {
             // Compact horizontal banner view
             val countPaint = Paint().apply {
-                color = Color.parseColor("#03DAC5")
+                color = "#03DAC5".toColorInt()
                 textSize = (24f * density).coerceAtMost(height * 0.45f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
             }
 
             val labelPaint = Paint().apply {
-                color = Color.parseColor("#BCADA0")
+                color = "#BCADA0".toColorInt()
                 textSize = (12f * density).coerceAtMost(height * 0.25f)
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
@@ -74,7 +76,7 @@ object GroceryWidgetRenderer {
             canvas.drawText(labelText, labelX, countY - 2f * density, labelPaint)
 
             val subTextPaint = Paint().apply {
-                color = Color.parseColor("#7A7593")
+                color = "#7A7593".toColorInt()
                 textSize = (9f * density)
                 typeface = Typeface.DEFAULT
                 isAntiAlias = true
@@ -83,7 +85,7 @@ object GroceryWidgetRenderer {
         } else {
             // Expanded Card layout with Header + Item Preview List
             val headerPaint = Paint().apply {
-                color = Color.parseColor("#221D38")
+                color = "#221D38".toColorInt()
                 style = Paint.Style.FILL
                 isAntiAlias = true
             }
@@ -91,7 +93,7 @@ object GroceryWidgetRenderer {
             canvas.drawRoundRect(headerRect, 6f * density, 6f * density, headerPaint)
 
             val titlePaint = Paint().apply {
-                color = Color.parseColor("#03DAC5")
+                color = "#03DAC5".toColorInt()
                 textSize = 12f * density
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
@@ -99,7 +101,7 @@ object GroceryWidgetRenderer {
             canvas.drawText("GROCERY LIST", 14f * density, 24f * density, titlePaint)
 
             val countBadgePaint = Paint().apply {
-                color = Color.parseColor("#E91E63")
+                color = "#E91E63".toColorInt()
                 textSize = 11f * density
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 textAlign = Paint.Align.RIGHT
@@ -114,7 +116,7 @@ object GroceryWidgetRenderer {
                 isAntiAlias = true
             }
             val dotPaint = Paint().apply {
-                color = Color.parseColor("#03DAC5")
+                color = "#03DAC5".toColorInt()
                 style = Paint.Style.FILL
                 isAntiAlias = true
             }
@@ -136,7 +138,7 @@ object GroceryWidgetRenderer {
 
             if (unboughtItems.isEmpty()) {
                 val emptyPaint = Paint().apply {
-                    color = Color.parseColor("#03DAC5")
+                    color = "#03DAC5".toColorInt()
                     textSize = 12f * density
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     textAlign = Paint.Align.CENTER

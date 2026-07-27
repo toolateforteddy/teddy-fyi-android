@@ -3,26 +3,25 @@ package fyi.teddy.android.widget
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.graphics.Shader
 import android.graphics.Typeface
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
 import fyi.teddy.android.todo.data.TodoItem
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 
 object TacticalHexCanvasRenderer {
 
     private val HEX_COLORS = intArrayOf(
-        Color.parseColor("#03DAC5"), // Cyan
-        Color.parseColor("#E91E63"), // Pink
-        Color.parseColor("#9C27B0"), // Purple
-        Color.parseColor("#CDDC39"), // Lime
-        Color.parseColor("#FF9800"), // Orange
-        Color.parseColor("#FFEB3B")  // Yellow
+        "#03DAC5".toColorInt(), // Cyan
+        "#E91E63".toColorInt(), // Pink
+        "#9C27B0".toColorInt(), // Purple
+        "#CDDC39".toColorInt(), // Lime
+        "#FF9800".toColorInt(), // Orange
+        "#FFEB3B".toColorInt()  // Yellow
     )
 
     fun renderHexGrid(
@@ -33,19 +32,19 @@ object TacticalHexCanvasRenderer {
     ): Bitmap {
         val width = widthPx.coerceAtLeast(100)
         val height = heightPx.coerceAtLeast(100)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
 
         // 1. Fill Tactical dark background (#161424)
         val bgPaint = Paint().apply {
-            color = Color.parseColor("#161424")
+            color = "#161424".toColorInt()
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
         // Outer glow border
         val borderPaint = Paint().apply {
-            color = Color.parseColor("#3700B3")
+            color = "#3700B3".toColorInt()
             style = Paint.Style.STROKE
             strokeWidth = 3f * density
             isAntiAlias = true
@@ -58,12 +57,12 @@ object TacticalHexCanvasRenderer {
         val bannerPaddingHorizontal = 8f * density
 
         val bannerPaint = Paint().apply {
-            color = Color.parseColor("#221D38")
+            color = "#221D38".toColorInt()
             style = Paint.Style.FILL
             isAntiAlias = true
         }
         val bannerStrokePaint = Paint().apply {
-            color = Color.parseColor("#03DAC5")
+            color = "#03DAC5".toColorInt()
             style = Paint.Style.STROKE
             strokeWidth = 1.5f * density
             isAntiAlias = true
@@ -78,7 +77,7 @@ object TacticalHexCanvasRenderer {
         canvas.drawRoundRect(bannerRect, 4f * density, 4f * density, bannerStrokePaint)
 
         val bannerTextPaint = Paint().apply {
-            color = Color.parseColor("#BCADA0")
+            color = "#BCADA0".toColorInt()
             textSize = (11f * density).coerceAtMost(bannerHeight * 0.5f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
@@ -154,20 +153,20 @@ object TacticalHexCanvasRenderer {
 
                 if (row == 0 && col == 0) {
                     // Slot 0: Counter Badge Hex
-                    fillPaint.color = Color.parseColor("#2A1F45")
+                    fillPaint.color = "#2A1F45".toColorInt()
                     canvas.drawPath(hexPath, fillPaint)
 
-                    strokePaint.color = Color.parseColor("#03DAC5")
+                    strokePaint.color = "#03DAC5".toColorInt()
                     canvas.drawPath(hexPath, strokePaint)
 
-                    textPaint.color = Color.parseColor("#03DAC5")
+                    textPaint.color = "#03DAC5".toColorInt()
                     canvas.drawText("${itemsCount}", cx, cy + (textPaint.textSize / 3f), textPaint)
                 } else if (taskIdx < activeTasks.size) {
                     // Task Hex
                     val item = activeTasks[taskIdx]
                     val colorHex = HEX_COLORS[taskIdx % HEX_COLORS.size]
 
-                    fillPaint.color = Color.parseColor("#1F1C33")
+                    fillPaint.color = "#1F1C33".toColorInt()
                     canvas.drawPath(hexPath, fillPaint)
 
                     strokePaint.color = colorHex
@@ -183,13 +182,13 @@ object TacticalHexCanvasRenderer {
                     taskIdx++
                 } else if (activeTasks.isEmpty() && row == 0 && col == 1) {
                     // Empty state indicator
-                    fillPaint.color = Color.parseColor("#1B2A26")
+                    fillPaint.color = "#1B2A26".toColorInt()
                     canvas.drawPath(hexPath, fillPaint)
 
-                    strokePaint.color = Color.parseColor("#03DAC5")
+                    strokePaint.color = "#03DAC5".toColorInt()
                     canvas.drawPath(hexPath, strokePaint)
 
-                    textPaint.color = Color.parseColor("#03DAC5")
+                    textPaint.color = "#03DAC5".toColorInt()
                     canvas.drawText("CLEAR", cx, cy + (textPaint.textSize / 3f), textPaint)
                 }
             }
