@@ -157,20 +157,45 @@ class TodoViewModel(
     internal val moveItemToTopUseCase = MoveItemToTopUseCase(repository)
     internal val moveItemToBottomUseCase = MoveItemToBottomUseCase(repository)
 
+    private val _isSearchActive = MutableStateFlow(false)
+    val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    fun setSearchActive(active: Boolean) {
+        _isSearchActive.value = active
+        if (!active) {
+            _searchQuery.value = ""
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     data class TodoFilterSettings(
         val mode: TodoMode,
         val showCompleted: Boolean,
         val recentlyCompleted: Set<String>,
-        val selectedListId: String?
+        val selectedListId: String?,
+        val isSearchActive: Boolean,
+        val searchQuery: String
     )
+
+    private val searchFlow = combine(_isSearchActive, _searchQuery) { active, query ->
+        active to query
+    }
 
     private val settingsFlow = combine(
         _currentMode,
         _showCompletedOnly,
         _recentlyCompletedIds,
-        _selectedListId
-    ) { mode, showCompleted, recentlyCompleted, selectedListId ->
-        TodoFilterSettings(mode, showCompleted, recentlyCompleted, selectedListId)
+        _selectedListId,
+        searchFlow
+    ) { mode, showCompleted, recentlyCompleted, selectedListId, searchPair ->
+        val (isSearchActive, searchQuery) = searchPair
+        TodoFilterSettings(mode, showCompleted, recentlyCompleted, selectedListId, isSearchActive, searchQuery)
     }
 
     val groupedItems: StateFlow<List<Pair<TodoItem, List<TodoItem>>>> = combine(
@@ -185,9 +210,45 @@ class TodoViewModel(
         val recentlyCompleted = settings.recentlyCompleted
         val selectedListId = settings.selectedListId
 
-        val listFilteredAll = all.filter { if (selectedListId != null) it.listId == selectedListId else true && !it.isDeleted }
-        val listFilteredToday = today.filter { if (selectedListId != null) it.listId == selectedListId else true && !it.isDeleted }
-        val listFilteredScheduled = scheduled.filter { if (selectedListId != null) it.listId == selectedListId else true && !it.isDeleted }
+        val listFilteredAll = all.filter { (if (selectedListId != null) it.listId == selectedListId else true) && !it.isDeleted }
+        val listFilteredToday = today.filter { (if (selectedListId != null) it.listId == selectedListId else true) && !it.isDeleted }
+        val listFilteredScheduled = scheduled.filter { (if (selectedListId != null) it.listId == selectedListId else true) && !it.isDeleted }
+
+        if (settings.isSearchActive && settings.searchQuery.trim().isNotBlank()) {
+            val query = settings.searchQuery.trim().lowercase()
+            val allParents = listFilteredAll.filter { it.parentId == null }
+            val allChildren = listFilteredAll.filter { it.parentId != null }.groupBy { it.parentId }
+
+            val tier1 = mutableListOf<Pair<TodoItem, List<TodoItem>>>()
+            val tier2 = mutableListOf<Pair<TodoItem, List<TodoItem>>>()
+            val tier3 = mutableListOf<Pair<TodoItem, List<TodoItem>>>()
+            val tier4 = mutableListOf<Pair<TodoItem, List<TodoItem>>>()
+
+            allParents.forEach { parent ->
+                val children = allChildren[parent.id] ?: emptyList()
+                val parentTitleMatches = parent.title.lowercase().contains(query)
+                val subtaskTitleMatches = children.any { it.title.lowercase().contains(query) }
+                val parentDescMatches = parent.description?.lowercase()?.contains(query) == true
+                val subtaskDescMatches = children.any { it.description?.lowercase()?.contains(query) == true }
+                val descriptionMatches = parentDescMatches || subtaskDescMatches
+
+                if (!parent.isCompleted) {
+                    if (parentTitleMatches) {
+                        tier1.add(parent to children)
+                    } else if (subtaskTitleMatches) {
+                        tier2.add(parent to children)
+                    } else if (descriptionMatches) {
+                        tier3.add(parent to children)
+                    }
+                } else {
+                    if (parentTitleMatches || subtaskTitleMatches || descriptionMatches) {
+                        tier4.add(parent to children)
+                    }
+                }
+            }
+
+            return@combine tier1 + tier2 + tier3 + tier4
+        }
 
         val baseItems = when (mode) {
             TodoMode.TODAY -> listFilteredToday

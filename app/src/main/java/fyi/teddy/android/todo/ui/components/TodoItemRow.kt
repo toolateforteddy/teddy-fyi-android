@@ -115,40 +115,42 @@ fun TodoItemRow(
     val isScheduledForToday = item.scheduledDate == today
     val isScheduled = item.scheduledDate != null
 
-    val dismissState = rememberSwipeToDismissBoxState()
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value != SwipeToDismissBoxValue.Settled) {
+                if (isConfirmed) {
+                    when (value) {
+                        SwipeToDismissBoxValue.StartToEnd -> {
+                            if (!isScheduledForToday) {
+                                onIntent(TodoItemIntent.Update(item.copy(scheduledDate = today)))
+                            }
+                        }
+
+                        SwipeToDismissBoxValue.EndToStart -> {
+                            if (isScheduled) {
+                                onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
+                            }
+                        }
+
+                        else -> {}
+                    }
+                    isConfirmed = false
+                }
+                false // Always snap back
+            } else {
+                true
+            }
+        }
+    )
 
     LaunchedEffect(dismissState.targetValue) {
         if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
-            delay(1000.milliseconds)
+            delay(400.milliseconds)
             if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
                 isConfirmed = true
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
         } else {
-            isConfirmed = false
-        }
-    }
-
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-            if (isConfirmed) {
-                when (dismissState.currentValue) {
-                    SwipeToDismissBoxValue.StartToEnd -> {
-                        if (!isScheduledForToday) {
-                            onIntent(TodoItemIntent.Update(item.copy(scheduledDate = today)))
-                        }
-                    }
-
-                    SwipeToDismissBoxValue.EndToStart -> {
-                        if (isScheduled) {
-                            onIntent(TodoItemIntent.Update(item.copy(scheduledDate = null)))
-                        }
-                    }
-
-                    else -> {}
-                }
-            }
-            dismissState.reset()
             isConfirmed = false
         }
     }
