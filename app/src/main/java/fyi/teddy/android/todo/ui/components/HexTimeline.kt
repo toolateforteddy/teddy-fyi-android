@@ -14,12 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.format.TextStyle
-import java.util.*
 
 @Composable
 fun HexTimeline(
@@ -28,6 +28,7 @@ fun HexTimeline(
     onOpenCalendar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val locale = LocalLocale.current.platformLocale
     val today = LocalDate.now()
     val dates = (0..6).map { today.plusDays(it.toLong()) }
     
@@ -45,7 +46,7 @@ fun HexTimeline(
             val label = when {
                 date == today -> "TODAY"
                 date == today.plusDays(1) -> "TMRW"
-                else -> date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase()
+                else -> date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale).uppercase()
             }
             
             val dayNum = date.dayOfMonth.toString()
