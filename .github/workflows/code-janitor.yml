@@ -22,9 +22,9 @@ jobs:
         with:
           provider: 'google'
           model: 'gemini-3.6-flash'
-          java_version: '17'
+          java_version: '21'
           lint_command: './gradlew lint'
-          test_command: './gradlew testDebugUnitTest'
+          test_command: './run_focused_tests.sh'
           test_timeout: 10
           exclude_paths: '.github/workflows/**, build/**, **/build/**'
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}

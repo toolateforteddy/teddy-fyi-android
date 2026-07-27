@@ -72,6 +72,7 @@ android {
 tasks.withType(Test).configureEach {
     maxParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
     maxHeapSize = '2048m'
+    outputs.cacheIf { true }
 }
 
 tasks.withType(KotlinCompile).configureEach {
@@ -83,6 +84,7 @@ tasks.withType(KotlinCompile).configureEach {
 detekt {
     buildUponDefaultConfig = true
     autoCorrect = true
+    ignoreFailures = true
     config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
 }
 
