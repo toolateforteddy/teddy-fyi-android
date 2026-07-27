@@ -1,0 +1,6 @@
+- [x] Optimize Swipe-to-Dismiss responsiveness in `TodoItemRow.kt`
+    - [x] Reduce confirmation delay from 1000ms to 400ms
+    - [x] Ensure haptic feedback is triggered correctly
+- [x] Verify "Unschedule" swipe logic handles items on Today screen correctly
+- [x] Refactor Swipe logic to use `confirmValueChange` for reliable reset
+- [ ] Manual verification on Today screen

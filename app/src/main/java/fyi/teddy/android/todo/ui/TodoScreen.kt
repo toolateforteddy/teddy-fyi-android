@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -123,6 +124,8 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
     val displayedLists by viewModel.displayedLists.collectAsState()
     val allLists by viewModel.allLists.collectAsState()
     val selectedListId by viewModel.selectedListId.collectAsState()
+    val isSearchActive by viewModel.isSearchActive.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     var showPlanningDatePicker by remember { mutableStateOf(false) }
@@ -271,6 +274,16 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         )
                     },
                     actions = {
+                        if (currentMode == TodoMode.BACKLOG) {
+                            IconButton(onClick = { viewModel.setSearchActive(!isSearchActive) }) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = if (isSearchActive) NeonTeal else Color.White
+                                )
+                            }
+                        }
+
                         IconButton(onClick = { viewModel.setShowCompletedOnly(!showCompletedOnly) }) {
                             Icon(
                                 if (showCompletedOnly) Icons.AutoMirrored.Filled.List else Icons.Default.CheckCircle,
@@ -479,9 +492,15 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         }
                     }
 
-                    val canShowInputBar = !showCompletedOnly && currentMode != TodoMode.TODAY && currentMode != TodoMode.SCHEDULED && !isEditMode
+                    val canShowInputBar = (!showCompletedOnly || isSearchActive) && currentMode != TodoMode.TODAY && currentMode != TodoMode.SCHEDULED && !isEditMode
                     if (canShowInputBar) {
-                        TodoInputBar(onAddNewItem = { title -> onAddNewItem(title, null) })
+                        TodoInputBar(
+                            onAddNewItem = { title -> onAddNewItem(title, null) },
+                            isSearchMode = isSearchActive,
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                            onClearSearch = { viewModel.setSearchActive(false) }
+                        )
                     }
 
                     if (groupedItems.isEmpty() && currentMode == TodoMode.TODAY && !showCompletedOnly) {

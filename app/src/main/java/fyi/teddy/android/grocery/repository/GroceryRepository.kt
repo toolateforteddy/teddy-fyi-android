@@ -3,6 +3,7 @@ package fyi.teddy.android.grocery.repository
 import android.content.Context
 import fyi.teddy.android.grocery.data.*
 import fyi.teddy.android.network.SyncWorker
+import fyi.teddy.android.widget.WidgetUpdateHelper
 import kotlinx.coroutines.flow.Flow
 
 class GroceryRepository(
@@ -10,7 +11,10 @@ class GroceryRepository(
     private val context: Context? = null
 ) {
     private fun scheduleSync() {
-        context?.let { SyncWorker.enqueueDebounced(it) }
+        context?.let {
+            SyncWorker.enqueueDebounced(it)
+            WidgetUpdateHelper.updateAllGroceryWidgets(it)
+        }
     }
 
     fun getAllItems(userId: String): Flow<List<GroceryItem>> = groceryDao.getAllItems(userId)

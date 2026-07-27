@@ -282,4 +282,63 @@ class TodoViewModelTest {
         assertEquals(2, displayed.size)
         job.cancel()
     }
+
+    @Test
+    fun `test setSearchActive and setSearchQuery updates state flows correctly`() = runTest {
+        val viewModel = TodoViewModel(application, repository, userId)
+        assertEquals(false, viewModel.isSearchActive.value)
+        assertEquals("", viewModel.searchQuery.value)
+
+        viewModel.setSearchActive(true)
+        viewModel.setSearchQuery("grocery")
+
+        assertEquals(true, viewModel.isSearchActive.value)
+        assertEquals("grocery", viewModel.searchQuery.value)
+
+        viewModel.setSearchActive(false)
+        assertEquals(false, viewModel.isSearchActive.value)
+        assertEquals("", viewModel.searchQuery.value)
+    }
+
+    @Test
+    fun `test search filtering orders items into four strict priority tiers`() = runTest {
+        val query = "apple"
+
+        // Tier 4: Completed item containing query in title
+        val itemTier4 = TodoItem(id = "4", title = "Buy Apple pie", isCompleted = true, userId = userId)
+
+        // Tier 3: Active item with query in description only
+        val itemTier3 = TodoItem(id = "3", title = "Task Three", description = "Fresh red apples", isCompleted = false, userId = userId)
+
+        // Tier 2: Active parent item whose subtask title contains query
+        val parentTier2 = TodoItem(id = "2", title = "Task Two", isCompleted = false, userId = userId)
+        val childTier2 = TodoItem(id = "2-sub", title = "Green Apple", parentId = "2", isCompleted = false, userId = userId)
+
+        // Tier 1: Active item with query in title
+        val itemTier1 = TodoItem(id = "1", title = "Apple juice", isCompleted = false, userId = userId)
+
+        val allItemsList = listOf(itemTier4, itemTier3, parentTier2, childTier2, itemTier1)
+        coEvery { repository.getAllItems(userId) } returns flowOf(allItemsList)
+
+        val viewModel = TodoViewModel(application, repository, userId)
+        val job = launch { viewModel.groupedItems.collect {} }
+
+        viewModel.setSearchActive(true)
+        viewModel.setSearchQuery(query)
+        testScheduler.advanceUntilIdle()
+
+        val grouped = viewModel.groupedItems.value
+        assertEquals(4, grouped.size)
+
+        // Tier 1 should be first
+        assertEquals("1", grouped[0].first.id)
+        // Tier 2 should be second
+        assertEquals("2", grouped[1].first.id)
+        // Tier 3 should be third
+        assertEquals("3", grouped[2].first.id)
+        // Tier 4 should be fourth
+        assertEquals("4", grouped[3].first.id)
+
+        job.cancel()
+    }
 }
