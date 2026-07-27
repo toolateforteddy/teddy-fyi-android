@@ -70,8 +70,13 @@ class EncryptedDataStore(
         val aead = aead ?: return null
         val encryptedValue = dataStore.data.map { it[stringPreferencesKey(keyName)] }.first()
         return encryptedValue?.let {
-            val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
-            String(aead.decrypt(decoded, null))
+            try {
+                val decoded = android.util.Base64.decode(it, android.util.Base64.DEFAULT)
+                String(aead.decrypt(decoded, null))
+            } catch (e: Exception) {
+                android.util.Log.e("EncryptedDataStore", "Failed to decrypt key: $keyName", e)
+                null
+            }
         }
     }
 }
