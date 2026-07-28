@@ -186,7 +186,13 @@ class MainActivity : ComponentActivity() {
                     if (session.idToken != null) {
                         SyncWorker.enqueueIfNecessary(context)
                         SyncWorker.schedulePeriodicSync(context)
-                        navController.navigate(Screen.Home.route) {
+                        val targetAction = intent?.getStringExtra("widget_action") ?: intent?.action
+                        val destination = when (targetAction) {
+                            TodoTacticalWidget.ACTION_OPEN_TODO -> Screen.Todo.createRoute("TODAY")
+                            GroceryWidget.ACTION_OPEN_GROCERY -> Screen.Grocery.route
+                            else -> Screen.Home.route
+                        }
+                        navController.navigate(destination) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
                     }

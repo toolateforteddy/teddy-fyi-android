@@ -87,6 +87,9 @@ abstract class TodoDao {
     @Query("SELECT * FROM todo_lists WHERE id = :id")
     abstract suspend fun getListByIdOneShot(id: String): TodoList?
 
+    @Query("SELECT * FROM todo_items WHERE id = :id")
+    abstract suspend fun getItemByIdOneShot(id: String): TodoItem?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertList(list: TodoList): Long
 

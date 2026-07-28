@@ -48,6 +48,10 @@ import fyi.teddy.android.todo.data.TodoList
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.glance.LocalContext
+import androidx.glance.appwidget.CheckBox
+import androidx.glance.appwidget.CheckboxDefaults
+import androidx.glance.appwidget.action.actionRunCallback
+import fyi.teddy.android.widget.ToggleTodoTaskAction
 import fyi.teddy.android.todo.ui.components.NeonTeal
 import fyi.teddy.android.utils.getIconByName
 import fyi.teddy.android.utils.getIconForTask
@@ -246,12 +250,31 @@ class TodoTacticalWidget : GlanceAppWidget() {
                 .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Checkbox Control
+            CheckBox(
+                checked = item.isCompleted,
+                onCheckedChange = actionRunCallback<ToggleTodoTaskAction>(
+                    actionParametersOf(ToggleTodoTaskAction.TASK_ID_KEY to item.id)
+                ),
+                colors = CheckboxDefaults.colors(
+                    checkedColor = badgeColorProvider,
+                    uncheckedColor = badgeColorProvider
+                )
+            )
+
+            Spacer(modifier = GlanceModifier.width(6.dp))
+
             // Space color tinted icon/badge
             Box(
                 modifier = GlanceModifier
                     .size(20.dp)
                     .background(badgeColorProvider)
-                    .cornerRadius(6.dp),
+                    .cornerRadius(6.dp)
+                    .clickable(
+                        actionRunCallback<ToggleTodoTaskAction>(
+                            actionParametersOf(ToggleTodoTaskAction.TASK_ID_KEY to item.id)
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (WidgetIconUtils.isEmoji(item.icon)) {
