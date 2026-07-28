@@ -153,26 +153,39 @@ class TodoTacticalWidget : GlanceAppWidget() {
                 }
             }
 
+            Spacer(modifier = GlanceModifier.height(6.dp))
+
+            // Grounded Header Divider
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(colors.outline)
+            ) {}
+
             Spacer(modifier = GlanceModifier.height(8.dp))
 
-            if (todayItems.isEmpty()) {
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ALL CLEAR FOR TODAY",
-                        style = TextStyle(
-                            color = colors.outline,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+            // Task List Container with Weight to fill upper space
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .defaultWeight()
+            ) {
+                if (todayItems.isEmpty()) {
+                    Box(
+                        modifier = GlanceModifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ALL CLEAR FOR TODAY",
+                            style = TextStyle(
+                                color = colors.outline,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         )
-                    )
-                }
-            } else {
-                Column(modifier = GlanceModifier.fillMaxWidth()) {
+                    }
+                } else {
                     val displayItems = todayItems.take(maxItems)
                     displayItems.forEachIndexed { index, item ->
                         val list = item.listId?.let { listsMap[it] }
@@ -182,6 +195,30 @@ class TodoTacticalWidget : GlanceAppWidget() {
                         }
                     }
                 }
+            }
+
+            // Bottom Quick Action Row to eliminate dead space void
+            Row(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .background(colors.surfaceVariant)
+                    .cornerRadius(8.dp)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .clickable(
+                        actionStartActivity<MainActivity>(
+                            actionParametersOf(WIDGET_ACTION_KEY to ACTION_OPEN_TODO)
+                        )
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "+ Add Task",
+                    style = TextStyle(
+                        color = colors.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
             }
         }
     }

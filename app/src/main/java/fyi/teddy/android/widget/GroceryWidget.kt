@@ -156,40 +156,79 @@ class GroceryWidget : GlanceAppWidget() {
                     }
                 }
 
+                Spacer(modifier = GlanceModifier.height(6.dp))
+
+                // Grounded Header Divider
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(colors.outline)
+                ) {}
+
                 Spacer(modifier = GlanceModifier.height(8.dp))
 
-                if (unboughtItems.isEmpty()) {
-                    Box(
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .defaultWeight(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "ALL STOCKED!",
-                            style = TextStyle(
-                                color = colors.outline,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                // Item List Container with Weight to fill upper space
+                Column(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                ) {
+                    if (unboughtItems.isEmpty()) {
+                        Box(
+                            modifier = GlanceModifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "ALL STOCKED!",
+                                style = TextStyle(
+                                    color = colors.outline,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             )
-                        )
-                    }
-                } else {
-                    val maxRows = when {
-                        size.height >= 220.dp -> 6
-                        size.height >= 160.dp -> 4
-                        else -> 3
-                    }
-                    val displayItems = unboughtItems.take(maxRows)
+                        }
+                    } else {
+                        val maxRows = when {
+                            size.height >= 220.dp -> 6
+                            size.height >= 160.dp -> 4
+                            else -> 3
+                        }
+                        val displayItems = unboughtItems.take(maxRows)
 
-                    Column(modifier = GlanceModifier.fillMaxWidth()) {
-                        displayItems.forEachIndexed { index, item ->
-                            GroceryRowItem(item = item)
-                            if (index < displayItems.size - 1) {
-                                Spacer(modifier = GlanceModifier.height(5.dp))
+                        Column(modifier = GlanceModifier.fillMaxWidth()) {
+                            displayItems.forEachIndexed { index, item ->
+                                GroceryRowItem(item = item)
+                                if (index < displayItems.size - 1) {
+                                    Spacer(modifier = GlanceModifier.height(5.dp))
+                                }
                             }
                         }
                     }
+                }
+
+                // Bottom Quick Action Row to eliminate dead space void
+                Row(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .background(colors.surfaceVariant)
+                        .cornerRadius(8.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .clickable(
+                            actionStartActivity<MainActivity>(
+                                actionParametersOf(WIDGET_ACTION_KEY to ACTION_OPEN_GROCERY)
+                            )
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "+ Add Item",
+                        style = TextStyle(
+                            color = colors.primary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
                 }
             }
         }

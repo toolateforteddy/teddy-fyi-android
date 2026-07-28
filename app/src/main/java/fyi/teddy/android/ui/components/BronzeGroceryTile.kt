@@ -267,9 +267,10 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            // Subtitle: "• 15 items •" in Serif
+            // Subtitle: "• 1 item •" or "• 15 items •" in Serif
+            val itemText = if (itemCount == 1) "1 item" else "$itemCount items"
             Text(
-                text = "• $itemCount items •",
+                text = "• $itemText •",
                 color = Color(0xFFBCADA0), // Lighter gray-bronze
                 fontSize = 15.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
