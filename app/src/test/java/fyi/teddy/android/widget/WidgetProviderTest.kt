@@ -14,6 +14,15 @@ import org.robolectric.annotation.Config
 class WidgetProviderTest {
 
     @Test
+    fun testGlanceWidgetReceiversInstantiation() {
+        val todoReceiver = TodoTacticalWidgetReceiver()
+        val groceryReceiver = GroceryWidgetReceiver()
+
+        assertNotNull(todoReceiver.glanceAppWidget)
+        assertNotNull(groceryReceiver.glanceAppWidget)
+    }
+
+    @Test
     fun testTacticalHexCanvasRenderer_emptyItems() {
         val bitmap = TacticalHexCanvasRenderer.renderHexGrid(
             todoItems = emptyList(),

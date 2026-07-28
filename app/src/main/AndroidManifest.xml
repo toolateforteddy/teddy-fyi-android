@@ -25,9 +25,9 @@
         </activity>
 
         <receiver
-            android:name=".widget.TodoTacticalWidgetProvider"
+            android:name=".widget.TodoTacticalWidgetReceiver"
             android:exported="true"
-            android:label="TODO Tactical Hex Widget">
+            android:label="TODO Tactical Widget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -37,7 +37,7 @@
         </receiver>
 
         <receiver
-            android:name=".widget.GroceryWidgetProvider"
+            android:name=".widget.GroceryWidgetReceiver"
             android:exported="true"
             android:label="Grocery List Widget">
             <intent-filter>

@@ -1,0 +1,215 @@
+package fyi.teddy.android.widget
+
+import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
+import androidx.glance.LocalSize
+import androidx.glance.action.actionStartActivity
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import fyi.teddy.android.MainActivity
+import fyi.teddy.android.auth.UserSession
+import fyi.teddy.android.data.AppDatabase
+import fyi.teddy.android.grocery.data.GroceryItem
+
+class GroceryWidget : GlanceAppWidget() {
+
+    companion object {
+        const val ACTION_OPEN_GROCERY = "fyi.teddy.android.ACTION_OPEN_GROCERY"
+    }
+
+    override val sizeMode: SizeMode = SizeMode.Exact
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val session = UserSession()
+        session.load(context)
+        val userId = session.userId ?: ""
+
+        val db = AppDatabase.getDatabase(context)
+        val allItems = db.groceryDao().getAllItemsOneShot()
+        val activeItems = allItems.filter {
+            !it.isDeleted && it.isActive && (it.userId == userId || userId.isBlank())
+        }
+
+        provideContent {
+            GlanceTheme {
+                GroceryWidgetContent(activeItems = activeItems)
+            }
+        }
+    }
+
+    @Composable
+    private fun GroceryWidgetContent(activeItems: List<GroceryItem>) {
+        val size = LocalSize.current
+        val colors = GlanceTheme.colors
+
+        val unboughtItems = activeItems.filter { !it.isBought }
+        val toBuyCount = unboughtItems.size
+
+        val isCompact = size.height < 110.dp
+
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(colors.background)
+                .cornerRadius(16.dp)
+                .padding(12.dp)
+                .clickable(actionStartActivity<MainActivity>())
+        ) {
+            if (isCompact) {
+                // Compact Horizontal View
+                Row(
+                    modifier = GlanceModifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$toBuyCount",
+                        style = TextStyle(
+                            color = colors.primary,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+
+                    Spacer(modifier = GlanceModifier.width(10.dp))
+
+                    Column {
+                        Text(
+                            text = if (toBuyCount == 1) "ITEM TO BUY" else "ITEMS TO BUY",
+                            style = TextStyle(
+                                color = colors.onBackground,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Text(
+                            text = "${activeItems.size} TOTAL ON LIST",
+                            style = TextStyle(
+                                color = colors.outline,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        )
+                    }
+                }
+            } else {
+                // Expanded View with Header + Item List
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "GROCERY LIST",
+                        style = TextStyle(
+                            color = colors.primary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+
+                    Text(
+                        text = "$toBuyCount TO BUY",
+                        style = TextStyle(
+                            color = colors.secondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.height(8.dp))
+
+                if (unboughtItems.isEmpty()) {
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .defaultWeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ALL STOCKED!",
+                            style = TextStyle(
+                                color = colors.outline,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                } else {
+                    val maxRows = when {
+                        size.height >= 220.dp -> 6
+                        size.height >= 160.dp -> 4
+                        else -> 3
+                    }
+                    val displayItems = unboughtItems.take(maxRows)
+
+                    Column(modifier = GlanceModifier.fillMaxWidth()) {
+                        displayItems.forEachIndexed { index, item ->
+                            GroceryRowItem(item = item)
+                            if (index < displayItems.size - 1) {
+                                Spacer(modifier = GlanceModifier.height(5.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun GroceryRowItem(item: GroceryItem) {
+        val colors = GlanceTheme.colors
+
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .background(colors.surfaceVariant)
+                .cornerRadius(8.dp)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = GlanceModifier
+                    .size(6.dp)
+                    .background(colors.primary)
+                    .cornerRadius(3.dp)
+            ) {}
+
+            Spacer(modifier = GlanceModifier.width(8.dp))
+
+            Text(
+                text = item.name,
+                style = TextStyle(
+                    color = colors.onSurfaceVariant,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1
+            )
+        }
+    }
+}

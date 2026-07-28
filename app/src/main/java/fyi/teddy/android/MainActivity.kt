@@ -36,8 +36,8 @@ import fyi.teddy.android.ui.screens.DebugScreen
 import fyi.teddy.android.ui.screens.HomeScreen
 import fyi.teddy.android.ui.screens.WeatherScreen
 import fyi.teddy.android.ui.theme.TeddyTheme
-import fyi.teddy.android.widget.GroceryWidgetProvider
-import fyi.teddy.android.widget.TodoTacticalWidgetProvider
+import fyi.teddy.android.widget.GroceryWidget
+import fyi.teddy.android.widget.TodoTacticalWidget
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -85,10 +85,10 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(intent) {
                     when (intent?.action) {
-                        TodoTacticalWidgetProvider.ACTION_OPEN_TODO -> {
+                        TodoTacticalWidget.ACTION_OPEN_TODO -> {
                             navController.navigate(Screen.Todo.createRoute(null))
                         }
-                        GroceryWidgetProvider.ACTION_OPEN_GROCERY -> {
+                        GroceryWidget.ACTION_OPEN_GROCERY -> {
                             navController.navigate(Screen.Grocery.route)
                         }
                     }
