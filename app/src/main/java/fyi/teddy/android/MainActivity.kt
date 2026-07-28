@@ -38,6 +38,7 @@ import fyi.teddy.android.ui.screens.WeatherScreen
 import fyi.teddy.android.ui.theme.TeddyTheme
 import fyi.teddy.android.widget.GroceryWidget
 import fyi.teddy.android.widget.TodoTacticalWidget
+import fyi.teddy.android.widget.WidgetUpdateHelper
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -46,6 +47,12 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleAuthRedirect(intent)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        WidgetUpdateHelper.updateAllTodoWidgets(this)
+        WidgetUpdateHelper.updateAllGroceryWidgets(this)
     }
 
     private fun handleAuthRedirect(intent: Intent?) {
@@ -84,9 +91,10 @@ class MainActivity : ComponentActivity() {
                 val lifecycleOwner = LocalLifecycleOwner.current
 
                 LaunchedEffect(intent) {
-                    when (intent?.action) {
+                    val targetAction = intent?.getStringExtra("widget_action") ?: intent?.action
+                    when (targetAction) {
                         TodoTacticalWidget.ACTION_OPEN_TODO -> {
-                            navController.navigate(Screen.Todo.createRoute(null))
+                            navController.navigate(Screen.Todo.createRoute("TODAY"))
                         }
                         GroceryWidget.ACTION_OPEN_GROCERY -> {
                             navController.navigate(Screen.Grocery.route)
@@ -128,11 +136,18 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Global Sync on Resume
+                // Global Sync on Resume & Widget Update on Loss of Focus
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
-                        if (event == Lifecycle.Event.ON_RESUME) {
-                            SyncWorker.enqueue(context)
+                        when (event) {
+                            Lifecycle.Event.ON_RESUME -> {
+                                SyncWorker.enqueue(context)
+                            }
+                            Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                                WidgetUpdateHelper.updateAllTodoWidgets(context)
+                                WidgetUpdateHelper.updateAllGroceryWidgets(context)
+                            }
+                            else -> {}
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)

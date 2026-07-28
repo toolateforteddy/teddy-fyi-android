@@ -33,11 +33,30 @@ import fyi.teddy.android.MainActivity
 import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.util.TaskSchedulerUtils
+import kotlinx.coroutines.flow.first
+
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.ColorFilter
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
+import androidx.core.graphics.toColorInt
+import androidx.glance.color.ColorProvider
+import fyi.teddy.android.todo.data.TodoList
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.glance.LocalContext
+import fyi.teddy.android.todo.ui.components.NeonTeal
+import fyi.teddy.android.utils.getIconByName
+import fyi.teddy.android.utils.getIconForTask
 
 class TodoTacticalWidget : GlanceAppWidget() {
 
     companion object {
         const val ACTION_OPEN_TODO = "fyi.teddy.android.ACTION_OPEN_TODO"
+        val WIDGET_ACTION_KEY = ActionParameters.Key<String>("widget_action")
     }
 
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -45,23 +64,40 @@ class TodoTacticalWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val session = UserSession()
         session.load(context)
-        val userId = session.userId ?: ""
+        val userId = session.userId ?: "unauthed"
 
         val db = AppDatabase.getDatabase(context)
-        val allItems = db.todoDao().getAllItemsOneShot()
-        val todayItems = allItems.filter {
-            !it.isDeleted && !it.isCompleted && (it.userId == userId || userId.isBlank())
+        val listsMap = try {
+            db.todoDao().getAllListsOneShot().associateBy { it.id }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+
+        val todayStr = TaskSchedulerUtils.getTodayDateString()
+        val rawTodayItems = try {
+            db.todoDao().getTodayItems(userId, todayStr).first()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val uncompleted = rawTodayItems.filter {
+            !it.isDeleted && !it.isCompleted && (it.userId == userId || (userId == "unauthed" && (it.userId == null || it.userId == "unauthed")))
+        }
+        val parents = uncompleted.filter { it.parentId == null }
+        val children = uncompleted.filter { it.parentId != null }.groupBy { it.parentId }
+
+        val todayItems = parents.filter { parent ->
+            parent.scheduledDate == todayStr || children[parent.id]?.any { it.scheduledDate == todayStr } == true
         }
 
         provideContent {
             GlanceTheme {
-                TodoWidgetContent(todayItems = todayItems)
+                TodoWidgetContent(todayItems = todayItems, listsMap = listsMap)
             }
         }
     }
 
     @Composable
-    private fun TodoWidgetContent(todayItems: List<TodoItem>) {
+    private fun TodoWidgetContent(todayItems: List<TodoItem>, listsMap: Map<String, TodoList>) {
         val size = LocalSize.current
         val colors = GlanceTheme.colors
 
@@ -77,7 +113,11 @@ class TodoTacticalWidget : GlanceAppWidget() {
                 .background(colors.background)
                 .cornerRadius(16.dp)
                 .padding(12.dp)
-                .clickable(actionStartActivity<MainActivity>())
+                .clickable(
+                    actionStartActivity<MainActivity>(
+                        actionParametersOf(WIDGET_ACTION_KEY to ACTION_OPEN_TODO)
+                    )
+                )
         ) {
             // Header Row
             Row(
@@ -135,7 +175,8 @@ class TodoTacticalWidget : GlanceAppWidget() {
                 Column(modifier = GlanceModifier.fillMaxWidth()) {
                     val displayItems = todayItems.take(maxItems)
                     displayItems.forEachIndexed { index, item ->
-                        TaskRowItem(item = item, index = index)
+                        val list = item.listId?.let { listsMap[it] }
+                        TaskRowItem(item = item, list = list)
                         if (index < displayItems.size - 1) {
                             Spacer(modifier = GlanceModifier.height(6.dp))
                         }
@@ -146,8 +187,19 @@ class TodoTacticalWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun TaskRowItem(item: TodoItem, index: Int) {
+    private fun TaskRowItem(item: TodoItem, list: TodoList?) {
+        val context = LocalContext.current
         val colors = GlanceTheme.colors
+
+        val itemColor = list?.colorHex?.let { hex ->
+            try {
+                if (hex.isNotBlank() && hex != "#000000") {
+                    androidx.compose.ui.graphics.Color(hex.toColorInt())
+                } else null
+            } catch (_: Exception) { null }
+        } ?: NeonTeal
+
+        val badgeColorProvider = ColorProvider(day = itemColor, night = itemColor)
 
         Row(
             modifier = GlanceModifier
@@ -157,13 +209,29 @@ class TodoTacticalWidget : GlanceAppWidget() {
                 .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Category status accent indicator
+            // Space color tinted icon/badge
             Box(
                 modifier = GlanceModifier
-                    .size(8.dp)
-                    .background(colors.primary)
-                    .cornerRadius(4.dp)
-            ) {}
+                    .size(20.dp)
+                    .background(badgeColorProvider)
+                    .cornerRadius(6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (WidgetIconUtils.isEmoji(item.icon)) {
+                    Text(
+                        text = item.icon!!,
+                        style = TextStyle(fontSize = 11.sp)
+                    )
+                } else {
+                    val iconRes = WidgetIconUtils.getWidgetIconRes(item.icon, item.title)
+                    Image(
+                        provider = ImageProvider(iconRes),
+                        contentDescription = null,
+                        modifier = GlanceModifier.size(12.dp),
+                        colorFilter = ColorFilter.tint(colors.onPrimary)
+                    )
+                }
+            }
 
             Spacer(modifier = GlanceModifier.width(8.dp))
 

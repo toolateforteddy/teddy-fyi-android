@@ -34,10 +34,14 @@ import fyi.teddy.android.auth.UserSession
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.grocery.data.GroceryItem
 
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
+
 class GroceryWidget : GlanceAppWidget() {
 
     companion object {
         const val ACTION_OPEN_GROCERY = "fyi.teddy.android.ACTION_OPEN_GROCERY"
+        val WIDGET_ACTION_KEY = ActionParameters.Key<String>("widget_action")
     }
 
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -76,7 +80,11 @@ class GroceryWidget : GlanceAppWidget() {
                 .background(colors.background)
                 .cornerRadius(16.dp)
                 .padding(12.dp)
-                .clickable(actionStartActivity<MainActivity>())
+                .clickable(
+                    actionStartActivity<MainActivity>(
+                        actionParametersOf(WIDGET_ACTION_KEY to ACTION_OPEN_GROCERY)
+                    )
+                )
         ) {
             if (isCompact) {
                 // Compact Horizontal View
@@ -97,7 +105,7 @@ class GroceryWidget : GlanceAppWidget() {
 
                     Column {
                         Text(
-                            text = if (toBuyCount == 1) "ITEM TO BUY" else "ITEMS TO BUY",
+                            text = if (toBuyCount == 1) "ITEM ON LIST" else "ITEMS ON LIST",
                             style = TextStyle(
                                 color = colors.onBackground,
                                 fontSize = 12.sp,
@@ -131,14 +139,21 @@ class GroceryWidget : GlanceAppWidget() {
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
-                    Text(
-                        text = "$toBuyCount TO BUY",
-                        style = TextStyle(
-                            color = colors.secondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                    Box(
+                        modifier = GlanceModifier
+                            .background(colors.primaryContainer)
+                            .cornerRadius(8.dp)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "$toBuyCount",
+                            style = TextStyle(
+                                color = colors.onPrimaryContainer,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
+                    }
                 }
 
                 Spacer(modifier = GlanceModifier.height(8.dp))
