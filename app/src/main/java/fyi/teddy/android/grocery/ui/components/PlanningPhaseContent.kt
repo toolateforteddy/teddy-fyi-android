@@ -3,6 +3,7 @@ package fyi.teddy.android.grocery.ui.components
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -114,15 +115,18 @@ fun PlanningPhaseContent(
         Spacer(modifier = Modifier.height(4.dp))
 
         // 2. The "Commonly Bought" Recommendation Tray
-        val storeSpecificRecs = remember(state.planningStoreContextId, recommendedItems, storeInfos) {
+        val storeSpecificRecs = remember(state.planningStoreContextId, recommendedItems, storeInfos, state.dismissedRecommendationIds) {
             val storeId = state.planningStoreContextId
+            val availableRecs = recommendedItems.filter { rec ->
+                !state.dismissedRecommendationIds.contains(rec.id)
+            }
             if (storeId == null) {
                 // General: items with high frequency
-                recommendedItems.take(8)
+                availableRecs.take(8)
             } else {
                 // Filter OUT items that are explicitly marked as unavailable for this store
                 // Items with NO mapping for this store are included by default
-                val filtered = recommendedItems.filter { rec ->
+                val filtered = availableRecs.filter { rec ->
                     val info = storeInfos.find { (it.groceryItemId == rec.id) && (it.storeId == storeId) }
                     info?.isAvailable ?: true
                 }
@@ -149,10 +153,11 @@ fun PlanningPhaseContent(
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(storeSpecificRecs) { rec ->
+                    items(storeSpecificRecs, key = { it.id }) { rec ->
                         RecommendationTile(
                             name = rec.name,
-                            onClick = { onEvent(GroceryUiEvent.AddRecommendedItems(listOf(rec.id))) }
+                            onClick = { onEvent(GroceryUiEvent.AddRecommendedItems(listOf(rec.id))) },
+                            onDismiss = { onEvent(GroceryUiEvent.DismissRecommendation(rec.id)) }
                         )
                     }
                 }
@@ -214,32 +219,62 @@ fun PlanningPhaseContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecommendationTile(name: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        color = Color(0xFF1A1A1A),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
+fun RecommendationTile(
+    name: String,
+    onClick: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState()
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+            onDismiss()
+        }
+    }
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Red.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = "Dismiss", tint = Color.White)
+            }
+        }
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Surface(
+            onClick = onClick,
+            color = Color(0xFF1A1A1A),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-                maxLines = 1
-            )
-            Icon(
-                Icons.Default.Add,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1
+                )
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

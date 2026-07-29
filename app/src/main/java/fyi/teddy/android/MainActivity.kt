@@ -55,6 +55,14 @@ class MainActivity : ComponentActivity() {
         WidgetUpdateHelper.updateAllGroceryWidgets(this)
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) {
+            WidgetUpdateHelper.updateAllTodoWidgets(this)
+            WidgetUpdateHelper.updateAllGroceryWidgets(this)
+        }
+    }
+
     private fun handleAuthRedirect(intent: Intent?) {
         val data = intent?.data ?: return
         if (data.scheme == "com.googleusercontent.apps.34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav") {

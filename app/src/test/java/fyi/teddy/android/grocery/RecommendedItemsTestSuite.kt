@@ -9,6 +9,7 @@ import fyi.teddy.android.grocery.data.GroceryDao
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.grocery.ui.GroceryPhase
+import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryViewModel
 import fyi.teddy.android.grocery.ui.addRecommendedItems
 import fyi.teddy.android.grocery.ui.markDoneForTrip
@@ -337,5 +338,40 @@ class RecommendedItemsTestSuite {
         // availableRecommendations should contain Coffee
         assertEquals(1, availableRecommendations.size)
         assertEquals("Coffee", availableRecommendations[0].name)
+    }
+
+    @Test
+    fun testDismissRecommendationAddsToDismissedSet() = runTest {
+        val job = launch { viewModel.state.collect {} }
+        try {
+            // When
+            viewModel.onEvent(GroceryUiEvent.DismissRecommendation("item_123"))
+            idleLooperAndAdvance()
+
+            // Then
+            assertTrue(viewModel.state.value.dismissedRecommendationIds.contains("item_123"))
+        } finally {
+            job.cancel()
+        }
+    }
+
+    @Test
+    fun testDismissRecommendationResetsOnMarkDoneForTrip() = runTest {
+        val job = launch { viewModel.state.collect {} }
+        try {
+            // Given
+            viewModel.onEvent(GroceryUiEvent.DismissRecommendation("item_123"))
+            idleLooperAndAdvance()
+            assertTrue(viewModel.state.value.dismissedRecommendationIds.contains("item_123"))
+
+            // When
+            viewModel.markDoneForTrip()
+            idleLooperAndAdvance()
+
+            // Then
+            assertTrue(viewModel.state.value.dismissedRecommendationIds.isEmpty())
+        } finally {
+            job.cancel()
+        }
     }
 }

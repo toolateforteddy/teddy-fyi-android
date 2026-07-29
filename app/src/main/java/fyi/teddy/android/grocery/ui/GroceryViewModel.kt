@@ -77,6 +77,7 @@ class GroceryViewModel(
     internal val _activeInviteCode = MutableStateFlow<String?>(null)
     internal val _snackbarMessage = MutableStateFlow<GrocerySnackbarMessage?>(null)
     internal val _isCategorizing = MutableStateFlow(false)
+    internal val _dismissedRecommendationIds = MutableStateFlow<Set<String>>(emptySet())
 
     internal val categorizer = GroceryCategorizer(application)
 
@@ -139,7 +140,8 @@ class GroceryViewModel(
         _unsyncedCount,
         _lastSyncStatus,
         _isSyncing,
-        _isSyncEnqueued
+        _isSyncEnqueued,
+        _dismissedRecommendationIds
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         GroceryUiState(
@@ -164,7 +166,8 @@ class GroceryViewModel(
             unsyncedCount = args[18] as Int,
             lastSyncStatus = args[19] as String?,
             isSyncing = args[20] as Boolean,
-            isSyncEnqueued = args[21] as Boolean
+            isSyncEnqueued = args[21] as Boolean,
+            dismissedRecommendationIds = args[22] as Set<String>
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -258,8 +261,13 @@ class GroceryViewModel(
             }
             is GroceryUiEvent.RemoveListMember -> removeListMember(event.member)
             is GroceryUiEvent.AddRecommendedItems -> addRecommendedItems(event.selectedIds)
+            is GroceryUiEvent.DismissRecommendation -> dismissRecommendation(event.itemId)
             else -> {}
         }
+    }
+
+    fun dismissRecommendation(itemId: String) {
+        _dismissedRecommendationIds.update { it + itemId }
     }
 
     // Sources from repository

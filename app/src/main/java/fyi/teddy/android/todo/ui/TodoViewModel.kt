@@ -329,9 +329,6 @@ class TodoViewModel(
             _recentlyCompletedIds.update { it + item.id }
             viewModelScope.launch {
                 _confettiTrigger.emit(Unit)
-                delay(CONFETTI_DELAY_MS.milliseconds)
-                _recentlyCompletedIds.update { it - item.id }
-
                 if (item.recurrenceRule != null) {
                     val nextTime = fyi.teddy.android.todo.util.TaskSchedulerUtils.calculateNextRecurrenceTime(
                         System.currentTimeMillis(),
@@ -345,6 +342,8 @@ class TodoViewModel(
                 } else {
                     updateItem(item.copy(isCompleted = true))
                 }
+                delay(CONFETTI_DELAY_MS.milliseconds)
+                _recentlyCompletedIds.update { it - item.id }
             }
         } else {
             _recentlyCompletedIds.update { it - item.id }

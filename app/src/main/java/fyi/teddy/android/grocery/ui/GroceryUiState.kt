@@ -22,5 +22,6 @@ data class GroceryUiState(
     val unsyncedCount: Int = 0,
     val lastSyncStatus: String? = null,
     val isSyncing: Boolean = false,
-    val isSyncEnqueued: Boolean = false
+    val isSyncEnqueued: Boolean = false,
+    val dismissedRecommendationIds: Set<String> = emptySet()
 )

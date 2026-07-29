@@ -148,6 +148,7 @@ fun GroceryViewModel.toggleBought(item: GroceryItem, isChecked: Boolean) {
 
 fun GroceryViewModel.markDoneForTrip() {
     val listId = _selectedListId.value
+    _dismissedRecommendationIds.value = emptySet()
     viewModelScope.launch {
         repository.markDoneForTrip(userId, listId)
         setShoppingStoreId(null)

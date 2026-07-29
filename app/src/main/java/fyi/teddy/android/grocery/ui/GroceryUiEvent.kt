@@ -55,4 +55,5 @@ sealed interface GroceryUiEvent {
     data class DismissSnackbar(val messageId: Long) : GroceryUiEvent
     data class RemoveListMember(val member: GroceryListMember) : GroceryUiEvent
     data class AddRecommendedItems(val selectedIds: List<String>) : GroceryUiEvent
+    data class DismissRecommendation(val itemId: String) : GroceryUiEvent
 }
