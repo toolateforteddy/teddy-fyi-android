@@ -45,16 +45,11 @@ import androidx.core.graphics.toColorInt
 import androidx.glance.color.ColorProvider
 import fyi.teddy.android.todo.data.TodoList
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.glance.LocalContext
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.CheckboxDefaults
 import androidx.glance.appwidget.action.actionRunCallback
 import fyi.teddy.android.widget.ToggleTodoTaskAction
 import fyi.teddy.android.todo.ui.components.NeonTeal
-import fyi.teddy.android.utils.getIconByName
-import fyi.teddy.android.utils.getIconForTask
 
 class TodoTacticalWidget : GlanceAppWidget() {
 
@@ -84,7 +79,7 @@ class TodoTacticalWidget : GlanceAppWidget() {
             emptyList()
         }
         val uncompleted = rawTodayItems.filter {
-            !it.isDeleted && !it.isCompleted && (it.userId == userId || (userId == "unauthed" && (it.userId == null || it.userId == "unauthed")))
+            !it.isDeleted && !it.isCompleted && (it.userId == userId || (userId == "unauthed" && it.userId == null))
         }
         val parents = uncompleted.filter { it.parentId == null }
         val children = uncompleted.filter { it.parentId != null }.groupBy { it.parentId }
@@ -229,7 +224,6 @@ class TodoTacticalWidget : GlanceAppWidget() {
 
     @Composable
     private fun TaskRowItem(item: TodoItem, list: TodoList?) {
-        val context = LocalContext.current
         val colors = GlanceTheme.colors
 
         val itemColor = list?.colorHex?.let { hex ->

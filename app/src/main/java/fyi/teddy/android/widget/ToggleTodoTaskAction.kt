@@ -5,7 +5,6 @@ import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import fyi.teddy.android.data.AppDatabase
-import fyi.teddy.android.todo.data.TodoItem
 
 class ToggleTodoTaskAction : ActionCallback {
 
