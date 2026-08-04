@@ -29,7 +29,7 @@ import fyi.teddy.android.todo.data.TodoList
         SyncLog::class,
         UserSyncMetadata::class,
     ], 
-    version = 34,
+    version = 35,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

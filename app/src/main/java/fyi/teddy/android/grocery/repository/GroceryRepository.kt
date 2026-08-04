@@ -142,6 +142,10 @@ class GroceryRepository(
         scheduleSync()
     }
 
+    suspend fun updateListPositions(lists: List<GroceryList>) {
+        groceryDao.updateListPositions(lists)
+    }
+
     suspend fun deleteList(list: GroceryList) {
         if (list.syncState == "PENDING_INSERT") {
             groceryDao.deleteList(list)

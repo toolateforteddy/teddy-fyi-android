@@ -81,8 +81,15 @@ abstract class TodoDao {
         return 1
     }
 
-    @Query("SELECT * FROM todo_lists WHERE userId = :userId AND is_deleted = 0 ORDER BY createdAt ASC")
+    @Query("SELECT * FROM todo_lists WHERE userId = :userId AND is_deleted = 0 ORDER BY position ASC, createdAt ASC")
     abstract fun getAllLists(userId: String): Flow<List<TodoList>>
+
+    @Transaction
+    open suspend fun updateListPositions(lists: List<TodoList>) {
+        lists.forEachIndexed { index, list ->
+            updateList(list.copy(position = index))
+        }
+    }
 
     @Query("SELECT * FROM todo_lists WHERE id = :id")
     abstract suspend fun getListByIdOneShot(id: String): TodoList?

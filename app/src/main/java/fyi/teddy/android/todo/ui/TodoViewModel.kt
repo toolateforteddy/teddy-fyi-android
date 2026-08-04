@@ -14,6 +14,7 @@ import fyi.teddy.android.todo.repository.claimUnownedItems
 import fyi.teddy.android.todo.repository.deleteList
 import fyi.teddy.android.todo.repository.insertList
 import fyi.teddy.android.todo.repository.updateList
+import fyi.teddy.android.todo.repository.updateListPositions
 import fyi.teddy.android.todo.util.TodoResetScheduler
 import fyi.teddy.android.util.StringUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -393,6 +394,12 @@ class TodoViewModel(
         val formattedList = list.copy(name = formatTitle(list.name))
         viewModelScope.launch {
             repository.updateList(formattedList)
+        }
+    }
+
+    fun reorderLists(lists: List<TodoList>) {
+        viewModelScope.launch {
+            repository.updateListPositions(lists)
         }
     }
 

@@ -10,6 +10,7 @@ data class GroceryList(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val name: String,
+    val position: Int = 0,
     val ownerId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 

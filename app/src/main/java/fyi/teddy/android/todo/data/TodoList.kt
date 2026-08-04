@@ -11,6 +11,7 @@ data class TodoList(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val colorHex: String = "#000000",
+    val position: Int = 0,
     val userId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 

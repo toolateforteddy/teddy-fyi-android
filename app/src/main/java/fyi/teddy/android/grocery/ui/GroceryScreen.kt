@@ -32,6 +32,7 @@ import fyi.teddy.android.grocery.ui.components.JoinListDialog
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
 import fyi.teddy.android.grocery.ui.components.PlanningPhaseContent
 import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog
+import fyi.teddy.android.grocery.ui.components.ReorderGrocerySpacesDialog
 import fyi.teddy.android.grocery.ui.components.ShareListDialog
 import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
 import kotlinx.coroutines.delay
@@ -99,6 +100,7 @@ fun GroceryScreen(
     var showRenameListDialog by remember { mutableStateOf(value = false) }
     var showJoinListDialog by remember { mutableStateOf(value = false) }
     var showShareListDialog by remember { mutableStateOf(value = false) }
+    var showReorderSpacesModal by remember { mutableStateOf(value = false) }
     
     val nameFocusRequester = remember { FocusRequester() }
 
@@ -170,6 +172,13 @@ fun GroceryScreen(
                         }
                     }
                     if (state.isEditMode) {
+                        IconButton(onClick = { showReorderSpacesModal = true }) {
+                            Icon(
+                                Icons.Default.FormatLineSpacing,
+                                contentDescription = "Reorder Spaces",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(onClick = onManageConfig) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
@@ -407,6 +416,17 @@ fun GroceryScreen(
                         },
                         onRemoveMember = { member ->
                             viewModel.onEvent(GroceryUiEvent.RemoveListMember(member))
+                        }
+                    )
+                }
+
+                if (showReorderSpacesModal) {
+                    ReorderGrocerySpacesDialog(
+                        spaces = lists,
+                        onDismiss = { showReorderSpacesModal = false },
+                        onSave = { reordered ->
+                            viewModel.onEvent(GroceryUiEvent.ReorderLists(reordered))
+                            showReorderSpacesModal = false
                         }
                     )
                 }

@@ -109,6 +109,12 @@ fun GroceryViewModel.updateList(list: GroceryList) {
     }
 }
 
+fun GroceryViewModel.reorderLists(lists: List<GroceryList>) {
+    viewModelScope.launch {
+        repository.updateListPositions(lists)
+    }
+}
+
 fun GroceryViewModel.updateItem(item: GroceryItem) {
     viewModelScope.launch { repository.updateItem(item) }
 }

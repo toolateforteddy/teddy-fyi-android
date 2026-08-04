@@ -220,9 +220,16 @@ abstract class GroceryDao {
         SELECT DISTINCT l.* FROM grocery_lists l
         LEFT JOIN grocery_list_members m ON l.id = m.listId
         WHERE l.ownerId = :userId OR m.userId = :userId
-        ORDER BY l.createdAt ASC
+        ORDER BY l.position ASC, l.createdAt ASC
     """)
     abstract fun getAllLists(userId: String): Flow<List<GroceryList>>
+
+    @Transaction
+    open suspend fun updateListPositions(lists: List<GroceryList>) {
+        lists.forEachIndexed { index, list ->
+            updateList(list.copy(position = index))
+        }
+    }
 
     @Query("SELECT * FROM grocery_lists WHERE id = :id")
     abstract suspend fun getListByIdOneShot(id: String): GroceryList?

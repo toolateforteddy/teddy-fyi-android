@@ -34,7 +34,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 17
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 17, true, AppDatabase.MIGRATION_16_17)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 17, true, DatabaseMigrations.MIGRATION_16_17)
         
         // Verify today's task has scheduledDate set and future task has null
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
@@ -69,7 +69,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 18
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 18, true, AppDatabase.MIGRATION_17_18)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 18, true, DatabaseMigrations.MIGRATION_17_18)
         
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
         
@@ -115,7 +115,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 19
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 19, true, AppDatabase.MIGRATION_18_19)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 19, true, DatabaseMigrations.MIGRATION_18_19)
         
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
         
@@ -150,7 +150,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 20
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 20, true, AppDatabase.MIGRATION_19_20)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 20, true, DatabaseMigrations.MIGRATION_19_20)
         
         // 1. Verify table todo_lists exists
         val listsCursor = migratedDb.query("SELECT * FROM `todo_lists`")
@@ -189,7 +189,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 21
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 21, true, AppDatabase.MIGRATION_20_21)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 21, true, DatabaseMigrations.MIGRATION_20_21)
         
         // Verify column priority exists and is 0 for legacy task
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
@@ -224,7 +224,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 22
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 22, true, AppDatabase.MIGRATION_21_22)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 22, true, DatabaseMigrations.MIGRATION_21_22)
         
         // Verify column recurrenceRule exists and is formatted as FREQ=DAILY;INTERVAL=5 for legacy task
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
@@ -270,7 +270,7 @@ class AppDatabaseMigrationTest {
         db.close()
 
         // Run migration to 29
-        val migratedDb = helper.runMigrationsAndValidate(testDb, 29, true, AppDatabase.MIGRATION_28_29)
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 29, true, DatabaseMigrations.MIGRATION_28_29)
         
         // Verify column lastScheduledDate exists and is null initially for the existing task
         val cursor = migratedDb.query("SELECT * FROM `todo_items`")
@@ -290,5 +290,29 @@ class AppDatabaseMigrationTest {
         
         assert(foundTask)
         cursor.close()
+    }
+
+    @Test
+    fun migrate34To35() {
+        val db = helper.createDatabase(testDb, 34)
+        db.execSQL("INSERT INTO `todo_lists` (`id`, `name`, `colorHex`, `createdAt`, `sync_state`, `version`, `is_deleted`) VALUES ('list-1', 'Personal', '#000000', 1000, 'SYNCED', 1, 0)")
+        db.execSQL("INSERT INTO `grocery_lists` (`id`, `name`, `createdAt`, `sync_state`, `version`, `is_deleted`) VALUES ('glist-1', 'Groceries', 1000, 'SYNCED', 1, 0)")
+        db.close()
+
+        val migratedDb = helper.runMigrationsAndValidate(testDb, 35, true, DatabaseMigrations.MIGRATION_34_35)
+
+        val cursor = migratedDb.query("SELECT * FROM `todo_lists`")
+        assert(cursor.moveToNext())
+        val posIndex = cursor.getColumnIndex("position")
+        assert(posIndex != -1)
+        assert(cursor.getInt(posIndex) == 0)
+        cursor.close()
+
+        val gCursor = migratedDb.query("SELECT * FROM `grocery_lists`")
+        assert(gCursor.moveToNext())
+        val gPosIndex = gCursor.getColumnIndex("position")
+        assert(gPosIndex != -1)
+        assert(gCursor.getInt(gPosIndex) == 0)
+        gCursor.close()
     }
 }

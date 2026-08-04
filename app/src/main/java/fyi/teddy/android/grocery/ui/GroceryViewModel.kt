@@ -251,6 +251,7 @@ class GroceryViewModel(
             is GroceryUiEvent.InsertList -> insertList(event.name)
             is GroceryUiEvent.DeleteList -> deleteList(event.list)
             is GroceryUiEvent.UpdateList -> updateList(event.list)
+            is GroceryUiEvent.ReorderLists -> reorderLists(event.lists)
             is GroceryUiEvent.ShareList -> shareListWithUser(event.listId, event.userId)
             is GroceryUiEvent.CreateInvite -> createInvite(event.listId)
             is GroceryUiEvent.JoinList -> joinList(event.code)

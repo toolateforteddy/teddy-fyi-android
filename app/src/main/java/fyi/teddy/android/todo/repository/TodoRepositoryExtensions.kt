@@ -16,6 +16,10 @@ suspend fun TodoRepository.updateList(list: TodoList) {
     scheduleSync()
 }
 
+suspend fun TodoRepository.updateListPositions(lists: List<TodoList>) {
+    todoDao.updateListPositions(lists)
+}
+
 suspend fun TodoRepository.deleteList(list: TodoList) {
     if (list.syncState == "PENDING_INSERT") {
         todoDao.deleteListAndNullifyItems(list)

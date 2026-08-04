@@ -62,10 +62,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.filled.FormatLineSpacing
 import fyi.teddy.android.R
 import fyi.teddy.android.todo.ui.components.AddListDialog
 import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
 import fyi.teddy.android.todo.ui.components.EditListDialog
+import fyi.teddy.android.todo.ui.components.ReorderSpacesDialog
 import fyi.teddy.android.todo.ui.components.HexTimeline
 import fyi.teddy.android.todo.ui.components.NeonTeal
 import fyi.teddy.android.todo.ui.components.TodoEmptyState
@@ -130,6 +132,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     var showPlanningDatePicker by remember { mutableStateOf(false) }
     var showAddListDialog by remember { mutableStateOf(false) }
+    var showReorderSpacesModal by remember { mutableStateOf(false) }
     var listToEdit by remember { mutableStateOf<fyi.teddy.android.todo.data.TodoList?>(null) }
     val expandedParentIds = remember { mutableStateOf(setOf<String>()) }
     val parties = remember { mutableStateListOf<Party>() }
@@ -178,6 +181,17 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
             onConfirm = { name, colorHex ->
                 viewModel.insertList(name, colorHex)
                 showAddListDialog = false
+            }
+        )
+    }
+
+    if (showReorderSpacesModal) {
+        ReorderSpacesDialog(
+            spaces = allLists,
+            onDismiss = { showReorderSpacesModal = false },
+            onSave = { reordered ->
+                viewModel.reorderLists(reordered)
+                showReorderSpacesModal = false
             }
         )
     }
@@ -303,6 +317,13 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         }
 
                         if (isEditMode) {
+                            IconButton(onClick = { showReorderSpacesModal = true }) {
+                                Icon(
+                                    Icons.Default.FormatLineSpacing,
+                                    contentDescription = "Reorder Spaces",
+                                    tint = NeonTeal
+                                )
+                            }
                             IconButton(onClick = { showClearAllConfirmation = true }) {
                                 Icon(
                                     Icons.Default.Delete,
