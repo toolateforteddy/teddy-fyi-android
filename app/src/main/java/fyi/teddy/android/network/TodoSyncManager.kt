@@ -126,7 +126,13 @@ object TodoSyncManager {
                 remoteListsDeleted++
             } else {
                 decodeDto(changeDelta.data, TodoListDto.serializer())?.let { dto ->
-                    todoDao.upsertList(dto.toEntity().copy(syncState = "SYNCED", version = changeDelta.version))
+                    // @Upsert replaces the whole row, so a DTO without a position would
+                    // otherwise reset local list ordering on every remote change.
+                    val localPosition = todoDao.getListByIdOneShot(dto.id)?.position ?: 0
+                    todoDao.upsertList(
+                        dto.toEntity(fallbackPosition = localPosition)
+                            .copy(syncState = "SYNCED", version = changeDelta.version)
+                    )
                     remoteListsUpserted++
                 }
             }

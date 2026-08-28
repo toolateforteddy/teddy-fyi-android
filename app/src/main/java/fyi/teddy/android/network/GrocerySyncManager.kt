@@ -163,7 +163,13 @@ object GrocerySyncManager {
                 deleted++
             } else {
                 decodeDto(change.data, GroceryListDto.serializer())?.let { dto ->
-                    dao.upsertList(dto.toEntity().copy(syncState = "SYNCED", version = change.version))
+                    // See TodoSyncManager.processRemoteLists: preserve local ordering when
+                    // the server does not report a position.
+                    val localPosition = dao.getListByIdOneShot(dto.id)?.position ?: 0
+                    dao.upsertList(
+                        dto.toEntity(fallbackPosition = localPosition)
+                            .copy(syncState = "SYNCED", version = change.version)
+                    )
                     upserted++
                 }
             }

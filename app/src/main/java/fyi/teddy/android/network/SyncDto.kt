@@ -147,6 +147,9 @@ data class TodoListDto(
     @SerialName("color_hex") val colorHex: String,
     @SerialName("user_id") val userId: String?,
     @SerialName("created_at") val createdAt: Long,
+    // Nullable so a server that does not yet persist list ordering is
+    // distinguishable from one that genuinely reports position 0.
+    val position: Int? = null,
     @SerialName("sync_state") val syncState: String = "SYNCED",
     val version: Int = 1,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
@@ -178,6 +181,8 @@ data class GroceryListDto(
     val name: String,
     @SerialName("owner_id") val ownerId: String?,
     @SerialName("created_at") val createdAt: Long,
+    // Nullable for the same reason as TodoListDto.position.
+    val position: Int? = null,
     @SerialName("sync_state") val syncState: String = "SYNCED",
     val version: Int = 1,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
@@ -293,19 +298,21 @@ fun TodoList.toDto(): TodoListDto {
         colorHex = colorHex,
         userId = userId,
         createdAt = createdAt,
+        position = position,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
     )
 }
 
-fun TodoListDto.toEntity(): TodoList {
+fun TodoListDto.toEntity(fallbackPosition: Int = 0): TodoList {
     return TodoList(
         id = id,
         name = name,
         colorHex = colorHex,
         userId = userId,
         createdAt = createdAt,
+        position = position ?: fallbackPosition,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
