@@ -29,7 +29,7 @@ import fyi.teddy.android.todo.repository.TodoRepository
 import fyi.teddy.android.todo.ui.components.TodoItemIntent
 import fyi.teddy.android.todo.ui.components.TodoItemMenu
 import fyi.teddy.android.todo.ui.components.TodoMenuContext
-import fyi.teddy.android.util.StringUtils
+import fyi.teddy.android.utils.StringUtils
 import fyi.teddy.android.ui.components.BattleMapTodoGrid
 import fyi.teddy.android.ui.components.BronzeGroceryTile
 import kotlinx.coroutines.flow.flowOf

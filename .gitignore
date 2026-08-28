@@ -41,3 +41,6 @@ captures/
 
 # Gradle
 # .gradle/ and build/ are already ignored above
+
+# Scratch output from local lint/detekt runs
+lint.errors

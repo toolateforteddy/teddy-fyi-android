@@ -147,7 +147,7 @@ object NetworkClient {
             val refreshClient = refreshClientFactory()
 
             try {
-                val response = refreshClient.post("https://api-rust.teddy.fyi/auth/refresh") {
+                val response = refreshClient.post(ApiRoutes.REFRESH) {
                     contentType(ContentType.Application.Json)
                     setBody(
                         RefreshRequest(

@@ -100,7 +100,14 @@ class SyncWorker(
         val db = AppDatabase.getDatabase(applicationContext)
         val sessionUserId = session.userId ?: ""
         val lastSyncedAt = getOrMigrateLastSyncedAt(db, sessionUserId, workerId)
-        val clientId = session.clientUuid!!
+        val clientId = session.clientUuid
+        if (clientId == null) {
+            // session.load() normally mints one; if it somehow did not, crashing here would
+            // put the worker into an endless WorkManager retry loop.
+            Log.e(TAG, "[$workerId] No client UUID on the session, skipping sync.")
+            recordSyncLog("FAILURE", startTime, "No client UUID on the session.")
+            return Result.failure()
+        }
 
         val isFirstSync = lastSyncedAt == null
         val sentCounts = collectLocalChanges(db, isFirstSync)
@@ -110,7 +117,7 @@ class SyncWorker(
         Log.d(TAG, "[$workerId] Sending sync payload. Counts: $sentCounts")
 
         val response = try {
-            NetworkClient.client.post("https://api-rust.teddy.fyi/api/sync") {
+            NetworkClient.client.post(ApiRoutes.SYNC) {
                 contentType(ContentType.Application.Json)
                 setBody(syncRequest)
             }

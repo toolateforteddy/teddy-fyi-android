@@ -25,11 +25,9 @@ data class JoinResponse(
 
 @Suppress("TooGenericExceptionCaught", "SwallowedException")
 object GroceryNetworkRepository {
-    private const val BASE_URL = "https://api-rust.teddy.fyi/api/lists"
-
     suspend fun createInvite(listId: String): String? {
         return try {
-            val response = NetworkClient.client.post("$BASE_URL/invite") {
+            val response = NetworkClient.client.post(ApiRoutes.LIST_INVITE) {
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("list_id" to listId))
             }
@@ -45,7 +43,7 @@ object GroceryNetworkRepository {
 
     suspend fun joinList(code: String): String? {
         return try {
-            val response = NetworkClient.client.post("$BASE_URL/join") {
+            val response = NetworkClient.client.post(ApiRoutes.LIST_JOIN) {
                 contentType(ContentType.Application.Json)
                 setBody(JoinRequest(code))
             }

@@ -56,18 +56,20 @@ fun GroceryList.toDto(): GroceryListDto {
         name = name,
         ownerId = ownerId,
         createdAt = createdAt,
+        position = position,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
     )
 }
 
-fun GroceryListDto.toEntity(): GroceryList {
+fun GroceryListDto.toEntity(fallbackPosition: Int = 0): GroceryList {
     return GroceryList(
         id = id,
         name = name,
         ownerId = ownerId,
         createdAt = createdAt,
+        position = position ?: fallbackPosition,
         syncState = syncState,
         version = version,
         isDeleted = isDeleted
