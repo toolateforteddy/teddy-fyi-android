@@ -1,4 +1,4 @@
-package fyi.teddy.android.util
+package fyi.teddy.android.utils
 
 import java.util.Locale
 

@@ -5,6 +5,7 @@ import fyi.teddy.android.todo.data.TodoDao
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
 import fyi.teddy.android.todo.util.TaskSchedulerUtils
+import fyi.teddy.android.network.ApiRoutes
 import fyi.teddy.android.network.NetworkClient
 import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.widget.WidgetUpdateHelper
@@ -115,7 +116,7 @@ class TodoRepository(
      */
     suspend fun assignIcon(item: TodoItem, idToken: String): String? {
         return try {
-            val response = NetworkClient.client.post("https://api-rust.teddy.fyi/api/assign-icon") {
+            val response = NetworkClient.client.post(ApiRoutes.ASSIGN_ICON) {
                 header(HttpHeaders.Authorization, "Bearer $idToken")
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("todo_title" to item.title))

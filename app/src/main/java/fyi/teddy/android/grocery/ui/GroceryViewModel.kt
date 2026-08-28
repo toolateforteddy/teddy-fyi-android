@@ -20,7 +20,7 @@ import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
 import fyi.teddy.android.grocery.domain.ai.GroceryCategorizer
 import fyi.teddy.android.grocery.repository.GroceryRepository
 import fyi.teddy.android.network.SyncWorker
-import fyi.teddy.android.util.StringUtils
+import fyi.teddy.android.utils.StringUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -118,56 +118,122 @@ class GroceryViewModel(
         flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    val state: StateFlow<GroceryUiState> = combine(
+    // The UI state is assembled from more flows than `combine` has a typed overload for.
+    // Grouping them keeps every field type-checked; the previous single 23-flow `combine`
+    // indexed an `Array<Any?>` by hand, so inserting a flow anywhere but the end silently
+    // shifted every later field into a ClassCastException at runtime.
+    private data class PhaseState(
+        val currentPhase: GroceryPhase,
+        val selectedStoreIds: Set<String>,
+        val planningStoreContextId: String?,
+        val shoppingStoreId: String?,
+        val isEditMode: Boolean
+    )
+
+    private data class ItemEntryState(
+        val newItemName: String,
+        val newItemQuantity: String,
+        val newItemUnit: String?,
+        val newItemInput: String,
+        val selectedCategoryId: String?
+    )
+
+    private data class ListSessionState(
+        val showRecommendedDialog: Boolean,
+        val recentlyCheckedIds: Set<String>,
+        val selectedListId: String?,
+        val activeInviteCode: String?,
+        val snackbarMessage: GrocerySnackbarMessage?
+    )
+
+    private data class AssistState(
+        val isAiReady: Boolean,
+        val isCategorizing: Boolean,
+        val hasItemsInDefaultList: Boolean,
+        val dismissedRecommendationIds: Set<String>
+    )
+
+    private data class SyncState(
+        val unsyncedCount: Int,
+        val lastSyncStatus: String?,
+        val isSyncing: Boolean,
+        val isSyncEnqueued: Boolean
+    )
+
+    private val phaseState = combine(
         _currentPhase,
         _selectedStoreIds,
         _planningStoreContextId,
         _shoppingStoreId,
         _isEditMode,
-        _showRecommendedDialog,
+        ::PhaseState
+    )
+
+    private val itemEntryState = combine(
         _newItemName,
         _newItemQuantity,
         _newItemUnit,
         _newItemInput,
         _selectedCategoryId,
+        ::ItemEntryState
+    )
+
+    private val listSessionState = combine(
+        _showRecommendedDialog,
         _recentlyCheckedIds,
         _selectedListId,
         _activeInviteCode,
         _snackbarMessage,
+        ::ListSessionState
+    )
+
+    private val assistState = combine(
         categorizer.isReady,
         _isCategorizing,
         _hasDefaultItems,
+        _dismissedRecommendationIds,
+        ::AssistState
+    )
+
+    private val syncState = combine(
         _unsyncedCount,
         _lastSyncStatus,
         _isSyncing,
         _isSyncEnqueued,
-        _dismissedRecommendationIds
-    ) { args ->
-        @Suppress("UNCHECKED_CAST")
+        ::SyncState
+    )
+
+    val state: StateFlow<GroceryUiState> = combine(
+        phaseState,
+        itemEntryState,
+        listSessionState,
+        assistState,
+        syncState
+    ) { phase, entry, session, assist, sync ->
         GroceryUiState(
-            currentPhase = args[0] as GroceryPhase,
-            selectedStoreIds = args[1] as Set<String>,
-            planningStoreContextId = args[2] as String?,
-            shoppingStoreId = args[3] as String?,
-            isEditMode = args[4] as Boolean,
-            showRecommendedDialog = args[5] as Boolean,
-            newItemName = args[6] as String,
-            newItemQuantity = args[7] as String,
-            newItemUnit = args[8] as String?,
-            newItemInput = args[9] as String,
-            selectedCategoryId = args[10] as String?,
-            recentlyCheckedIds = args[11] as Set<String>,
-            selectedListId = args[12] as String?,
-            activeInviteCode = args[13] as String?,
-            snackbarMessage = args[14] as GrocerySnackbarMessage?,
-            isAiReady = args[15] as Boolean,
-            isCategorizing = args[16] as Boolean,
-            hasItemsInDefaultList = args[17] as Boolean,
-            unsyncedCount = args[18] as Int,
-            lastSyncStatus = args[19] as String?,
-            isSyncing = args[20] as Boolean,
-            isSyncEnqueued = args[21] as Boolean,
-            dismissedRecommendationIds = args[22] as Set<String>
+            currentPhase = phase.currentPhase,
+            selectedStoreIds = phase.selectedStoreIds,
+            planningStoreContextId = phase.planningStoreContextId,
+            shoppingStoreId = phase.shoppingStoreId,
+            isEditMode = phase.isEditMode,
+            showRecommendedDialog = session.showRecommendedDialog,
+            newItemName = entry.newItemName,
+            newItemQuantity = entry.newItemQuantity,
+            newItemUnit = entry.newItemUnit,
+            newItemInput = entry.newItemInput,
+            selectedCategoryId = entry.selectedCategoryId,
+            recentlyCheckedIds = session.recentlyCheckedIds,
+            selectedListId = session.selectedListId,
+            activeInviteCode = session.activeInviteCode,
+            snackbarMessage = session.snackbarMessage,
+            isAiReady = assist.isAiReady,
+            isCategorizing = assist.isCategorizing,
+            hasItemsInDefaultList = assist.hasItemsInDefaultList,
+            unsyncedCount = sync.unsyncedCount,
+            lastSyncStatus = sync.lastSyncStatus,
+            isSyncing = sync.isSyncing,
+            isSyncEnqueued = sync.isSyncEnqueued,
+            dismissedRecommendationIds = assist.dismissedRecommendationIds
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, GroceryUiState())
 
@@ -371,61 +437,62 @@ class GroceryViewModel(
         _selectedCategoryId.value = categoryId
     }
 
+    private data class StoreFilterContext(
+        val phase: GroceryPhase,
+        val selectedStores: Set<String>,
+        val shoppingStore: String?
+    )
+
+    private val storeFilterContext = combine(
+        _currentPhase,
+        _selectedStoreIds,
+        _shoppingStoreId,
+        ::StoreFilterContext
+    )
+
     // Core state flow combining all tables for categories and custom views
     val baseFilteredItems: StateFlow<List<GroceryItem>> = combine(
         items,
         storeInfos,
         stores,
-        _currentPhase,
-        _selectedStoreIds,
-        _shoppingStoreId
-    ) { args ->
-        @Suppress("UNCHECKED_CAST")
-        val itemsList = args[0] as List<GroceryItem>
-        @Suppress("UNCHECKED_CAST")
-        val infos = args[1] as List<GroceryItemStoreInfo>
-        @Suppress("UNCHECKED_CAST")
-        val allStores = args[2] as List<Store>
-        val phase = args[3] as GroceryPhase
-        @Suppress("UNCHECKED_CAST")
-        val selectedStores = args[4] as Set<String>
-        val shoppingStore = args[5] as String?
-
+        storeFilterContext
+    ) { itemsList, infos, allStores, filter ->
         val activeItems = itemsList.filter { it.isActive }
-        when (phase) {
+        // Indexed once per emission; the previous per-item linear scans over `infos`
+        // made this O(items * storeInfos) on every grocery mutation.
+        val infosByItem = infos.groupBy { it.groceryItemId }
+        val storesById = allStores.associateBy { it.id }
+
+        fun isAvailableAt(itemId: String, storeId: String): Boolean {
+            val info = infosByItem[itemId]?.find { it.storeId == storeId }
+            return info?.isAvailable ?: storesById[storeId]?.isDefaultSupported ?: true
+        }
+
+        when (filter.phase) {
             GroceryPhase.NEED -> activeItems
             GroceryPhase.PLANNING -> {
+                val selectedStores = filter.selectedStores
                 if (selectedStores.isEmpty()) {
                     // Show everything in planning by default
                     activeItems
                 } else if (selectedStores.contains("-1")) {
                     // "Unassigned" filter: items that have NO store mappings at all
-                    activeItems.filter { item ->
-                        val itemInfos = infos.filter { it.groceryItemId == item.id }
-                        itemInfos.isEmpty()
-                    }
+                    activeItems.filter { item -> infosByItem[item.id].isNullOrEmpty() }
                 } else {
                     // Filtered view: items explicitly marked as available at ANY of the selected stores
                     // OR items that have no mapping for that store yet (Default to store's support flag)
                     activeItems.filter { item ->
-                        val itemInfos = infos.filter { it.groceryItemId == item.id }
-                        selectedStores.any { storeId ->
-                            val info = itemInfos.find { it.storeId == storeId }
-                            val store = allStores.find { it.id == storeId }
-                            info?.isAvailable ?: store?.isDefaultSupported ?: true
-                        }
+                        selectedStores.any { storeId -> isAvailableAt(item.id, storeId) }
                     }
                 }
             }
             GroceryPhase.SHOPPING -> {
-                if (shoppingStore == null) emptyList()
-                else {
+                val shoppingStore = filter.shoppingStore
+                if (shoppingStore == null) {
+                    emptyList()
+                } else {
                     // High-velocity mode: Show items unless explicitly marked as unavailable
-                    val store = allStores.find { it.id == shoppingStore }
-                    activeItems.filter { item ->
-                        val info = infos.find { it.groceryItemId == item.id && it.storeId == shoppingStore }
-                        info?.isAvailable ?: store?.isDefaultSupported ?: true
-                    }
+                    activeItems.filter { item -> isAvailableAt(item.id, shoppingStore) }
                 }
             }
         }

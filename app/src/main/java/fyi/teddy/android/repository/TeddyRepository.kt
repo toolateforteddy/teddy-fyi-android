@@ -1,6 +1,7 @@
 package fyi.teddy.android.repository
 
 import android.util.Log
+import fyi.teddy.android.network.ApiRoutes
 import fyi.teddy.android.network.NetworkClient
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -16,7 +17,7 @@ object TeddyRepository {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Checking cluster health...")
-                val response = NetworkClient.client.get("https://teddy.fyi/")
+                val response = NetworkClient.client.get(ApiRoutes.CLUSTER_HEALTH)
                 Log.d(TAG, "Cluster health check returned: ${response.status.value}")
                 response.status.isSuccess()
             } catch (e: Exception) {
@@ -30,8 +31,7 @@ object TeddyRepository {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Fetching temperature...")
-                val url = "https://api.open-meteo.com/v1/forecast?latitude=42.4154&longitude=-71.1565&current_weather=true&temperature_unit=fahrenheit"
-                val response = NetworkClient.client.get(url)
+                val response = NetworkClient.client.get(ApiRoutes.WEATHER)
                 val responseBody = response.bodyAsText()
                 val json = JSONObject(responseBody)
                 val currentWeather = json.getJSONObject("current_weather")
@@ -49,7 +49,7 @@ object TeddyRepository {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Calling authed hello...")
-                val response = NetworkClient.client.get("https://api-rust.teddy.fyi/api/hc") {
+                val response = NetworkClient.client.get(ApiRoutes.HEALTH_CHECK) {
                     header(HttpHeaders.Authorization, "Bearer $idToken")
                 }
                 
@@ -74,7 +74,7 @@ object TeddyRepository {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Fetching authed hello body...")
-                val response = NetworkClient.client.get("https://api-rust.teddy.fyi/api/hc") {
+                val response = NetworkClient.client.get(ApiRoutes.HEALTH_CHECK) {
                     header(HttpHeaders.Authorization, "Bearer $idToken")
                 }
                 response.bodyAsText()

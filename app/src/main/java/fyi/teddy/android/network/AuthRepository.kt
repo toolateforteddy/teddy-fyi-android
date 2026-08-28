@@ -52,7 +52,7 @@ object AuthRepository {
             // Auth plugin with a null token before we've actually logged in.
             val loginClient = NetworkClient.loginClient
             
-            val response = loginClient.post("https://api-rust.teddy.fyi/auth/login") {
+            val response = loginClient.post(ApiRoutes.LOGIN) {
                 contentType(ContentType.Application.Json)
                 setBody(
                     LoginRequest(

@@ -16,7 +16,7 @@ import fyi.teddy.android.todo.repository.insertList
 import fyi.teddy.android.todo.repository.updateList
 import fyi.teddy.android.todo.repository.updateListPositions
 import fyi.teddy.android.todo.util.TodoResetScheduler
-import fyi.teddy.android.util.StringUtils
+import fyi.teddy.android.utils.StringUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
