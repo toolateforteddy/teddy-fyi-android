@@ -1,6 +1,7 @@
 # Codebase Map — teddy-fyi-android
 
-Orientation doc for agents. Reflects the tree as of commit `30d0b80` ("Allow for reordering spaces").
+Orientation doc for agents. Reflects the tree as of commit `b8c7f84`, plus a follow-up cleanup pass
+(list-position sync fix, `ApiRoutes`, Detekt baseline enforcement, `util/`→`utils/` merge).
 Verified against source, not just the other `*.md` files — several of those are stale (see
 [Doc reliability](#doc-reliability)).
 
@@ -57,8 +58,9 @@ and sync managers. They meet only at `AppDatabase` and `SyncWorker`.
 
 ### 3.1 `api-rust.teddy.fyi` — the primary backend
 
-URLs are **hardcoded at each call site**; there is no shared base-URL constant except
-`GroceryNetworkRepository.BASE_URL`. Grep `api-rust.teddy.fyi` to find them all.
+Every URL lives in [ApiRoutes.kt](app/src/main/java/fyi/teddy/android/network/ApiRoutes.kt) —
+including the Open-Meteo weather call and the unauthenticated `teddy.fyi` probe. Change the host
+there, not at the call sites.
 
 | Endpoint | Method | Called from | Purpose |
 | --- | --- | --- | --- |
@@ -173,11 +175,11 @@ manual repair tool, not part of the normal lifecycle.
 
 ## 6. Known gotchas
 
-- **List `position` does not survive sync.** `TodoList` and `GroceryList` entities have a `position`
-  column, but `TodoListDto` / `GroceryListDto` omit it. `toEntity()` therefore reconstructs with
-  `position = 0`, and the DAOs use `@Upsert` (full row replace) — so any remote list change resets
-  local list ordering. Directly relevant to the most recent commit, "Allow for reordering spaces".
-  Item/store/category DTOs *do* carry `position`; only the two list DTOs don't.
+- **List `position` now survives sync.** `TodoListDto` / `GroceryListDto` carry a *nullable*
+  `position`: the client always uploads it, and on the way back down a `null` means "server does not
+  track ordering", in which case the sync managers pass the local row's position as the fallback so
+  `@Upsert` cannot reset it. Covered by `ListPositionSyncTest`. (Before this, any remote list change
+  silently undid the user's reordering of spaces.)
 - **`GroceryItemStoreInfo` has a composite PK** (`groceryItemId` + `storeId`) yet also carries an `id`
   field that the sync deltas key on. The `id` is not the primary key.
 - **`NetworkClient` is a mutable global** — `session`, `client`, and `loginClient` are all reassignable
@@ -187,11 +189,14 @@ manual repair tool, not part of the normal lifecycle.
   in [DatabaseMigrations.kt](app/src/main/java/fyi/teddy/android/data/DatabaseMigrations.kt) (651 lines).
   Any `@Entity` change requires bumping `AppDatabase.version`, adding a migration, and committing the
   new `app/schemas/*.json`. `AppDatabaseMigrationTest` validates the chain.
-- **Detekt is `ignoreFailures = true`** and heavily suppressed inline. A green CI run does not mean
-  a clean Detekt report.
-- **`local.properties` is tracked** and currently dirty with a machine-specific `sdk.dir`. Don't
-  commit it. `lint.errors` is an untracked scratch file.
-- Two util packages (`util/` and `utils/`) coexist; check both before adding a helper.
+- **Detekt now fails the build on new findings.** Pre-existing findings are recorded in
+  `app/detekt-baseline.xml`; `ignoreFailures = false`. Regenerate the baseline with
+  `./gradlew :app:detektBaseline` only when you have deliberately accepted a finding. Inline
+  `@Suppress` is still used heavily in the older files.
+- **`local.properties` is no longer tracked** (it was, with another machine's `sdk.dir`). It stays
+  on disk and is gitignored, as is the `lint.errors` scratch file.
+- There is one util package, `utils/` (`StringUtils`, `EmulatorUtils`, `GmsUtils`, `IconUtils`).
+  The old `util/` package was merged into it.
 - The manifest declares only `INTERNET`. No location permission — hence the hardcoded weather coords.
 
 ---
@@ -250,6 +255,6 @@ in the history.
 | `AI_SCHEDULING_RULES.md` | **Accurate** — matches `TaskSchedulerUtils` |
 | `ROOM_SYNC_SPECIFICATION.md` | **Mostly accurate**; specifies a `last_modified` column that entities don't actually have, and omits `NEED_UPDATE` |
 | `AUTH_SPECIFICATION.md` | **Mostly accurate**; omits the `expires_in_secs` field the client actually sends |
-| `AGENTS.md` | **Stale** — says "Retrofit or Ktor (to be confirmed)" (it's Ktor), lists Ktor migration and Detekt as *future* work (both done), and duplicates `AI_CONTEXT.md` verbatim in its lower half |
+| `AGENTS.md` | **Current** — corrected to say Ktor, splits shipped vs. open architectural work, and no longer duplicates `AI_CONTEXT.md` |
 | `AI_CONTEXT.md` | **Stale framing** — written for a Gemini agent, describes Phase 2 cloud sync as upcoming; it has shipped |
-| `README.md` | **Stale** — "currently built for local offline use… infrastructure is prepared for upcoming backend synchronization." Sync is live |
+| `README.md` | **Current** — describes live bidirectional sync, widgets, and the on-device categorizer |

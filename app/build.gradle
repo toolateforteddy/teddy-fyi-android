@@ -84,7 +84,10 @@ tasks.withType(KotlinCompile).configureEach {
 detekt {
     buildUponDefaultConfig = true
     autoCorrect = true
-    ignoreFailures = true
+    // Pre-existing findings live in the baseline; anything new fails the build so CI
+    // green actually means "no new Detekt issues".
+    ignoreFailures = false
+    baseline = file("$projectDir/detekt-baseline.xml")
     config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
 }
 
