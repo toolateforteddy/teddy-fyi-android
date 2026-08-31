@@ -19,7 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,7 +80,7 @@ fun PlanningPhaseContent(
         Text(
             text = "Where are you heading?",
             style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         LazyRow(
@@ -150,7 +150,7 @@ fun PlanningPhaseContent(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(storeSpecificRecs, key = { it.id }) { rec ->
@@ -170,7 +170,7 @@ fun PlanningPhaseContent(
         Text(
             text = "Your List",
             style = MaterialTheme.typography.titleSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -210,7 +210,7 @@ fun PlanningPhaseContent(
                         Text(
                             "List is empty. Tap recommendations to add items.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.DarkGray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -227,6 +227,7 @@ fun RecommendationTile(
     onDismiss: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
+    val tileShape = RoundedCornerShape(8.dp)
 
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
@@ -238,22 +239,37 @@ fun RecommendationTile(
         state = dismissState,
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
+        modifier = Modifier.clip(tileShape),
         backgroundContent = {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Red.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = "Dismiss", tint = Color.White)
+            val direction = dismissState.dismissDirection
+            // Only paint the dismiss backdrop while a swipe is actually in progress,
+            // otherwise it shows as a red fringe around every resting tile.
+            if (direction != SwipeToDismissBoxValue.Settled) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.errorContainer, tileShape)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                        Alignment.CenterStart
+                    } else {
+                        Alignment.CenterEnd
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Dismiss",
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     ) {
         Surface(
             onClick = onClick,
-            color = Color(0xFF1A1A1A),
-            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = tileShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -264,7 +280,7 @@ fun RecommendationTile(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
@@ -298,9 +314,9 @@ fun PlanningItemTile(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
             ),
-        color = Color(0xFF0A0A0A),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         AnimatedContent(
             targetState = showControls,
@@ -314,7 +330,7 @@ fun PlanningItemTile(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Remove, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                     }
                     Text(
                         text = item.quantity,
@@ -323,10 +339,10 @@ fun PlanningItemTile(
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = Color.LightGray, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
                 }
             } else {
@@ -339,7 +355,7 @@ fun PlanningItemTile(
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -348,7 +364,7 @@ fun PlanningItemTile(
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

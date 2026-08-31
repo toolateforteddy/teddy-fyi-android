@@ -13,6 +13,14 @@ private val DarkColorScheme = darkColorScheme(
     surface = Color.Black,
     onBackground = Color.White,
     onSurface = Color.White,
+    surfaceContainerLowest = SurfaceContainerLowest,
+    surfaceContainerLow = SurfaceContainerLow,
+    surfaceContainer = SurfaceContainer,
+    surfaceContainerHigh = SurfaceContainerHigh,
+    surfaceContainerHighest = SurfaceContainerHighest,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    outlineVariant = OutlineVariantDark,
 )
 
 @Composable
