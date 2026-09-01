@@ -21,7 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.Category
-import fyi.teddy.android.todo.ui.components.IconPickerDialog
+import fyi.teddy.android.ui.components.IconPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

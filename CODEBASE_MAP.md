@@ -273,8 +273,9 @@ Rules:
   explicitly. Material's dark defaults for those roles are purple-tinted, so any role left unset
   leaks purple into an otherwise near-black UI.
 - **A component shared by both apps reads `MaterialTheme.colorScheme` only** — never a feature
-  theme. `IconPickerDialog` is the live example: Todo uses it, and so does Grocery category
-  management, so whichever theme wraps it supplies the colours.
+  theme, and it lives in the neutral `ui/components` package rather than inside either app.
+  `IconPickerDialog` is the live example: Todo uses it, and so does Grocery category management,
+  so whichever theme wraps it supplies the colours.
 - Widgets draw to a `Canvas` outside any composition and cannot read a CompositionLocal, so they
   use the ARGB-int mirrors `TodoWidgetPalette` / `GroceryWidgetPalette`. Keep those in step with
   their palette.
