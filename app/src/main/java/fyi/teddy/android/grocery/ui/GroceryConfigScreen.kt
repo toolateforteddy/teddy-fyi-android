@@ -10,12 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,7 +24,7 @@ fun GroceryConfigScreen(
     onBack: () -> Unit,
     onManageStores: (String?) -> Unit,
     onManageCategories: (String?) -> Unit
-) {
+) = GroceryTheme {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
         factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId),
@@ -41,19 +41,19 @@ fun GroceryConfigScreen(
                 title = { Text(stringResource(R.string.grocery_settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = GroceryTheme.colors.onSurface)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White
+                    containerColor = GroceryTheme.colors.screen,
+                    titleContentColor = GroceryTheme.colors.onSurface
                 )
             )
         }
     ) { paddingValues ->
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = Color.Black
+            color = GroceryTheme.colors.screen
         ) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -65,7 +65,7 @@ fun GroceryConfigScreen(
 
                 Text(
                     text = "Selected List",
-                    color = Color.Gray,
+                    color = GroceryTheme.colors.onSurfaceMuted,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -82,15 +82,15 @@ fun GroceryConfigScreen(
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, tint = Color.LightGray)
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, tint = GroceryTheme.colors.onSurfaceMuted)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = activeListName,
-                            color = Color.White,
+                            color = GroceryTheme.colors.onSurface,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.weight(1f))
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = GroceryTheme.colors.onSurface)
                     }
                     
                     DropdownMenu(
@@ -154,20 +154,20 @@ fun ConfigItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+        colors = CardDefaults.cardColors(containerColor = GroceryTheme.colors.card)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = Color.White)
+            Icon(icon, contentDescription = null, tint = GroceryTheme.colors.onSurface)
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium)
-                Text(subtitle, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                Text(title, color = GroceryTheme.colors.onSurface, style = MaterialTheme.typography.titleMedium)
+                Text(subtitle, color = GroceryTheme.colors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = GroceryTheme.colors.onSurfaceMuted)
         }
     }
 }

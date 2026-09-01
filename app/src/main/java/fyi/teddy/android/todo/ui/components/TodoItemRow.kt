@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.todo.data.TodoItem
 import fyi.teddy.android.todo.data.TodoList
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import fyi.teddy.android.utils.getIconByName
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -100,15 +101,16 @@ fun TodoItemRow(
     var dragOffsetY by remember { mutableStateOf(value = 0f) }
     var isConfirmed by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+    val todoColors = TodoTheme.colors
 
     val itemColor = remember(item.listId, allLists) {
         allLists.find { it.id == item.listId }?.let { list ->
             try {
                 Color(list.colorHex.toColorInt())
             } catch (_: Exception) {
-                NeonTeal
+                todoColors.accent
             }
-        } ?: NeonTeal
+        } ?: todoColors.accent
     }
 
     val today = LocalDate.now().toString()
@@ -167,11 +169,11 @@ fun TodoItemRow(
             val color by animateColorAsState(
                 when (dismissState.targetValue) {
                     SwipeToDismissBoxValue.StartToEnd -> if (!isScheduledForToday) {
-                        if (isConfirmed) NeonTeal.copy(alpha = 0.6f) else NeonTeal.copy(alpha = 0.15f)
+                        if (isConfirmed) todoColors.accent.copy(alpha = 0.6f) else todoColors.accent.copy(alpha = 0.15f)
                     } else Color.Transparent
 
                     SwipeToDismissBoxValue.EndToStart -> if (isScheduled) {
-                        if (isConfirmed) Color.Red.copy(alpha = 0.6f) else Color.Red.copy(alpha = 0.15f)
+                        if (isConfirmed) todoColors.danger.copy(alpha = 0.6f) else todoColors.danger.copy(alpha = 0.15f)
                     } else Color.Transparent
 
                     else -> Color.Transparent
@@ -196,7 +198,7 @@ fun TodoItemRow(
                             Icon(
                                 Icons.Default.Today,
                                 contentDescription = "Schedule for Today",
-                                tint = if (isConfirmed) Color.White else Color.White.copy(alpha = 0.5f),
+                                tint = if (isConfirmed) todoColors.onSurface else todoColors.onSurface.copy(alpha = 0.5f),
                                 modifier = Modifier.scale(iconScale)
                             )
                         }
@@ -207,7 +209,7 @@ fun TodoItemRow(
                             Icon(
                                 Icons.Default.EventBusy,
                                 contentDescription = "Unschedule",
-                                tint = if (isConfirmed) Color.White else Color.White.copy(alpha = 0.5f),
+                                tint = if (isConfirmed) todoColors.onSurface else todoColors.onSurface.copy(alpha = 0.5f),
                                 modifier = Modifier.scale(iconScale)
                             )
                         }
@@ -227,12 +229,12 @@ fun TodoItemRow(
                         if (item.lastScheduledDate != null && !isScheduled) {
                             Modifier.border(
                                 1.dp,
-                                Color(0xFFFFA500).copy(alpha = 0.3f),
+                                todoColors.priorityMedium.copy(alpha = 0.3f),
                                 ClippedCornerShape(8f)
                             )
                         } else Modifier
                     )
-                    .background(if (isSubtask) Color.Transparent else Color(0xFF0B0B0F))
+                    .background(if (isSubtask) Color.Transparent else todoColors.row)
                     .then(
                         if (isEditing) {
                             Modifier.pointerInput(Unit) {
@@ -294,7 +296,7 @@ fun TodoItemRow(
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = "Rolled Over",
-                                tint = Color(0xFFFFA500).copy(alpha = 0.7f),
+                                tint = todoColors.priorityMedium.copy(alpha = 0.7f),
                                 modifier = Modifier
                                     .padding(end = 4.dp)
                                     .size(14.dp)
@@ -313,7 +315,7 @@ fun TodoItemRow(
                         }
                         Text(
                             text = item.title,
-                            color = if (!isPlanningMode && isChecked) MutedGrey else Color.White,
+                            color = if (!isPlanningMode && isChecked) todoColors.onSurfaceDone else todoColors.onSurface,
                             style = if (!isPlanningMode && isChecked) MaterialTheme.typography.bodyLarge.copy(
                                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                             ) else MaterialTheme.typography.bodyLarge,
@@ -333,7 +335,7 @@ fun TodoItemRow(
                         if (!isSubtask && (subtaskCount > 0) && !isExpanded) {
                             Text(
                                 text = " ($completedSubtaskCount/$subtaskCount)",
-                                color = MutedGrey,
+                                color = todoColors.onSurfaceDone,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(start = 4.dp)
                             )
@@ -344,7 +346,7 @@ fun TodoItemRow(
                         if (item.recurrenceRule != null) {
                             Text(
                                 text = formatRecurrenceRule(item.recurrenceRule),
-                                color = MutedGrey,
+                                color = todoColors.onSurfaceDone,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
@@ -352,7 +354,7 @@ fun TodoItemRow(
                         if (item.dueDate != null) {
                             Text(
                                 text = "Due: ${LocalDate.ofEpochDay(item.dueDate / 86400000)}",
-                                color = Color(0xFFFF4B4B),
+                                color = todoColors.danger,
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                             )
                         }
@@ -375,7 +377,7 @@ fun TodoItemRow(
                         Icon(
                             if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
                             contentDescription = if (isExpanded) "Collapse" else "Expand",
-                            tint = MutedGrey,
+                            tint = todoColors.onSurfaceDone,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -393,9 +395,9 @@ fun TodoItemRow(
                             imageVector = if (item.priority > 0) Icons.Default.Star else Icons.Default.StarBorder,
                             contentDescription = "Toggle Priority",
                             tint = when (item.priority) {
-                                2 -> Color(0xFFFFD700)
-                                1 -> Color(0xFFFFA500)
-                                else -> MutedGrey
+                                2 -> todoColors.priorityHigh
+                                1 -> todoColors.priorityMedium
+                                else -> todoColors.onSurfaceDone
                             },
                             modifier = Modifier.size(20.dp)
                         )
@@ -411,7 +413,7 @@ fun TodoItemRow(
                         Icon(
                             Icons.Default.KeyboardArrowUp,
                             contentDescription = "Move Up",
-                            tint = if (index > 0) Color.White else Color.Transparent,
+                            tint = if (index > 0) todoColors.onSurface else Color.Transparent,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -423,7 +425,7 @@ fun TodoItemRow(
                         Icon(
                             Icons.Default.KeyboardArrowDown,
                             contentDescription = "Move Down",
-                            tint = if (index < totalItems - 1) Color.White else Color.Transparent,
+                            tint = if (index < totalItems - 1) todoColors.onSurface else Color.Transparent,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -431,7 +433,7 @@ fun TodoItemRow(
                         Icon(
                             Icons.Default.MoreVert,
                             contentDescription = "More",
-                            tint = Color.White,
+                            tint = todoColors.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                     }

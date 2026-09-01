@@ -19,6 +19,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import androidx.compose.ui.graphics.Color
+import fyi.teddy.android.todo.ui.theme.TodoSpaceSwatches
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 
 @Composable
 fun RecurrenceDialog(
@@ -264,7 +266,7 @@ fun AddListDialog(
     onConfirm: (name: String, colorHex: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    val colors = listOf("#00FFFF", "#FF00FF", "#FFA500", "#00FF00", "#FFFF00", "#FF4500", "#1E90FF")
+    val colors = TodoSpaceSwatches
     var selectedColor by remember { mutableStateOf(colors[0]) }
 
     AlertDialog(
@@ -301,7 +303,7 @@ fun AddListDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                        .background(TodoTheme.colors.onSurface.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                                 )
                             }
                         }
@@ -334,7 +336,7 @@ fun EditListDialog(
     onDelete: () -> Unit
 ) {
     var name by remember { mutableStateOf(list.name) }
-    val colors = listOf("#00FFFF", "#FF00FF", "#FFA500", "#00FF00", "#FFFF00", "#FF4500", "#1E90FF")
+    val colors = TodoSpaceSwatches
     var selectedColor by remember { mutableStateOf(list.colorHex) }
 
     AlertDialog(
@@ -371,7 +373,7 @@ fun EditListDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                        .background(TodoTheme.colors.onSurface.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                                 )
                             }
                         }
@@ -386,7 +388,7 @@ fun EditListDialog(
             ) {
                 TextButton(
                     onClick = onDelete,
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                    colors = ButtonDefaults.textButtonColors(contentColor = TodoTheme.colors.danger)
                 ) {
                     Text("Delete")
                 }

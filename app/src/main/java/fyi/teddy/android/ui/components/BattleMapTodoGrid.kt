@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import fyi.teddy.android.utils.getIconForTask
 import fyi.teddy.android.utils.getIconByName
 import androidx.compose.runtime.*
@@ -104,8 +105,9 @@ fun BattleMapTodoGrid(
     backlogCount: Int,
     onNavigateToTodo: (String?) -> Unit,
     modifier: Modifier = Modifier,
-    onTodoLongClick: (TodoItem) -> Unit = {}
-) {
+    onTodoLongClick: (TodoItem) -> Unit = {},
+) = TodoTheme {
+    val todoColors = TodoTheme.colors
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -115,16 +117,16 @@ fun BattleMapTodoGrid(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
-                .neonGlow(Color(0xFF3700B3), CutCornerShape(12.dp), blurRadius = 4.dp)
+                .neonGlow(todoColors.outline, CutCornerShape(12.dp), blurRadius = 4.dp)
                 .clip(CutCornerShape(12.dp))
-                .background(Color(0xFF161424))
-                .border(2.dp, Color(0xFF3700B3), CutCornerShape(12.dp))
+                .background(todoColors.chassis)
+                .border(2.dp, todoColors.outline, CutCornerShape(12.dp))
                 .padding(vertical = 10.dp, horizontal = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "What shall we do today?",
-                color = Color(0xFFBCADA0),
+                color = todoColors.chassisLabel,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.sp
@@ -169,15 +171,8 @@ fun BattleMapTodoGrid(
                             cells.add(Triple(col, row, HexCellType.Counter(numTasks)))
                         } else {
                             if (taskIndex < numTasks) {
-                                // Assign colors dynamically in loop
-                                val color = when (taskIndex % 6) {
-                                    0 -> Color(0xFF03DAC5) // Cyan
-                                    1 -> Color(0xFFE91E63) // Pink
-                                    2 -> Color(0xFF9C27B0) // Purple
-                                    3 -> Color(0xFFCDDC39) // Lime
-                                    4 -> Color(0xFFFF9800) // Orange
-                                    else -> Color(0xFFFFEB3B) // Yellow
-                                }
+                                // Stable per-item accent from the Todo signal ramp
+                                val color = todoColors.signalFor(taskIndex)
                                 cells.add(Triple(col, row, HexCellType.Task(tasks[taskIndex], color)))
                                 taskIndex++
                             }
@@ -202,7 +197,7 @@ fun BattleMapTodoGrid(
                         val hexHeight = hexHeightDp.toPx()
                         val xPaddingPx = xPadding.toPx()
                         val yPaddingPx = yPadding.toPx()
-                        val gridColor = Color(0xFF1B182B).copy(alpha = 0.2f)
+                        val gridColor = todoColors.gridLine.copy(alpha = 0.2f)
                         val strokeWidth = 1.dp.toPx()
 
                         val outline = HexagonShape().createOutline(Size(hexWidth, hexHeight), layoutDirection, this)
@@ -238,7 +233,7 @@ fun BattleMapTodoGrid(
                     ) {
                         when (type) {
                             is HexCellType.Counter -> {
-                                val color = Color(0xFFBCADA0)
+                                val color = todoColors.chassisLabel
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -247,7 +242,7 @@ fun BattleMapTodoGrid(
                                         .clip(HexagonShape())
                                         .background(
                                             Brush.radialGradient(
-                                                colors = listOf(color.copy(alpha = 0.15f), Color(0xFF12101A))
+                                                colors = listOf(color.copy(alpha = 0.15f), todoColors.hexWell)
                                             )
                                         )
                                         .border(2.dp, color, HexagonShape())
@@ -260,14 +255,14 @@ fun BattleMapTodoGrid(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             text = type.count.toString(),
-                                            color = Color.White,
+                                            color = todoColors.onSurface,
                                             fontSize = 32.sp,
                                             fontWeight = FontWeight.Bold,
                                             textAlign = TextAlign.Center
                                         )
                                         Text(
                                             text = "REMAINING",
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = todoColors.onSurface.copy(alpha = 0.6f),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Medium,
                                             textAlign = TextAlign.Center,
@@ -277,7 +272,7 @@ fun BattleMapTodoGrid(
                                 }
                             }
                             is HexCellType.Backlog -> {
-                                val color = Color(0xFF3700B3)
+                                val color = todoColors.outline
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -286,7 +281,7 @@ fun BattleMapTodoGrid(
                                         .clip(HexagonShape())
                                         .background(
                                             Brush.radialGradient(
-                                                colors = listOf(color.copy(alpha = 0.15f), Color(0xFF12101A))
+                                                colors = listOf(color.copy(alpha = 0.15f), todoColors.hexWell)
                                             )
                                         )
                                         .border(2.dp, color, HexagonShape())
@@ -308,14 +303,14 @@ fun BattleMapTodoGrid(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
                                             text = "BACKLOG",
-                                            color = Color.White,
+                                            color = todoColors.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             textAlign = TextAlign.Center
                                         )
                                         Text(
                                             text = "(${type.count} Items)",
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = todoColors.onSurface.copy(alpha = 0.6f),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Medium,
                                             textAlign = TextAlign.Center
@@ -334,7 +329,7 @@ fun BattleMapTodoGrid(
                                         .clip(HexagonShape())
                                         .background(
                                             Brush.radialGradient(
-                                                colors = listOf(color.copy(alpha = 0.15f), Color(0xFF12101A))
+                                                colors = listOf(color.copy(alpha = 0.15f), todoColors.hexWell)
                                             )
                                         )
                                         .border(2.dp, color, HexagonShape())
@@ -360,7 +355,7 @@ fun BattleMapTodoGrid(
                                         
                                         Text(
                                             text = title.uppercase(),
-                                            color = Color.White,
+                                            color = todoColors.onSurface,
                                             fontSize = fontSize,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 3,

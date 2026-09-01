@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -22,6 +21,7 @@ import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.GroceryItemWithPriceDetails
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryPhase
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 @Composable
 fun GroceryItemRowContainer(
@@ -161,7 +161,7 @@ fun GroceryItemRow(
             if (currentPhase == GroceryPhase.SHOPPING) showPriceInput = !showPriceInput
             else if (!isEditMode) onTagStores() 
         },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+        colors = CardDefaults.cardColors(containerColor = GroceryTheme.colors.card)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,7 +169,7 @@ fun GroceryItemRow(
                     Checkbox(
                         checked = item.isBought,
                         onCheckedChange = onCheckedChange,
-                        colors = CheckboxDefaults.colors(uncheckedColor = Color.Gray)
+                        colors = CheckboxDefaults.colors(uncheckedColor = GroceryTheme.colors.onSurfaceMuted)
                     )
                     ShoppingItemRowContent(priceDetails = priceDetails)
                 } else if (isEditMode) {
@@ -215,10 +215,10 @@ fun GroceryItemRow(
                 }
                 
                 if (itemStoreInfos.isNotEmpty()) {
-                    Text("Price History:", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                    Text("Price History:", color = GroceryTheme.colors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
                     itemStoreInfos.filter { it.price != null }.forEach { info ->
                         val storeName = stores.find { it.id == info.storeId }?.name ?: "Unknown"
-                        Text("- $storeName: $${info.price}", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                        Text("- $storeName: $${info.price}", color = GroceryTheme.colors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -234,7 +234,7 @@ fun ShoppingItemRowContent(
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Text(
             text = item.name,
-            color = if (item.isBought) Color.Gray else Color.White,
+            color = if (item.isBought) GroceryTheme.colors.onSurfaceDone else GroceryTheme.colors.onSurface,
             style = if (item.isBought) MaterialTheme.typography.bodyLarge.copy(
                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
             ) else MaterialTheme.typography.bodyLarge
@@ -242,13 +242,13 @@ fun ShoppingItemRowContent(
         val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
         Text(
             text = "Quantity: ${item.quantity}$displayUnit",
-            color = Color.Gray,
+            color = GroceryTheme.colors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall
         )
         if (!item.notes.isNullOrBlank()) {
             Text(
                 text = item.notes,
-                color = Color.LightGray,
+                color = GroceryTheme.colors.onSurfaceMuted,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 ),
@@ -258,7 +258,7 @@ fun ShoppingItemRowContent(
         if (priceDetails.isMoreExpensiveAtCurrentStore) {
             Text(
                 text = "Note: ${priceDetails.cheaperStoreName} is cheaper ($$${priceDetails.cheaperStorePrice})",
-                color = Color.Yellow,
+                color = GroceryTheme.colors.price,
                 style = MaterialTheme.typography.labelSmall
             )
         }
@@ -275,21 +275,21 @@ fun StandardItemRowContent(
     Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
         Text(
             text = item.name,
-            color = Color.White,
+            color = GroceryTheme.colors.onSurface,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.clickable { onEditCategory() }
         )
         val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
         Text(
             text = "Quantity: ${item.quantity}$displayUnit",
-            color = Color.Gray,
+            color = GroceryTheme.colors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.clickable { onEditQuantity() }
         )
         if (!item.notes.isNullOrBlank()) {
             Text(
                 text = item.notes,
-                color = Color.LightGray,
+                color = GroceryTheme.colors.onSurfaceMuted,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 ),
@@ -299,7 +299,7 @@ fun StandardItemRowContent(
         if (priceDetails.isMoreExpensiveAtCurrentStore) {
             Text(
                 text = "Note: ${priceDetails.cheaperStoreName} is cheaper ($$${priceDetails.cheaperStorePrice})",
-                color = Color.Yellow,
+                color = GroceryTheme.colors.price,
                 style = MaterialTheme.typography.labelSmall
             )
         }
@@ -322,21 +322,21 @@ fun EditableItemRowContent(
         Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
             Text(
                 text = item.name,
-                color = Color.White,
+                color = GroceryTheme.colors.onSurface,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.clickable { onEditCategory() }
             )
             val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
             Text(
                 text = "Quantity: ${item.quantity}$displayUnit",
-                color = Color.Gray,
+                color = GroceryTheme.colors.onSurfaceMuted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.clickable { onEditQuantity() }
             )
             if (!item.notes.isNullOrBlank()) {
                 Text(
                     text = item.notes,
-                    color = Color.LightGray,
+                    color = GroceryTheme.colors.onSurfaceMuted,
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     ),
@@ -345,13 +345,13 @@ fun EditableItemRowContent(
             }
         }
         IconButton(onClick = onMoveUp) {
-            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = Color.White)
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = GroceryTheme.colors.onSurface)
         }
         IconButton(onClick = onMoveDown) {
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = Color.White)
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = GroceryTheme.colors.onSurface)
         }
         IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = GroceryTheme.colors.danger)
         }
     }
 }

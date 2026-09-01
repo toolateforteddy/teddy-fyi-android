@@ -69,7 +69,7 @@ import fyi.teddy.android.todo.ui.components.ClearAllConfirmationDialog
 import fyi.teddy.android.todo.ui.components.EditListDialog
 import fyi.teddy.android.todo.ui.components.ReorderSpacesDialog
 import fyi.teddy.android.todo.ui.components.HexTimeline
-import fyi.teddy.android.todo.ui.components.NeonTeal
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import fyi.teddy.android.todo.ui.components.TodoEmptyState
 import fyi.teddy.android.todo.ui.components.TodoInputBar
 import fyi.teddy.android.todo.ui.components.TodoItemIntent
@@ -105,9 +105,21 @@ enum class TodoMode {
     BACKLOG, PLANNING, TODAY, SCHEDULED
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Entry point for the Todo app. Applies [TodoTheme] so every Todo screen and dialog
+ * renders with the Todo palette regardless of what theme the host shell is using.
+ */
 @Composable
 fun TodoScreen(userId: String, initialMode: String? = null) {
+    TodoTheme {
+        TodoScreenContent(userId = userId, initialMode = initialMode)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TodoScreenContent(userId: String, initialMode: String? = null) {
+    val todoColors = TodoTheme.colors
     val context = LocalContext.current
     val viewModel: TodoViewModel = viewModel(
         factory = TodoViewModelFactory(
@@ -228,39 +240,39 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         viewModel.setSelectedPlanningDate(selectedDate)
                     }
                     showPlanningDatePicker = false
-                }) { Text(stringResource(R.string.save), color = NeonTeal) }
+                }) { Text(stringResource(R.string.save), color = todoColors.accent) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showPlanningDatePicker = false
-                }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
+                }) { Text(stringResource(R.string.cancel), color = todoColors.onSurfaceMuted) }
             },
             colors = DatePickerDefaults.colors(
-                containerColor = Color(0xFF121214),
-                titleContentColor = NeonTeal,
-                headlineContentColor = Color.White,
-                selectedDayContainerColor = NeonTeal,
-                selectedDayContentColor = Color.Black,
-                todayContentColor = NeonTeal,
-                todayDateBorderColor = NeonTeal
+                containerColor = todoColors.panel,
+                titleContentColor = todoColors.accent,
+                headlineContentColor = todoColors.onSurface,
+                selectedDayContainerColor = todoColors.accent,
+                selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                todayContentColor = todoColors.accent,
+                todayDateBorderColor = todoColors.accent
             )
         ) {
             DatePicker(
                 state = datePickerState,
                 colors = DatePickerDefaults.colors(
-                    containerColor = Color(0xFF121214),
-                    titleContentColor = NeonTeal,
-                    headlineContentColor = Color.White,
-                    selectedDayContainerColor = NeonTeal,
-                    selectedDayContentColor = Color.Black,
-                    todayContentColor = NeonTeal,
-                    todayDateBorderColor = NeonTeal,
-                    dayContentColor = Color.White,
-                    weekdayContentColor = Color.Gray,
-                    yearContentColor = Color.White,
-                    currentYearContentColor = NeonTeal,
-                    selectedYearContentColor = Color.Black,
-                    selectedYearContainerColor = NeonTeal
+                    containerColor = todoColors.panel,
+                    titleContentColor = todoColors.accent,
+                    headlineContentColor = todoColors.onSurface,
+                    selectedDayContainerColor = todoColors.accent,
+                    selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                    todayContentColor = todoColors.accent,
+                    todayDateBorderColor = todoColors.accent,
+                    dayContentColor = todoColors.onSurface,
+                    weekdayContentColor = todoColors.onSurfaceMuted,
+                    yearContentColor = todoColors.onSurface,
+                    currentYearContentColor = todoColors.accent,
+                    selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedYearContainerColor = todoColors.accent
                 )
             )
         }
@@ -269,7 +281,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(todoColors.screen)
     ) {
         Scaffold(
             topBar = {
@@ -293,7 +305,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                 Icon(
                                     Icons.Default.Search,
                                     contentDescription = "Search",
-                                    tint = if (isSearchActive) NeonTeal else Color.White
+                                    tint = if (isSearchActive) todoColors.accent else todoColors.onSurface
                                 )
                             }
                         }
@@ -304,7 +316,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                 contentDescription = if (showCompletedOnly) stringResource(R.string.show_active) else stringResource(
                                     R.string.show_completed
                                 ),
-                                tint = if (showCompletedOnly) NeonTeal else Color.White
+                                tint = if (showCompletedOnly) todoColors.accent else todoColors.onSurface
                             )
                         }
 
@@ -312,7 +324,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = stringResource(R.string.edit_mode),
-                                tint = if (isEditMode) NeonTeal else Color.White
+                                tint = if (isEditMode) todoColors.accent else todoColors.onSurface
                             )
                         }
 
@@ -321,39 +333,39 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                 Icon(
                                     Icons.Default.FormatLineSpacing,
                                     contentDescription = "Reorder Spaces",
-                                    tint = NeonTeal
+                                    tint = todoColors.accent
                                 )
                             }
                             IconButton(onClick = { showClearAllConfirmation = true }) {
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = stringResource(R.string.clear_all),
-                                    tint = Color.Red
+                                    tint = todoColors.danger
                                 )
                             }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White,
-                        actionIconContentColor = Color.White
+                        containerColor = todoColors.screen,
+                        titleContentColor = todoColors.onSurface,
+                        navigationIconContentColor = todoColors.onSurface,
+                        actionIconContentColor = todoColors.onSurface
                     )
                 )
             },
             bottomBar = {
-                NavigationBar(containerColor = Color.Black) {
+                NavigationBar(containerColor = todoColors.screen) {
                     NavigationBarItem(
                         selected = currentMode == TodoMode.BACKLOG,
                         onClick = { viewModel.setMode(TodoMode.BACKLOG) },
                         icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Backlog") },
                         label = { Text("Backlog") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = NeonTeal,
-                            selectedTextColor = NeonTeal,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                            selectedIconColor = todoColors.accent,
+                            selectedTextColor = todoColors.accent,
+                            unselectedIconColor = todoColors.onSurfaceMuted,
+                            unselectedTextColor = todoColors.onSurfaceMuted,
+                            indicatorColor = todoColors.accent.copy(alpha = 0.1f)
                         )
                     )
                     NavigationBarItem(
@@ -367,11 +379,11 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         },
                         label = { Text("Planning") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = NeonTeal,
-                            selectedTextColor = NeonTeal,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                            selectedIconColor = todoColors.accent,
+                            selectedTextColor = todoColors.accent,
+                            unselectedIconColor = todoColors.onSurfaceMuted,
+                            unselectedTextColor = todoColors.onSurfaceMuted,
+                            indicatorColor = todoColors.accent.copy(alpha = 0.1f)
                         )
                     )
                     NavigationBarItem(
@@ -380,11 +392,11 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         icon = { Icon(Icons.Default.Today, contentDescription = "Today") },
                         label = { Text("Today") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = NeonTeal,
-                            selectedTextColor = NeonTeal,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                            selectedIconColor = todoColors.accent,
+                            selectedTextColor = todoColors.accent,
+                            unselectedIconColor = todoColors.onSurfaceMuted,
+                            unselectedTextColor = todoColors.onSurfaceMuted,
+                            indicatorColor = todoColors.accent.copy(alpha = 0.1f)
                         )
                     )
                     NavigationBarItem(
@@ -393,22 +405,22 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                         icon = { Icon(Icons.Default.DateRange, contentDescription = "Scheduled") },
                         label = { Text("Scheduled") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = NeonTeal,
-                            selectedTextColor = NeonTeal,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray,
-                            indicatorColor = NeonTeal.copy(alpha = 0.1f)
+                            selectedIconColor = todoColors.accent,
+                            selectedTextColor = todoColors.accent,
+                            unselectedIconColor = todoColors.onSurfaceMuted,
+                            unselectedTextColor = todoColors.onSurfaceMuted,
+                            indicatorColor = todoColors.accent.copy(alpha = 0.1f)
                         )
                     )
                 }
             },
-            containerColor = Color.Black
+            containerColor = todoColors.screen
         ) { paddingValues ->
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                color = Color.Black
+                color = todoColors.screen
             ) {
                 Column(
                     modifier = Modifier
@@ -436,14 +448,14 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                             // "All" space chip
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = if (selectedListId == null) NeonTeal.copy(alpha = 0.2f) else Color.DarkGray,
+                                color = if (selectedListId == null) todoColors.accent.copy(alpha = 0.2f) else todoColors.onSurfaceFaint,
                                 modifier = Modifier
                                     .padding(end = 8.dp)
                                     .clickable { viewModel.selectList(null) }
                             ) {
                                 Text(
                                     text = "All",
-                                    color = if (selectedListId == null) NeonTeal else Color.White,
+                                    color = if (selectedListId == null) todoColors.accent else todoColors.onSurface,
                                     style = MaterialTheme.typography.labelLarge,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
@@ -455,7 +467,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                 val isSelected = selectedListId == list.id
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
-                                    color = if (isSelected) NeonTeal.copy(alpha = 0.3f) else Color(
+                                    color = if (isSelected) todoColors.accent.copy(alpha = 0.3f) else Color(
                                         list.colorHex.toColorInt()
                                     ).copy(alpha = 0.2f),
                                     modifier = Modifier
@@ -490,7 +502,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                             }
                                         Text(
                                             text = displayName,
-                                            color = Color.White,
+                                            color = todoColors.onSurface,
                                             style = MaterialTheme.typography.labelLarge
                                         )
                                     }
@@ -506,7 +518,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                     Icon(
                                         Icons.Default.Add,
                                         contentDescription = "Add Space",
-                                        tint = NeonTeal
+                                        tint = todoColors.accent
                                     )
                                 }
                             }
@@ -536,13 +548,13 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                     stickyHeader {
                                         Surface(
                                             modifier = Modifier.fillMaxWidth(),
-                                            color = Color.Black
+                                            color = todoColors.screen
                                         ) {
                                             Text(
                                                 text = formatDateBucket(date),
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = NeonTeal,
+                                                color = todoColors.accent,
                                                 modifier = Modifier.padding(
                                                     top = 16.dp,
                                                     bottom = 8.dp
@@ -701,7 +713,7 @@ fun TodoScreen(userId: String, initialMode: String? = null) {
                                                 text = "Yesterday's Unfinished",
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = Color(0xFFFFA500),
+                                                color = todoColors.priorityMedium,
                                                 modifier = Modifier.padding(
                                                     top = 16.dp,
                                                     bottom = 8.dp

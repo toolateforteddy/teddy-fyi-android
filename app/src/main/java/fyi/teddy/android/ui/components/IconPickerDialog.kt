@@ -31,10 +31,6 @@ import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.utils.getIconByName
 
-/**
- * Shared, app-neutral icon picker. Used by both the Todo and Grocery features, so it must
- * theme itself only from [MaterialTheme.colorScheme] and never import a feature theme.
- */
 private val iconNames = listOf(
     "Build", "Home", "Plumbing", "ElectricalServices", "CleaningServices",
     "Brush", "Yard", "Work", "AttachMoney", "CreditCard",
@@ -46,6 +42,10 @@ private val iconNames = listOf(
     "MusicNote", "Pets", "Flight", "Eco", "Lock"
 )
 
+/**
+ * Shared by both the Todo and Grocery apps, so it deliberately reads only
+ * [MaterialTheme.colorScheme] -- whichever app theme wraps it supplies the colours.
+ */
 @Composable
 fun IconPickerDialog(
     initialIcon: String? = null,

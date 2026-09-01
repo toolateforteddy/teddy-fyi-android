@@ -33,9 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.GroceryList
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 @Composable
 fun ReorderGrocerySpacesDialog(
@@ -51,7 +51,7 @@ fun ReorderGrocerySpacesDialog(
             Text(
                 text = "Reorder Spaces",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White
+                color = GroceryTheme.colors.onSurface
             )
         },
         text = {
@@ -63,7 +63,7 @@ fun ReorderGrocerySpacesDialog(
                 if (workingList.isEmpty()) {
                     Text(
                         text = "No custom spaces created yet.",
-                        color = Color.Gray,
+                        color = GroceryTheme.colors.onSurfaceMuted,
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
                 } else {
@@ -78,7 +78,7 @@ fun ReorderGrocerySpacesDialog(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF1E1E1E)
+                                color = GroceryTheme.colors.cardRaised
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -89,13 +89,13 @@ fun ReorderGrocerySpacesDialog(
                                     Icon(
                                         imageVector = Icons.Default.DragHandle,
                                         contentDescription = "Grab bar",
-                                        tint = Color.Gray,
+                                        tint = GroceryTheme.colors.onSurfaceMuted,
                                         modifier = Modifier.padding(end = 12.dp)
                                     )
 
                                     Text(
                                         text = space.name,
-                                        color = Color.White,
+                                        color = GroceryTheme.colors.onSurface,
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.weight(1f)
                                     )
@@ -114,7 +114,7 @@ fun ReorderGrocerySpacesDialog(
                                         Icon(
                                             imageVector = Icons.Default.ArrowUpward,
                                             contentDescription = "Move Up",
-                                            tint = if (index > 0) Color.White else Color.DarkGray
+                                            tint = if (index > 0) GroceryTheme.colors.onSurface else GroceryTheme.colors.onSurfaceFaint
                                         )
                                     }
 
@@ -132,7 +132,7 @@ fun ReorderGrocerySpacesDialog(
                                         Icon(
                                             imageVector = Icons.Default.ArrowDownward,
                                             contentDescription = "Move Down",
-                                            tint = if (index < workingList.size - 1) Color.White else Color.DarkGray
+                                            tint = if (index < workingList.size - 1) GroceryTheme.colors.onSurface else GroceryTheme.colors.onSurfaceFaint
                                         )
                                     }
                                 }
@@ -162,13 +162,13 @@ fun ReorderGrocerySpacesDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                colors = ButtonDefaults.textButtonColors(contentColor = GroceryTheme.colors.onSurfaceMuted)
             ) {
                 Text("Cancel")
             }
         },
-        containerColor = Color(0xFF121212),
-        titleContentColor = Color.White,
-        textContentColor = Color.White
+        containerColor = GroceryTheme.colors.dialog,
+        titleContentColor = GroceryTheme.colors.onSurface,
+        textContentColor = GroceryTheme.colors.onSurface
     )
 }

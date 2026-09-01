@@ -5,13 +5,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.R
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.ui.components.TeddyButton
+import fyi.teddy.android.ui.theme.TeddyTheme
 
 @Composable
 fun WeatherScreen(onBack: () -> Unit) {
@@ -27,7 +27,7 @@ fun WeatherScreen(onBack: () -> Unit) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black,
+        color = TeddyTheme.colors.screenBottom,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -36,12 +36,12 @@ fun WeatherScreen(onBack: () -> Unit) {
         ) {
             Text(
                 text = "Arlington, MA",
-                color = Color.Gray,
+                color = TeddyTheme.colors.onSurfaceMuted,
                 fontSize = 18.sp
             )
             Text(
                 text = temperature ?: "Unknown",
-                color = Color.White,
+                color = TeddyTheme.colors.onSurface,
                 fontSize = 48.sp
             )
             Spacer(modifier = Modifier.height(40.dp))

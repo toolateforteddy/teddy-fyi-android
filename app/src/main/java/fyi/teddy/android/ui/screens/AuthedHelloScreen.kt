@@ -7,13 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fyi.teddy.android.R
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.ui.components.TeddyButton
+import fyi.teddy.android.ui.theme.TeddyTheme
 
 @Composable
 fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
@@ -33,7 +33,7 @@ fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black
+        color = TeddyTheme.colors.screenBottom
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -42,7 +42,7 @@ fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
         ) {
             Text(
                 text = "Authed API Response",
-                color = Color.Gray,
+                color = TeddyTheme.colors.onSurfaceMuted,
                 fontSize = 18.sp
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -54,7 +54,7 @@ fun AuthedHelloScreen(idToken: String?, onBack: () -> Unit) {
                         chunks.forEach { chunk ->
                             Text(
                                 text = chunk,
-                                color = Color.White,
+                                color = TeddyTheme.colors.onSurface,
                                 fontSize = 14.sp,
                                 modifier = Modifier.fillMaxWidth()
                             )
