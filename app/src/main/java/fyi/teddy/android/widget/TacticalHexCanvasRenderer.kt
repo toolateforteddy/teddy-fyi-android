@@ -2,27 +2,17 @@ package fyi.teddy.android.widget
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.toColorInt
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.ui.theme.TodoWidgetPalette
 import kotlin.math.cos
 import kotlin.math.sin
 
 object TacticalHexCanvasRenderer {
-
-    private val HEX_COLORS = intArrayOf(
-        "#03DAC5".toColorInt(), // Cyan
-        "#E91E63".toColorInt(), // Pink
-        "#9C27B0".toColorInt(), // Purple
-        "#CDDC39".toColorInt(), // Lime
-        "#FF9800".toColorInt(), // Orange
-        "#FFEB3B".toColorInt()  // Yellow
-    )
 
     fun renderHexGrid(
         todoItems: List<TodoItem>,
@@ -37,14 +27,14 @@ object TacticalHexCanvasRenderer {
 
         // 1. Fill Tactical dark background (#161424)
         val bgPaint = Paint().apply {
-            color = "#161424".toColorInt()
+            color = TodoWidgetPalette.chassis
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
         // Outer glow border
         val borderPaint = Paint().apply {
-            color = "#3700B3".toColorInt()
+            color = TodoWidgetPalette.chassisEdge
             style = Paint.Style.STROKE
             strokeWidth = 3f * density
             isAntiAlias = true
@@ -57,12 +47,12 @@ object TacticalHexCanvasRenderer {
         val bannerPaddingHorizontal = 8f * density
 
         val bannerPaint = Paint().apply {
-            color = "#221D38".toColorInt()
+            color = TodoWidgetPalette.banner
             style = Paint.Style.FILL
             isAntiAlias = true
         }
         val bannerStrokePaint = Paint().apply {
-            color = "#03DAC5".toColorInt()
+            color = TodoWidgetPalette.accent
             style = Paint.Style.STROKE
             strokeWidth = 1.5f * density
             isAntiAlias = true
@@ -77,7 +67,7 @@ object TacticalHexCanvasRenderer {
         canvas.drawRoundRect(bannerRect, 4f * density, 4f * density, bannerStrokePaint)
 
         val bannerTextPaint = Paint().apply {
-            color = "#BCADA0".toColorInt()
+            color = TodoWidgetPalette.bannerText
             textSize = (11f * density).coerceAtMost(bannerHeight * 0.5f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
@@ -109,7 +99,7 @@ object TacticalHexCanvasRenderer {
         val maxRows = ((availableHeight / rowHeight).toInt()).coerceAtLeast(1)
 
         val textPaint = Paint().apply {
-            color = Color.WHITE
+            color = TodoWidgetPalette.ink
             textSize = (9f * density).coerceAtLeast(10f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
@@ -153,26 +143,26 @@ object TacticalHexCanvasRenderer {
 
                 if (row == 0 && col == 0) {
                     // Slot 0: Counter Badge Hex
-                    fillPaint.color = "#2A1F45".toColorInt()
+                    fillPaint.color = TodoWidgetPalette.hexBacklog
                     canvas.drawPath(hexPath, fillPaint)
 
-                    strokePaint.color = "#03DAC5".toColorInt()
+                    strokePaint.color = TodoWidgetPalette.accent
                     canvas.drawPath(hexPath, strokePaint)
 
-                    textPaint.color = "#03DAC5".toColorInt()
+                    textPaint.color = TodoWidgetPalette.accent
                     canvas.drawText("${itemsCount}", cx, cy + (textPaint.textSize / 3f), textPaint)
                 } else if (taskIdx < activeTasks.size) {
                     // Task Hex
                     val item = activeTasks[taskIdx]
-                    val colorHex = HEX_COLORS[taskIdx % HEX_COLORS.size]
+                    val colorHex = TodoWidgetPalette.signalFor(taskIdx)
 
-                    fillPaint.color = "#1F1C33".toColorInt()
+                    fillPaint.color = TodoWidgetPalette.hexTask
                     canvas.drawPath(hexPath, fillPaint)
 
                     strokePaint.color = colorHex
                     canvas.drawPath(hexPath, strokePaint)
 
-                    textPaint.color = Color.WHITE
+                    textPaint.color = TodoWidgetPalette.ink
                     val displayTitle = if (item.title.length > 5) {
                         item.title.take(4) + "…"
                     } else {
@@ -182,13 +172,13 @@ object TacticalHexCanvasRenderer {
                     taskIdx++
                 } else if (activeTasks.isEmpty() && row == 0 && col == 1) {
                     // Empty state indicator
-                    fillPaint.color = "#1B2A26".toColorInt()
+                    fillPaint.color = TodoWidgetPalette.hexClear
                     canvas.drawPath(hexPath, fillPaint)
 
-                    strokePaint.color = "#03DAC5".toColorInt()
+                    strokePaint.color = TodoWidgetPalette.accent
                     canvas.drawPath(hexPath, strokePaint)
 
-                    textPaint.color = "#03DAC5".toColorInt()
+                    textPaint.color = TodoWidgetPalette.accent
                     canvas.drawText("CLEAR", cx, cy + (textPaint.textSize / 3f), textPaint)
                 }
             }

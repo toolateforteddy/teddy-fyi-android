@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 
 @Composable
 fun TodoInputBar(
@@ -30,15 +31,16 @@ fun TodoInputBar(
     onClearSearch: () -> Unit = {}
 ) {
     var newItemTitle by remember { mutableStateOf("") }
+    val todoColors = TodoTheme.colors
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp)
-            .background(Color(0xFF121214), RoundedCornerShape(24.dp))
+            .background(todoColors.panel, RoundedCornerShape(24.dp))
             .border(
                 1.dp,
-                if (isSearchMode) NeonTeal.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f),
+                if (isSearchMode) todoColors.accent.copy(alpha = 0.5f) else todoColors.onSurface.copy(alpha = 0.1f),
                 RoundedCornerShape(24.dp)
             )
             .padding(horizontal = 4.dp),
@@ -53,7 +55,7 @@ fun TodoInputBar(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = NeonTeal
+                    tint = todoColors.accent
                 )
             }
             TextField(
@@ -63,16 +65,16 @@ fun TodoInputBar(
                 placeholder = {
                     Text(
                         text = "Search backlog...",
-                        color = Color.Gray.copy(alpha = 0.6f),
+                        color = todoColors.onSurfaceMuted.copy(alpha = 0.6f),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
                 colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
+                    focusedTextColor = todoColors.onSurface,
+                    unfocusedTextColor = todoColors.onSurface,
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    cursorColor = NeonTeal,
+                    cursorColor = todoColors.accent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
                 ),
@@ -95,7 +97,7 @@ fun TodoInputBar(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Clear search",
-                    tint = Color.Gray
+                    tint = todoColors.onSurfaceMuted
                 )
             }
         } else {
@@ -106,16 +108,16 @@ fun TodoInputBar(
                 placeholder = { 
                     Text(
                         text = "Add task... @tomorrow #work", 
-                        color = Color.Gray.copy(alpha = 0.6f),
+                        color = todoColors.onSurfaceMuted.copy(alpha = 0.6f),
                         style = MaterialTheme.typography.bodyMedium
                     ) 
                 },
                 colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
+                    focusedTextColor = todoColors.onSurface,
+                    unfocusedTextColor = todoColors.onSurface,
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    cursorColor = NeonTeal,
+                    cursorColor = todoColors.accent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
                 ),
@@ -138,9 +140,9 @@ fun TodoInputBar(
                 },
                 modifier = Modifier
                     .padding(4.dp)
-                    .background(NeonTeal.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+                    .background(todoColors.accent.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
             ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = NeonTeal)
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = todoColors.accent)
             }
         }
     }

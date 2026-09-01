@@ -32,6 +32,7 @@ import fyi.teddy.android.todo.ui.components.TodoMenuContext
 import fyi.teddy.android.utils.StringUtils
 import fyi.teddy.android.ui.components.BattleMapTodoGrid
 import fyi.teddy.android.ui.components.BronzeGroceryTile
+import fyi.teddy.android.ui.theme.TeddyTheme
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -47,6 +48,7 @@ fun HomeScreen(
     onLogout: () -> Unit,
 ) {
     Log.d("HomeScreen", "Rendering HomeScreen. userName=$userName, profilePic=$profilePic")
+    val shellColors = TeddyTheme.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isClusterHappy by remember { mutableStateOf<Boolean?>(null) }
@@ -120,7 +122,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0A0814), Color(0xFF050508))
+                        colors = listOf(shellColors.screenTop, shellColors.screenBottom)
                     )
                 )
                 .statusBarsPadding()
@@ -139,13 +141,13 @@ fun HomeScreen(
                     Column {
                         Text(
                             text = "Hello, $greetingName",
-                            color = Color.White,
+                            color = shellColors.onSurface,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${todoItems.size} Remaining Today",
-                            color = Color(0xFF03DAC5),
+                            color = shellColors.accent,
                             fontSize = 16.sp
                         )
                     }
@@ -184,7 +186,7 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Default.AccountCircle,
                                     contentDescription = "Logout",
-                                    tint = Color.White,
+                                    tint = shellColors.onSurface,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -303,7 +305,7 @@ fun HomeScreen(
                     .padding(16.dp)
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(if (isClusterHappy!!) Color.Green else Color.Red)
+                    .background(if (isClusterHappy!!) shellColors.success else shellColors.danger)
                     .clickable { onNavigateToDebug() }
             ) {
                 Icon(
@@ -312,7 +314,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .size(16.dp)
                         .align(Alignment.Center),
-                    tint = Color.White
+                    tint = shellColors.onStatus
                 )
             }
         }

@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Colours that have to exist as Android resources rather than Compose values:
+    launcher icon and widget layout backgrounds.
+
+    Everything the app draws in Compose lives in the Kotlin themes instead:
+      - fyi.teddy.android.ui.theme       (host shell)
+      - fyi.teddy.android.todo.ui.theme  (Todo app)
+      - fyi.teddy.android.grocery.ui.theme (Grocery app)
+
+    Names below are prefixed by owner so the Todo and Grocery entries can move out
+    with their app when the two are split apart.
+-->
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="ic_launcher_background">#3DDC84</color>
+
+    <!-- Todo widget: matches TodoPalette.Chassis. -->
+    <color name="todo_widget_background">#FF161424</color>
+
+    <!-- Grocery widget: matches GroceryPalette.BronzeDark. -->
+    <color name="grocery_widget_background">#FF1F120B</color>
 </resources>

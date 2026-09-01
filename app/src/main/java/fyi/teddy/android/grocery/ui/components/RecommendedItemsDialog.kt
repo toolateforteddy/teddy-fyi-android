@@ -8,11 +8,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 @Composable
 fun RecommendedItemsDialog(
@@ -56,7 +56,7 @@ fun RecommendedItemsDialog(
                             Text(item.name, modifier = Modifier.weight(1f))
                             Text(
                                 text = "(${item.timesBought})",
-                                color = Color.Gray,
+                                color = GroceryTheme.colors.onSurfaceMuted,
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }

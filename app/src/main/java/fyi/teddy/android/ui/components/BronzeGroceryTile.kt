@@ -9,15 +9,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 @Composable
 fun StylizedShoppingCart(modifier: Modifier = Modifier) {
+    val groceryColors = GroceryTheme.colors
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -34,11 +35,11 @@ fun StylizedShoppingCart(modifier: Modifier = Modifier) {
         // 1. Fill the basket with deep navy-indigo/purple
         drawPath(
             path = basketPath,
-            color = Color(0xFF1E1A3C)
+            color = groceryColors.cartBody
         )
         
         // 2. Draw the grid inside the basket
-        val gridColor = Color(0xFF6E68B5)
+        val gridColor = groceryColors.cartGrid
         val gridStrokeWidth = 2.dp.toPx()
         
         // Vertical grid lines
@@ -70,7 +71,7 @@ fun StylizedShoppingCart(modifier: Modifier = Modifier) {
         
         // 3. Draw the basket outline (thick)
         val outerStrokeWidth = 3.5.dp.toPx()
-        val outlineColor = Color(0xFF6158A7)
+        val outlineColor = groceryColors.cartOutline
         drawPath(
             path = basketPath,
             color = outlineColor,
@@ -122,7 +123,7 @@ fun StylizedShoppingCart(modifier: Modifier = Modifier) {
         
         // Draw Left Wheel
         drawCircle(
-            color = Color(0xFF1E1A3C),
+            color = groceryColors.cartBody,
             radius = wheelRadius,
             center = leftWheelCenter
         )
@@ -140,7 +141,7 @@ fun StylizedShoppingCart(modifier: Modifier = Modifier) {
         
         // Draw Right Wheel
         drawCircle(
-            color = Color(0xFF1E1A3C),
+            color = groceryColors.cartBody,
             radius = wheelRadius,
             center = rightWheelCenter
         )
@@ -159,7 +160,8 @@ fun StylizedShoppingCart(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
+fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) = GroceryTheme {
+    val groceryColors = GroceryTheme.colors
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -183,8 +185,8 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
                 // Rich warm brown radial gradient background
                 val backgroundBrush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFF4C362B), // Lighter warm brown/bronze center
-                        Color(0xFF1F120B)  // Rich dark chocolate/black-brown edge
+                        groceryColors.tokenFace[0], // warm bronze centre
+                        groceryColors.tokenFace[1], // dark chocolate edge
                     ),
                     center = androidx.compose.ui.geometry.Offset(w / 2f, h * 0.4f),
                     radius = w * 0.65f
@@ -194,8 +196,8 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
                 // 2. Draw outer metallic border frame
                 val frameBrush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFFBCA085), // Lighter metallic highlight
-                        Color(0xFF6E5241)  // Darker shadow
+                        groceryColors.tokenRim[0], // metallic highlight
+                        groceryColors.tokenRim[1]   // metallic shadow
                     )
                 )
                 drawPath(
@@ -230,7 +232,7 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
                 
                 drawPath(
                     path = notchPath,
-                    color = Color(0xFF8B6C57), // Metallic golden bronze color
+                    color = groceryColors.tokenEngraving,
                     style = Stroke(width = 1.5.dp.toPx())
                 )
             },
@@ -252,13 +254,13 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
             // Title: "Grocery List" in Serif
             Text(
                 text = "Grocery List",
-                color = Color(0xFFE6D5C3), // Light warm gold/bronze
+                color = groceryColors.accentBright,
                 fontSize = 24.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
                 fontWeight = FontWeight.Medium,
                 style = LocalTextStyle.current.copy(
                     shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color(0xFF100907),
+                        color = groceryColors.tokenShadow,
                         offset = androidx.compose.ui.geometry.Offset(1f, 2f),
                         blurRadius = 3f
                     )
@@ -271,13 +273,13 @@ fun BronzeGroceryTile(itemCount: Int, modifier: Modifier = Modifier) {
             val itemText = if (itemCount == 1) "1 item" else "$itemCount items"
             Text(
                 text = "• $itemText •",
-                color = Color(0xFFBCADA0), // Lighter gray-bronze
+                color = groceryColors.accent,
                 fontSize = 15.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
                 fontWeight = FontWeight.Normal,
                 style = LocalTextStyle.current.copy(
                     shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color(0xFF100907),
+                        color = groceryColors.tokenShadow,
                         offset = androidx.compose.ui.geometry.Offset(1f, 1f),
                         blurRadius = 2f
                     )

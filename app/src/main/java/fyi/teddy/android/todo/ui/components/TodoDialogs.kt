@@ -25,8 +25,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.Color
+import fyi.teddy.android.todo.ui.theme.TodoSpaceSwatches
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import fyi.teddy.android.utils.getIconByName
 
+/**
+ * Shared by both the Todo and Grocery apps, so it deliberately reads only
+ * [MaterialTheme.colorScheme] -- whichever app theme wraps it supplies the colours.
+ */
 @Composable
 fun IconPickerDialog(
     initialIcon: String? = null,
@@ -60,13 +66,13 @@ fun IconPickerDialog(
                         IconButton(
                             onClick = { onConfirm(name) },
                             modifier = if (isSelected) {
-                                Modifier.border(2.dp, NeonTeal, RoundedCornerShape(8.dp))
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
                             } else Modifier
                         ) {
                             Icon(
                                 icon,
                                 contentDescription = name,
-                                tint = if (isSelected) NeonTeal else Color.White
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -355,7 +361,7 @@ fun AddListDialog(
     onConfirm: (name: String, colorHex: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    val colors = listOf("#00FFFF", "#FF00FF", "#FFA500", "#00FF00", "#FFFF00", "#FF4500", "#1E90FF")
+    val colors = TodoSpaceSwatches
     var selectedColor by remember { mutableStateOf(colors[0]) }
 
     AlertDialog(
@@ -392,7 +398,7 @@ fun AddListDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                        .background(TodoTheme.colors.onSurface.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                                 )
                             }
                         }
@@ -425,7 +431,7 @@ fun EditListDialog(
     onDelete: () -> Unit
 ) {
     var name by remember { mutableStateOf(list.name) }
-    val colors = listOf("#00FFFF", "#FF00FF", "#FFA500", "#00FF00", "#FFFF00", "#FF4500", "#1E90FF")
+    val colors = TodoSpaceSwatches
     var selectedColor by remember { mutableStateOf(list.colorHex) }
 
     AlertDialog(
@@ -462,7 +468,7 @@ fun EditListDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                        .background(TodoTheme.colors.onSurface.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                                 )
                             }
                         }
@@ -477,7 +483,7 @@ fun EditListDialog(
             ) {
                 TextButton(
                     onClick = onDelete,
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                    colors = ButtonDefaults.textButtonColors(contentColor = TodoTheme.colors.danger)
                 ) {
                     Text("Delete")
                 }

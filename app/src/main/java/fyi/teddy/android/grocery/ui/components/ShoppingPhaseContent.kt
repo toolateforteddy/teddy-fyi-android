@@ -18,13 +18,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
@@ -135,7 +135,7 @@ fun ShoppingPhaseContent(
                 Text(
                     "Select a store above to see your list",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
+                    color = GroceryTheme.colors.onSurfaceMuted
                 )
             }
         } else {
@@ -200,7 +200,7 @@ fun ShoppingPhaseContent(
                         Text(
                             "In Cart (${sortedInCartItems.size})",
                             style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray,
+                            color = GroceryTheme.colors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
                         )
                     }
@@ -235,13 +235,13 @@ fun ShoppingCategoryHeader(
             Icon(
                 if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color.Gray
+                tint = GroceryTheme.colors.onSurfaceMuted
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = categoryName.uppercase(),
                 style = MaterialTheme.typography.labelLarge,
-                color = Color.Gray
+                color = GroceryTheme.colors.onSurfaceMuted
             )
         }
     }
@@ -264,9 +264,9 @@ fun ShoppingItemTile(
                 onClick = { onToggleBought(!item.isBought) },
                 onLongClick = onEditCategory
             ),
-        color = Color(0xFF1A1A1A),
+        color = GroceryTheme.colors.card,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        border = BorderStroke(1.dp, GroceryTheme.colors.outline)
     ) {
         Row(
             modifier = Modifier
@@ -279,7 +279,7 @@ fun ShoppingItemTile(
                 style = MaterialTheme.typography.bodyMedium.copy(
                     textDecoration = if (item.isBought) TextDecoration.LineThrough else TextDecoration.None
                 ),
-                color = Color.White,
+                color = GroceryTheme.colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -288,7 +288,7 @@ fun ShoppingItemTile(
                 Text(
                     text = "x${item.quantity}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
+                    color = GroceryTheme.colors.onSurfaceMuted,
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }

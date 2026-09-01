@@ -3,7 +3,7 @@
     android:id="@+id/widget_todo_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#161424">
+    android:background="@color/todo_widget_background">
 
     <ImageView
         android:id="@+id/widget_todo_canvas_image"

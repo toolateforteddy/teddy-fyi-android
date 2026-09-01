@@ -19,12 +19,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
@@ -80,7 +80,7 @@ fun PlanningPhaseContent(
         Text(
             text = "Where are you heading?",
             style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray,
+            color = GroceryTheme.colors.onSurfaceMuted,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         LazyRow(
@@ -170,7 +170,7 @@ fun PlanningPhaseContent(
         Text(
             text = "Your List",
             style = MaterialTheme.typography.titleSmall,
-            color = Color.White,
+            color = GroceryTheme.colors.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -210,7 +210,7 @@ fun PlanningPhaseContent(
                         Text(
                             "List is empty. Tap recommendations to add items.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.DarkGray
+                            color = GroceryTheme.colors.onSurfaceFaint
                         )
                     }
                 }
@@ -242,17 +242,17 @@ fun RecommendationTile(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Red.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                    .background(GroceryTheme.colors.danger.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(Icons.Default.Delete, contentDescription = "Dismiss", tint = Color.White)
+                Icon(Icons.Default.Delete, contentDescription = "Dismiss", tint = GroceryTheme.colors.onSurface)
             }
         }
     ) {
         Surface(
             onClick = onClick,
-            color = Color(0xFF1A1A1A),
+            color = GroceryTheme.colors.card,
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -264,7 +264,7 @@ fun RecommendationTile(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = GroceryTheme.colors.onSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
@@ -298,9 +298,9 @@ fun PlanningItemTile(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
             ),
-        color = Color(0xFF0A0A0A),
+        color = GroceryTheme.colors.well,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        border = BorderStroke(1.dp, GroceryTheme.colors.outline)
     ) {
         AnimatedContent(
             targetState = showControls,
@@ -314,7 +314,7 @@ fun PlanningItemTile(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Remove, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
                     }
                     Text(
                         text = item.quantity,
@@ -323,10 +323,10 @@ fun PlanningItemTile(
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = Color.LightGray, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = GroceryTheme.colors.onSurfaceMuted, modifier = Modifier.size(18.dp))
                     }
                 }
             } else {
@@ -339,7 +339,7 @@ fun PlanningItemTile(
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
+                        color = GroceryTheme.colors.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -348,7 +348,7 @@ fun PlanningItemTile(
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = GroceryTheme.colors.onSurfaceMuted
                         )
                     }
                 }

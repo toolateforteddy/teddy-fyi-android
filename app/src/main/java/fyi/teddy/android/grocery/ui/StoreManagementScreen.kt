@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -20,11 +19,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.Store
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StoreManagementScreen(userId: String, listId: String? = null, onBack: () -> Unit) {
+fun StoreManagementScreen(userId: String, listId: String? = null, onBack: () -> Unit) = GroceryTheme {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
         factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId)
@@ -55,16 +55,16 @@ fun StoreManagementScreen(userId: String, listId: String? = null, onBack: () -> 
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = GroceryTheme.colors.screen,
+                    titleContentColor = GroceryTheme.colors.onSurface,
+                    navigationIconContentColor = GroceryTheme.colors.onSurface
                 )
             )
         }
     ) { paddingValues ->
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = Color.Black
+            color = GroceryTheme.colors.screen
         ) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp)
@@ -77,12 +77,12 @@ fun StoreManagementScreen(userId: String, listId: String? = null, onBack: () -> 
                         value = newStoreName,
                         onValueChange = { newStoreName = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Store name...", color = Color.Gray) },
+                        placeholder = { Text("Store name...", color = GroceryTheme.colors.onSurfaceMuted) },
                         colors = TextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF1A1A1A),
-                            unfocusedContainerColor = Color(0xFF1A1A1A)
+                            focusedTextColor = GroceryTheme.colors.onSurface,
+                            unfocusedTextColor = GroceryTheme.colors.onSurface,
+                            focusedContainerColor = GroceryTheme.colors.card,
+                            unfocusedContainerColor = GroceryTheme.colors.card
                         ),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
@@ -91,7 +91,7 @@ fun StoreManagementScreen(userId: String, listId: String? = null, onBack: () -> 
                         keyboardActions = KeyboardActions(onDone = { onAddStore() })
                     )
                     IconButton(onClick = { onAddStore() }) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = Color.White)
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), tint = GroceryTheme.colors.onSurface)
                     }
                 }
                 
@@ -137,20 +137,20 @@ fun StoreItemRow(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+        colors = CardDefaults.cardColors(containerColor = GroceryTheme.colors.card)
     ) {
         Row(
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(store.name, color = Color.White)
+                Text(store.name, color = GroceryTheme.colors.onSurface)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = store.isDefaultSupported,
                         onCheckedChange = { onUpdate(store.copy(isDefaultSupported = it)) }
                     )
-                    Text("Supported by default", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Supported by default", style = MaterialTheme.typography.bodySmall, color = GroceryTheme.colors.onSurfaceMuted)
                 }
             }
             
@@ -161,7 +161,7 @@ fun StoreItemRow(
                 Icon(
                     Icons.Default.KeyboardArrowUp, 
                     contentDescription = "Move Up", 
-                    tint = if (isFirst) Color.Gray else Color.White
+                    tint = if (isFirst) GroceryTheme.colors.onSurfaceFaint else GroceryTheme.colors.onSurface
                 )
             }
             IconButton(
@@ -171,11 +171,11 @@ fun StoreItemRow(
                 Icon(
                     Icons.Default.KeyboardArrowDown, 
                     contentDescription = "Move Down", 
-                    tint = if (isLast) Color.Gray else Color.White
+                    tint = if (isLast) GroceryTheme.colors.onSurfaceFaint else GroceryTheme.colors.onSurface
                 )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = GroceryTheme.colors.danger)
             }
         }
     }
