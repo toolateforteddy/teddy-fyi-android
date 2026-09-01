@@ -269,6 +269,9 @@ Rules:
 - **No literal colours in UI code.** Read `TodoTheme.colors` / `GroceryTheme.colors` /
   `TeddyTheme.colors` for the semantic slots, or `MaterialTheme.colorScheme` for the generic ones.
   Raw values live only in the three `*Palette.kt` files.
+- Each scheme defines the full `surfaceContainer*` ladder and `errorContainer` / `onErrorContainer`
+  explicitly. Material's dark defaults for those roles are purple-tinted, so any role left unset
+  leaks purple into an otherwise near-black UI.
 - **A component shared by both apps reads `MaterialTheme.colorScheme` only** — never a feature
   theme. `IconPickerDialog` is the live example: Todo uses it, and so does Grocery category
   management, so whichever theme wraps it supplies the colours.

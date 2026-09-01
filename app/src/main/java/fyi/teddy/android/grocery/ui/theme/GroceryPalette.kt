@@ -37,6 +37,8 @@ internal object GroceryPalette {
 
     val Verdant = Color(0xFF388E3C)
     val Crimson = Color(0xFFD32F2F)
+    val CrimsonSurface = Color(0xFF3A1512)
+    val CrimsonInk = Color(0xFFFFB4A8)
     val Saffron = Color(0xFFE0B341)
 
     // Indigo shopping-cart glyph engraved on the bronze token: deliberate cool contrast.

@@ -85,12 +85,17 @@ private val TeddyDarkColorScheme = darkColorScheme(
     onSurface = TeddyPalette.Ink,
     surfaceVariant = TeddyPalette.PanelRaised,
     onSurfaceVariant = TeddyPalette.InkDim,
+    surfaceContainerLowest = TeddyPalette.NightBottom,
+    surfaceContainerLow = TeddyPalette.PanelSunken,
     surfaceContainer = TeddyPalette.Panel,
     surfaceContainerHigh = TeddyPalette.PanelRaised,
+    surfaceContainerHighest = TeddyPalette.PanelRaised,
     outline = TeddyPalette.Indigo,
     outlineVariant = TeddyPalette.InkFaint,
     error = TeddyPalette.Crimson,
     onError = TeddyPalette.Ink,
+    errorContainer = TeddyPalette.CrimsonSurface,
+    onErrorContainer = TeddyPalette.CrimsonInk,
 )
 
 private val LocalTeddyColors = staticCompositionLocalOf { TeddyDarkColors }

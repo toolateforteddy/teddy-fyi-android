@@ -43,6 +43,7 @@ internal object TodoPalette {
     val Gold = Color(0xFFFFD700)
     val Amber = Color(0xFFFFA500)
     val Alert = Color(0xFFFF4B4B)
+    val AlertSurface = Color(0xFF2A1114)
     val Verdant = Color(0xFF4CAF50)
 
     // Per-item identity ramp for hexes, badges and priority stripes.

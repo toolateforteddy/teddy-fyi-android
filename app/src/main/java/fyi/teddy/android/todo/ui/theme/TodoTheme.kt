@@ -110,12 +110,17 @@ private val TodoDarkColorScheme = darkColorScheme(
     onSurface = TodoPalette.Ink,
     surfaceVariant = TodoPalette.Panel,
     onSurfaceVariant = TodoPalette.InkDim,
+    surfaceContainerLowest = TodoPalette.Void,
+    surfaceContainerLow = TodoPalette.Abyss,
     surfaceContainer = TodoPalette.Panel,
     surfaceContainerHigh = TodoPalette.PanelRaised,
+    surfaceContainerHighest = TodoPalette.PanelRaised,
     outline = TodoPalette.Indigo,
     outlineVariant = TodoPalette.InkFaint,
     error = TodoPalette.Alert,
     onError = TodoPalette.Void,
+    errorContainer = TodoPalette.AlertSurface,
+    onErrorContainer = TodoPalette.Alert,
 )
 
 private val LocalTodoColors = staticCompositionLocalOf { TodoDarkColors }

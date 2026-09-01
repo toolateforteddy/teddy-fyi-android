@@ -47,8 +47,12 @@ data class GroceryColors(
     val price: Color,
     /** Confirmation snackbars and success states. */
     val success: Color,
-    /** Delete actions, error snackbars, swipe-to-delete backdrop. */
+    /** Delete actions and error snackbars. */
     val danger: Color,
+    /** Fill behind a destructive affordance, e.g. the swipe-to-delete backdrop. */
+    val dangerSurface: Color,
+    /** Text and icons on a [dangerSurface] fill. */
+    val onDangerSurface: Color,
     /** Text and icons drawn on top of [success] / [danger] fills. */
     val onStatus: Color,
     /** Warm gradient used by the bronze token: centre then edge. */
@@ -83,6 +87,8 @@ private val GroceryDarkColors = GroceryColors(
     price = GroceryPalette.Saffron,
     success = GroceryPalette.Verdant,
     danger = GroceryPalette.Crimson,
+    dangerSurface = GroceryPalette.CrimsonSurface,
+    onDangerSurface = GroceryPalette.CrimsonInk,
     onStatus = GroceryPalette.Ink,
     tokenFace = listOf(GroceryPalette.BronzeEmber, GroceryPalette.BronzeDark),
     tokenRim = listOf(GroceryPalette.Bronze, GroceryPalette.BronzeShadow),
@@ -106,12 +112,17 @@ private val GroceryDarkColorScheme = darkColorScheme(
     onSurface = GroceryPalette.Ink,
     surfaceVariant = GroceryPalette.CardRaised,
     onSurfaceVariant = GroceryPalette.InkDim,
+    surfaceContainerLowest = GroceryPalette.Void,
+    surfaceContainerLow = GroceryPalette.Well,
     surfaceContainer = GroceryPalette.Card,
     surfaceContainerHigh = GroceryPalette.CardRaised,
+    surfaceContainerHighest = GroceryPalette.CardRaised,
     outline = GroceryPalette.InkFaint,
     outlineVariant = GroceryPalette.InkFaint,
     error = GroceryPalette.Crimson,
     onError = GroceryPalette.Ink,
+    errorContainer = GroceryPalette.CrimsonSurface,
+    onErrorContainer = GroceryPalette.CrimsonInk,
 )
 
 private val LocalGroceryColors = staticCompositionLocalOf { GroceryDarkColors }

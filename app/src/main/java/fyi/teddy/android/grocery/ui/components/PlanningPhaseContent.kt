@@ -19,16 +19,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
-import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
@@ -150,7 +151,7 @@ fun PlanningPhaseContent(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(storeSpecificRecs, key = { it.id }) { rec ->
@@ -210,7 +211,7 @@ fun PlanningPhaseContent(
                         Text(
                             "List is empty. Tap recommendations to add items.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = GroceryTheme.colors.onSurfaceFaint
+                            color = GroceryTheme.colors.onSurfaceMuted
                         )
                     }
                 }
@@ -227,6 +228,7 @@ fun RecommendationTile(
     onDismiss: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
+    val tileShape = RoundedCornerShape(8.dp)
 
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
@@ -238,22 +240,37 @@ fun RecommendationTile(
         state = dismissState,
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
+        modifier = Modifier.clip(tileShape),
         backgroundContent = {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(GroceryTheme.colors.danger.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = "Dismiss", tint = GroceryTheme.colors.onSurface)
+            val direction = dismissState.dismissDirection
+            // Only paint the dismiss backdrop while a swipe is actually in progress,
+            // otherwise it shows as a red fringe around every resting tile.
+            if (direction != SwipeToDismissBoxValue.Settled) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(GroceryTheme.colors.dangerSurface, tileShape)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                        Alignment.CenterStart
+                    } else {
+                        Alignment.CenterEnd
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Dismiss",
+                        tint = GroceryTheme.colors.onDangerSurface,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     ) {
         Surface(
             onClick = onClick,
             color = GroceryTheme.colors.card,
-            shape = RoundedCornerShape(8.dp),
+            shape = tileShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
