@@ -13,6 +13,8 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -69,7 +71,9 @@ class GroceryWidget : GlanceAppWidget() {
         val size = LocalSize.current
         val colors = GlanceTheme.colors
 
-        val unboughtItems = activeItems.filter { !it.isBought }
+        val unboughtItems = activeItems
+            .filter { !it.isBought }
+            .sortedBy { it.name.lowercase() }
         val toBuyCount = unboughtItems.size
 
         val isCompact = size.height < 110.dp
@@ -189,17 +193,10 @@ class GroceryWidget : GlanceAppWidget() {
                             )
                         }
                     } else {
-                        val maxRows = when {
-                            size.height >= 220.dp -> 6
-                            size.height >= 160.dp -> 4
-                            else -> 3
-                        }
-                        val displayItems = unboughtItems.take(maxRows)
-
-                        Column(modifier = GlanceModifier.fillMaxWidth()) {
-                            displayItems.forEachIndexed { index, item ->
-                                GroceryRowItem(item = item)
-                                if (index < displayItems.size - 1) {
+                        LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
+                            items(unboughtItems, itemId = { it.id.hashCode().toLong() }) { item ->
+                                Column(modifier = GlanceModifier.fillMaxWidth()) {
+                                    GroceryRowItem(item = item)
                                     Spacer(modifier = GlanceModifier.height(5.dp))
                                 }
                             }
@@ -243,7 +240,14 @@ class GroceryWidget : GlanceAppWidget() {
                 .fillMaxWidth()
                 .background(colors.surfaceVariant)
                 .cornerRadius(8.dp)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                // The scrolling list swallows the root container's click, so each
+                // row carries its own way back into the app.
+                .clickable(
+                    actionStartActivity<MainActivity>(
+                        actionParametersOf(WIDGET_ACTION_KEY to ACTION_OPEN_GROCERY)
+                    )
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
