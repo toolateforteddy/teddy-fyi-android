@@ -1,7 +1,8 @@
 # Codebase Map — teddy-fyi-android
 
 Orientation doc for agents. Reflects the tree as of commit `b8c7f84`, plus a follow-up cleanup pass
-(list-position sync fix, `ApiRoutes`, Detekt baseline enforcement, `util/`→`utils/` merge).
+(list-position sync fix, `ApiRoutes`, Detekt baseline enforcement, `util/`→`utils/` merge) and the
+colour-theming pass described in §9.
 Verified against source, not just the other `*.md` files — several of those are stale (see
 [Doc reliability](#doc-reliability)).
 
@@ -42,15 +43,16 @@ fyi/teddy/android/
 ├── network/                 Ktor client, sync DTOs, SyncWorker, Todo/GrocerySyncManager, list invites
 ├── data/                    AppDatabase, DatabaseMigrations, SyncLog, UserSyncMetadata
 ├── repository/              TeddyRepository (health check, weather, /api/hc probes)
-├── todo/{data,repository,domain,ui,util}
-├── grocery/{data,repository,domain,ui}      domain/ai/ holds the SLM categorizer
-├── ui/{navigation,screens,components,theme}
+├── todo/{data,repository,domain,ui,util}      ui/theme/ holds the Todo app palette
+├── grocery/{data,repository,domain,ui}      domain/ai/ = SLM categorizer, ui/theme/ = Grocery palette
+├── ui/{navigation,screens,components,theme}  theme/ = host-shell palette only
 ├── widget/                  Glance widgets + renderers
 └── util/, utils/            two packages, both exist — `util/StringUtils`, `utils/{Emulator,Gms,Icon}Utils`
 ```
 
 Domain isolation is real: Todo and Grocery have separate entities, DAOs, repositories, ViewModels,
-and sync managers. They meet only at `AppDatabase` and `SyncWorker`.
+and sync managers, and each owns its own colour palette. They meet only at `AppDatabase` and
+`SyncWorker`. See §9 for the colour rules.
 
 ---
 
@@ -248,7 +250,42 @@ in the history.
 
 ---
 
-## 9. Doc reliability
+## 9. Theming
+
+Three palettes: one per app, plus the shell that hosts them. Each lives in its own package and
+none of them import each other — that is deliberate, so Todo and Grocery can be split into
+separate apps by moving a directory.
+
+| Package | Applied by | Look |
+| --- | --- | --- |
+| `ui/theme` (`TeddyTheme`) | `MainActivity`, wrapping everything | Launcher shell: violet-black gradient, indigo panels, teal accent |
+| `todo/ui/theme` (`TodoTheme`) | `TodoScreen`, `ScheduledTasksScreen`, `BattleMapTodoGrid` | Tactical HUD: near-black surfaces, indigo structure, neon-teal accents |
+| `grocery/ui/theme` (`GroceryTheme`) | `GroceryScreen`, the config/store/category screens, `BronzeGroceryTile` | Bronze: warm metallic accents on neutral dark surfaces |
+
+A feature theme fully overrides the shell, so a Todo screen looks the same wherever it is hosted.
+
+Rules:
+
+- **No literal colours in UI code.** Read `TodoTheme.colors` / `GroceryTheme.colors` /
+  `TeddyTheme.colors` for the semantic slots, or `MaterialTheme.colorScheme` for the generic ones.
+  Raw values live only in the three `*Palette.kt` files.
+- Each scheme defines the full `surfaceContainer*` ladder and `errorContainer` / `onErrorContainer`
+  explicitly. Material's dark defaults for those roles are purple-tinted, so any role left unset
+  leaks purple into an otherwise near-black UI.
+- **A component shared by both apps reads `MaterialTheme.colorScheme` only** — never a feature
+  theme. `IconPickerDialog` is the live example: Todo uses it, and so does Grocery category
+  management, so whichever theme wraps it supplies the colours.
+- Widgets draw to a `Canvas` outside any composition and cannot read a CompositionLocal, so they
+  use the ARGB-int mirrors `TodoWidgetPalette` / `GroceryWidgetPalette`. Keep those in step with
+  their palette.
+- Widget layout backgrounds have to be Android resources; they live in `values/colors.xml`,
+  prefixed `todo_` / `grocery_` so they can move out with their app.
+- Todo space colours are user-chosen and persisted, so they are hex strings, not `Color`s:
+  `TodoSpaceSwatches`.
+
+---
+
+## 10. Doc reliability
 
 | File | Status |
 | --- | --- |

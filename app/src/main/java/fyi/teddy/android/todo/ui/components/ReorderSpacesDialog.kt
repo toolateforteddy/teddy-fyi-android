@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import fyi.teddy.android.todo.data.TodoList
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 
 @Composable
 fun ReorderSpacesDialog(
@@ -48,6 +49,7 @@ fun ReorderSpacesDialog(
     onSave: (List<TodoList>) -> Unit
 ) {
     var workingList by remember(spaces) { mutableStateOf(spaces) }
+    val todoColors = TodoTheme.colors
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -55,7 +57,7 @@ fun ReorderSpacesDialog(
             Text(
                 text = "Reorder Spaces",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White
+                color = todoColors.onSurface
             )
         },
         text = {
@@ -67,7 +69,7 @@ fun ReorderSpacesDialog(
                 if (workingList.isEmpty()) {
                     Text(
                         text = "No custom spaces created yet.",
-                        color = Color.Gray,
+                        color = todoColors.onSurfaceMuted,
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
                 } else {
@@ -82,7 +84,7 @@ fun ReorderSpacesDialog(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF1E1E1E)
+                                color = todoColors.panelRaised
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -93,7 +95,7 @@ fun ReorderSpacesDialog(
                                     Icon(
                                         imageVector = Icons.Default.DragHandle,
                                         contentDescription = "Grab bar",
-                                        tint = Color.Gray,
+                                        tint = todoColors.onSurfaceMuted,
                                         modifier = Modifier.padding(end = 12.dp)
                                     )
 
@@ -101,7 +103,7 @@ fun ReorderSpacesDialog(
                                         modifier = Modifier
                                             .size(12.dp)
                                             .background(
-                                                color = runCatching { Color(space.colorHex.toColorInt()) }.getOrDefault(NeonTeal),
+                                                color = runCatching { Color(space.colorHex.toColorInt()) }.getOrDefault(todoColors.accent),
                                                 shape = CircleShape
                                             )
                                     )
@@ -110,7 +112,7 @@ fun ReorderSpacesDialog(
 
                                     Text(
                                         text = space.name,
-                                        color = Color.White,
+                                        color = todoColors.onSurface,
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.weight(1f)
                                     )
@@ -129,7 +131,7 @@ fun ReorderSpacesDialog(
                                         Icon(
                                             imageVector = Icons.Default.ArrowUpward,
                                             contentDescription = "Move Up",
-                                            tint = if (index > 0) Color.White else Color.DarkGray
+                                            tint = if (index > 0) todoColors.onSurface else todoColors.onSurfaceFaint
                                         )
                                     }
 
@@ -147,7 +149,7 @@ fun ReorderSpacesDialog(
                                         Icon(
                                             imageVector = Icons.Default.ArrowDownward,
                                             contentDescription = "Move Down",
-                                            tint = if (index < workingList.size - 1) Color.White else Color.DarkGray
+                                            tint = if (index < workingList.size - 1) todoColors.onSurface else todoColors.onSurfaceFaint
                                         )
                                     }
                                 }
@@ -161,8 +163,8 @@ fun ReorderSpacesDialog(
             Button(
                 onClick = { onSave(workingList) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = NeonTeal,
-                    contentColor = Color.Black
+                    containerColor = todoColors.accent,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Icon(
@@ -177,13 +179,13 @@ fun ReorderSpacesDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                colors = ButtonDefaults.textButtonColors(contentColor = todoColors.onSurfaceMuted)
             ) {
                 Text("Cancel")
             }
         },
-        containerColor = Color(0xFF121212),
-        titleContentColor = Color.White,
-        textContentColor = Color.White
+        containerColor = todoColors.dialog,
+        titleContentColor = todoColors.onSurface,
+        textContentColor = todoColors.onSurface
     )
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
 import fyi.teddy.android.grocery.data.GroceryItem
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
@@ -84,7 +85,7 @@ fun NeedPhaseContent(
                     Text(
                         text = category.name.uppercase(),
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color.Gray,
+                        color = GroceryTheme.colors.onSurfaceMuted,
                         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                     )
                 }
@@ -120,7 +121,7 @@ fun NeedPhaseContent(
                 Text(
                     text = "UNCATEGORIZED",
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.Gray,
+                    color = GroceryTheme.colors.onSurfaceMuted,
                     modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                 )
             }
@@ -176,7 +177,7 @@ fun NeedItemTile(
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) Color.Red else Color.Transparent
+            val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) GroceryTheme.colors.danger else Color.Transparent
             Box(
                 Modifier
                     .fillMaxSize()
@@ -185,7 +186,7 @@ fun NeedItemTile(
                     .clickable { onDelete() },
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = GroceryTheme.colors.onSurface)
             }
         },
         content = {
@@ -197,9 +198,9 @@ fun NeedItemTile(
                         onClick = onToggleControls,
                         onLongClick = onTagStores
                     ),
-                color = Color(0xFF1A1A1A),
+                color = GroceryTheme.colors.card,
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+                border = BorderStroke(1.dp, GroceryTheme.colors.outline)
             ) {
                 AnimatedContent(
                     targetState = showControls,
@@ -213,21 +214,21 @@ fun NeedItemTile(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             IconButton(onClick = onDecrement) {
-                                Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = Color.White)
+                                Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = GroceryTheme.colors.onSurface)
                             }
                             Text(
                                 text = item.quantity,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White
+                                color = GroceryTheme.colors.onSurface
                             )
                             IconButton(onClick = onIncrement) {
-                                Icon(Icons.Default.Add, contentDescription = "Increase", tint = Color.White)
+                                Icon(Icons.Default.Add, contentDescription = "Increase", tint = GroceryTheme.colors.onSurface)
                             }
                             IconButton(onClick = onEditCategory) {
-                                Icon(Icons.Default.Category, contentDescription = "Category", tint = Color.White)
+                                Icon(Icons.Default.Category, contentDescription = "Category", tint = GroceryTheme.colors.onSurface)
                             }
                             IconButton(onClick = onDelete) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = GroceryTheme.colors.danger)
                             }
                         }
                     } else {
@@ -240,7 +241,7 @@ fun NeedItemTile(
                             Text(
                                 text = item.name,
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White,
+                                color = GroceryTheme.colors.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
@@ -250,7 +251,7 @@ fun NeedItemTile(
                                 Text(
                                     text = "x${item.quantity}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.Gray
+                                    color = GroceryTheme.colors.onSurfaceMuted
                                 )
                             }
                         }

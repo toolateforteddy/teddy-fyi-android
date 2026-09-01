@@ -17,13 +17,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import kotlin.math.cos
 import kotlin.math.sin
-
-val NeonTeal = Color(0xFF00F2FE)
-
-//val DeepCharcoal = Color(0xFF0B0B0F)
-val MutedGrey = Color(0xFF666666)
 
 class HexagonShape : Shape {
     override fun createOutline(
@@ -72,7 +68,7 @@ class ClippedCornerShape(val cornerSize: Float = 12f) : Shape {
 fun HexCheckbox(
     checked: Boolean,
     modifier: Modifier = Modifier,
-    color: Color = NeonTeal
+    color: Color = TodoTheme.colors.accent
 ) {
     Box(
         modifier = modifier
@@ -80,7 +76,7 @@ fun HexCheckbox(
             .clip(HexagonShape())
             .background(if (checked) color else Color.Transparent)
             .border(
-                BorderStroke(2.dp, if (checked) color else MutedGrey),
+                BorderStroke(2.dp, if (checked) color else TodoTheme.colors.onSurfaceDone),
                 HexagonShape()
             ),
         contentAlignment = Alignment.Center

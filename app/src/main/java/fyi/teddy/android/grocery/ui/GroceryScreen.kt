@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -35,6 +34,7 @@ import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog
 import fyi.teddy.android.grocery.ui.components.ReorderGrocerySpacesDialog
 import fyi.teddy.android.grocery.ui.components.ShareListDialog
 import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.time.Duration.Companion.minutes
@@ -46,14 +46,34 @@ enum class GroceryPhase {
         get() = name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/**
+ * Entry point for the Grocery app. Applies [GroceryTheme] so every Grocery screen and
+ * dialog renders with the Grocery palette regardless of what theme the host shell is using.
+ */
 @Composable
 fun GroceryScreen(
+    userId: String,
+    onBack: () -> Unit,
+    onManageConfig: () -> Unit,
+    onNavigateToDebug: () -> Unit,
+) = GroceryTheme {
+    GroceryScreenContent(
+        userId = userId,
+        onBack = onBack,
+        onManageConfig = onManageConfig,
+        onNavigateToDebug = onNavigateToDebug,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun GroceryScreenContent(
     userId: String, 
     @Suppress("UNUSED_PARAMETER") onBack: () -> Unit, 
     onManageConfig: () -> Unit,
     onNavigateToDebug: () -> Unit
 ) {
+    val groceryColors = GroceryTheme.colors
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
         factory = GroceryViewModelFactory(context.applicationContext as android.app.Application, userId),
@@ -123,8 +143,8 @@ fun GroceryScreen(
             SnackbarHost(snackbarHostState) { data ->
                 val isError = state.snackbarMessage?.isError == true
                 Snackbar(
-                    containerColor = if (isError) Color(0xFFD32F2F) else Color(0xFF388E3C),
-                    contentColor = Color.White,
+                    containerColor = if (isError) groceryColors.danger else groceryColors.success,
+                    contentColor = groceryColors.onStatus,
                     snackbarData = data
                 )
             }
@@ -141,8 +161,8 @@ fun GroceryScreen(
                 actions = {
                     if (state.currentPhase == GroceryPhase.NEED || state.currentPhase == GroceryPhase.SHOPPING) {
                         val syncIconColor = when (state.lastSyncStatus) {
-                            "FAILURE", "RETRY" -> Color.Red
-                            else -> if (state.unsyncedCount > 0) Color.Yellow else Color.White
+                            "FAILURE", "RETRY" -> groceryColors.danger
+                            else -> if (state.unsyncedCount > 0) groceryColors.price else groceryColors.onSurface
                         }
                         
                         val transition = rememberInfiniteTransition(label = "syncRotation")
@@ -188,7 +208,7 @@ fun GroceryScreen(
                             Icon(
                                 Icons.Default.Edit, 
                                 contentDescription = stringResource(R.string.edit_mode),
-                                tint = if (state.isEditMode) MaterialTheme.colorScheme.primary else Color.White
+                                tint = if (state.isEditMode) MaterialTheme.colorScheme.primary else groceryColors.onSurface
                             )
                         }
                     }
@@ -217,9 +237,9 @@ fun GroceryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = groceryColors.screen,
+                    titleContentColor = groceryColors.onSurface,
+                    actionIconContentColor = groceryColors.onSurface
                 )
             )
         },
@@ -235,7 +255,7 @@ fun GroceryScreen(
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = Color.Black) {
+            NavigationBar(containerColor = groceryColors.screen) {
                 NavigationBarItem(
                     selected = state.currentPhase == GroceryPhase.NEED,
                     onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.NEED)) },
@@ -259,7 +279,7 @@ fun GroceryScreen(
     ) { paddingValues ->
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = Color.Black
+            color = groceryColors.screen
         ) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp)
@@ -286,19 +306,19 @@ fun GroceryScreen(
                                 Icon(
                                     Icons.Default.Menu,
                                     contentDescription = "Lists",
-                                    tint = Color.LightGray
+                                    tint = groceryColors.onSurfaceMuted
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = activeListName,
-                                    color = Color.White,
+                                    color = groceryColors.onSurface,
                                     fontSize = 18.sp,
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Icon(
                                     Icons.Default.ArrowDropDown,
                                     contentDescription = "Switch List",
-                                    tint = Color.White
+                                    tint = groceryColors.onSurface
                                 )
                             }
                             DropdownMenu(
@@ -331,14 +351,14 @@ fun GroceryScreen(
                                     Icon(
                                         Icons.Default.GroupAdd,
                                         contentDescription = "Join List",
-                                        tint = Color.White
+                                        tint = groceryColors.onSurface
                                     )
                                 }
                                 IconButton(onClick = { showAddListDialog = true }) {
                                     Icon(
                                         Icons.Default.Add,
                                         contentDescription = "New List",
-                                        tint = Color.White
+                                        tint = groceryColors.onSurface
                                     )
                                 }
                                 if (state.selectedListId != null) {
@@ -346,14 +366,14 @@ fun GroceryScreen(
                                         Icon(
                                             Icons.Default.Edit,
                                             contentDescription = "Rename List",
-                                            tint = Color.White
+                                            tint = groceryColors.onSurface
                                         )
                                     }
                                     IconButton(onClick = { showShareListDialog = true }) {
                                         Icon(
                                             Icons.Default.Share,
                                             contentDescription = "Share List",
-                                            tint = Color.White
+                                            tint = groceryColors.onSurface
                                         )
                                     }
                                     IconButton(onClick = {
@@ -362,7 +382,7 @@ fun GroceryScreen(
                                         Icon(
                                             Icons.Default.Delete,
                                             contentDescription = "Delete List",
-                                            tint = Color.Red
+                                            tint = groceryColors.danger
                                         )
                                     }
                                 }
@@ -472,7 +492,7 @@ fun GroceryScreen(
             ModalBottomSheet(
                 onDismissRequest = { showAddItemSheet = false },
                 sheetState = sheetState,
-                containerColor = Color(0xFF1A1A1A)
+                containerColor = groceryColors.card
             ) {
                 Column(
                     modifier = Modifier
@@ -483,7 +503,7 @@ fun GroceryScreen(
                     Text(
                         "Add New Item",
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
+                        color = groceryColors.onSurface,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -493,12 +513,12 @@ fun GroceryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(nameFocusRequester),
-                        placeholder = { Text("e.g. 2 bunches of Bananas", color = Color.Gray) },
+                        placeholder = { Text("e.g. 2 bunches of Bananas", color = groceryColors.onSurfaceMuted) },
                         colors = TextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color.Black,
-                            unfocusedContainerColor = Color.Black
+                            focusedTextColor = groceryColors.onSurface,
+                            unfocusedTextColor = groceryColors.onSurface,
+                            focusedContainerColor = groceryColors.well,
+                            unfocusedContainerColor = groceryColors.well
                         ),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
@@ -516,7 +536,7 @@ fun GroceryScreen(
                         Text(
                             "Suggestions",
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color.Gray,
+                            color = groceryColors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                         )
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -539,14 +559,14 @@ fun GroceryScreen(
                             Icon(
                                 Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                tint = Color(0xFFBB86FC),
+                                tint = groceryColors.accent,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 "AI Smart Categorization Active",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFBB86FC)
+                                color = groceryColors.accent
                             )
                         }
                     }

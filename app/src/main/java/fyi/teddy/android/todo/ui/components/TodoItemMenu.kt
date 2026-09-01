@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.todo.data.TodoItem
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import java.time.LocalDate
 
 enum class TodoMenuContext {
@@ -323,6 +324,8 @@ fun DashboardHexMenuContent(
     onDismissRequest: () -> Unit,
     onShowOverlay: (ActiveRowOverlay) -> Unit
 ) {
+    val todoColors = TodoTheme.colors
+
     // Top Action Row: Large Mark as Completed button
     Button(
         onClick = {
@@ -333,7 +336,7 @@ fun DashboardHexMenuContent(
             .fillMaxWidth()
             .height(56.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (item.isCompleted) Color.Gray else Color(0xFF4CAF50)
+            containerColor = if (item.isCompleted) todoColors.onSurfaceDone else todoColors.success
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -384,7 +387,7 @@ fun DashboardHexMenuContent(
         MenuIconButton(
             icon = Icons.Default.Delete,
             label = "Delete",
-            tint = Color.Red,
+            tint = todoColors.danger,
             onClick = {
                 onIntent(TodoItemIntent.Delete(item))
                 onDismissRequest()
@@ -410,9 +413,9 @@ fun DashboardHexMenuContent(
                         try {
                             Color(list.colorHex.toColorInt())
                         } catch (_: Exception) {
-                            NeonTeal
+                            todoColors.accent
                         }
-                    } ?: NeonTeal
+                    } ?: todoColors.accent
                 }
                 Row(
                     modifier = Modifier
@@ -430,7 +433,7 @@ fun DashboardHexMenuContent(
                         style = if (subtask.isCompleted) MaterialTheme.typography.bodyMedium.copy(
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                         ) else MaterialTheme.typography.bodyMedium,
-                        color = if (subtask.isCompleted) Color.Gray else Color.Unspecified
+                        color = if (subtask.isCompleted) todoColors.onSurfaceDone else Color.Unspecified
                     )
                 }
             }
@@ -448,6 +451,8 @@ fun ListRowMenuContent(
     onDismissRequest: () -> Unit,
     onShowOverlay: (ActiveRowOverlay) -> Unit
 ) {
+    val todoColors = TodoTheme.colors
+
     Column(modifier = Modifier.fillMaxHeight()) {
         // Quick Info Area
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -546,7 +551,7 @@ fun ListRowMenuContent(
                 onIntent(TodoItemIntent.Delete(item))
                 onDismissRequest()
             }) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = todoColors.danger)
             }
         }
 
@@ -568,9 +573,9 @@ fun ListRowMenuContent(
                             try {
                                 Color(list.colorHex.toColorInt())
                             } catch (_: Exception) {
-                                NeonTeal
+                                todoColors.accent
                             }
-                        } ?: NeonTeal
+                        } ?: todoColors.accent
                     }
                     Row(
                         modifier = Modifier
@@ -588,7 +593,7 @@ fun ListRowMenuContent(
                             style = if (subtask.isCompleted) MaterialTheme.typography.bodyMedium.copy(
                                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                             ) else MaterialTheme.typography.bodyMedium,
-                            color = if (subtask.isCompleted) Color.Gray else Color.Unspecified
+                            color = if (subtask.isCompleted) todoColors.onSurfaceDone else Color.Unspecified
                         )
                     }
                 }

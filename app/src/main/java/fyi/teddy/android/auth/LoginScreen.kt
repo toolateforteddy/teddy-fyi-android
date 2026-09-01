@@ -6,7 +6,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,6 +19,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import fyi.teddy.android.ui.theme.TeddyTheme
 import fyi.teddy.android.utils.EmulatorUtils
 import fyi.teddy.android.utils.GmsUtils
 import kotlinx.coroutines.launch
@@ -38,18 +38,18 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black,
+        color = TeddyTheme.colors.screenBottom,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome to Teddy FYI", color = Color.White, fontSize = 24.sp)
+            Text(text = "Welcome to Teddy FYI", color = TeddyTheme.colors.onSurface, fontSize = 24.sp)
             Spacer(modifier = Modifier.height(20.dp))
             
             if (isLoggingIn) {
-                CircularProgressIndicator(color = Color.White)
+                CircularProgressIndicator(color = TeddyTheme.colors.accent)
             } else {
                 if (isGmsAvailable) {
                     Button(onClick = {
@@ -118,7 +118,7 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
                     TextButton(onClick = {
                         onLoginSuccess(GoogleSignInResult("Emulator Guest", "fake_emulator_token", null))
                     }) {
-                        Text("Skip Auth (Emulator only)", color = Color.Gray)
+                        Text("Skip Auth (Emulator only)", color = TeddyTheme.colors.onSurfaceMuted)
                     }
                 }
             }
@@ -127,7 +127,7 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = errorMessage!!,
-                    color = Color.Red,
+                    color = TeddyTheme.colors.danger,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(horizontal = 32.dp),
                     textAlign = TextAlign.Center

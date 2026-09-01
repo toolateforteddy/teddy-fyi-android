@@ -9,9 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.GroceryListMember
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import kotlinx.coroutines.flow.Flow
 
 @Composable
@@ -68,7 +68,7 @@ fun ShareListDialog(
                 Text("Current Members:", style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 if (members.isEmpty()) {
-                    Text("Only you have access to this list.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("Only you have access to this list.", style = MaterialTheme.typography.bodyMedium, color = GroceryTheme.colors.onSurfaceMuted)
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 150.dp)) {
                         items(members) { member ->
@@ -79,7 +79,7 @@ fun ShareListDialog(
                             ) {
                                 Text(member.userId, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                 IconButton(onClick = { onRemoveMember(member) }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red)
+                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = GroceryTheme.colors.danger)
                                 }
                             }
                         }

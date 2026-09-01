@@ -31,6 +31,7 @@ import fyi.teddy.android.data.SyncLog
 import fyi.teddy.android.repository.TeddyRepository
 import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.network.NetworkClient
+import fyi.teddy.android.ui.theme.TeddyTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -269,12 +270,14 @@ fun DebugScreen(
         }
     }
 
+    val shellColors = TeddyTheme.colors
+
     // Determine Sync Worker Status color
     val syncColor = when {
-        unsyncedCount > 0 -> Color.Yellow
-        lastStatus == "FAILURE" || lastStatus == "RETRY" -> Color.Red
-        lastStatus == "SUCCESS" -> Color.Green
-        else -> Color.Gray
+        unsyncedCount > 0 -> shellColors.warning
+        lastStatus == "FAILURE" || lastStatus == "RETRY" -> shellColors.danger
+        lastStatus == "SUCCESS" -> shellColors.success
+        else -> shellColors.onSurfaceMuted
     }
 
     val locale = LocalConfiguration.current.locales[0]
@@ -290,7 +293,7 @@ fun DebugScreen(
                 title = {
                     Text(
                         text = "TACTICAL DIAGNOSTICS",
-                        color = Color.White,
+                        color = shellColors.onSurface,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                         letterSpacing = 2.sp,
@@ -302,12 +305,12 @@ fun DebugScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = shellColors.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0D0B14)
+                    containerColor = shellColors.panelSunken
                 )
             )
         }
@@ -318,7 +321,7 @@ fun DebugScreen(
                 .padding(paddingValues)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0D0B14), Color(0xFF050508))
+                        colors = listOf(shellColors.panelSunken, shellColors.screenBottom)
                     )
                 )
                 .padding(16.dp)
@@ -335,8 +338,8 @@ fun DebugScreen(
                         .fillMaxWidth()
                         .clickable { onNavigateToAuthed() },
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161424)),
-                    border = BorderStroke(1.dp, Color(0xFF3700B3))
+                    colors = CardDefaults.cardColors(containerColor = shellColors.panel),
+                    border = BorderStroke(1.dp, shellColors.outline)
                 ) {
                     Row(
                         modifier = Modifier
@@ -351,9 +354,9 @@ fun DebugScreen(
                                 .clip(CircleShape)
                                 .background(
                                     when {
-                                        isLoadingAuthedHello -> Color.Gray
-                                        authedHelloBody == "OK" -> Color.Green
-                                        else -> Color.Red
+                                        isLoadingAuthedHello -> shellColors.onSurfaceMuted
+                                        authedHelloBody == "OK" -> shellColors.success
+                                        else -> shellColors.danger
                                     }
                                 ),
                             contentAlignment = Alignment.Center
@@ -361,14 +364,14 @@ fun DebugScreen(
                             if (isLoadingAuthedHello) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    color = Color.White,
+                                    color = shellColors.onSurface,
                                     strokeWidth = 2.dp
                                 )
                             } else {
                                 Icon(
                                     imageVector = if (authedHelloBody == "OK") Icons.Default.CheckCircle else Icons.Default.Error,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = shellColors.onSurface,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -379,7 +382,7 @@ fun DebugScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Authed Hello Check",
-                                color = Color.White,
+                                color = shellColors.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -391,7 +394,7 @@ fun DebugScreen(
                                     authedHelloBody != null -> "Status: Fail (Red) - ${authedHelloBody!!.take(100)}"
                                     else -> "Unknown status"
                                 },
-                                color = Color.Gray,
+                                color = shellColors.onSurfaceMuted,
                                 fontSize = 13.sp
                             )
                         }
@@ -399,7 +402,7 @@ fun DebugScreen(
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = "Details",
-                            tint = Color.Gray
+                            tint = shellColors.onSurfaceMuted
                         )
                     }
                 }
@@ -410,8 +413,8 @@ fun DebugScreen(
                         .fillMaxWidth()
                         .clickable { isSyncExpanded = !isSyncExpanded },
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161424)),
-                    border = BorderStroke(1.dp, Color(0xFF3700B3))
+                    colors = CardDefaults.cardColors(containerColor = shellColors.panel),
+                    border = BorderStroke(1.dp, shellColors.outline)
                 ) {
                     Column(
                         modifier = Modifier
@@ -432,12 +435,12 @@ fun DebugScreen(
                             ) {
                                 Icon(
                                     imageVector = when (syncColor) {
-                                        Color.Green -> Icons.Default.Sync
-                                        Color.Yellow -> Icons.Default.SyncProblem
+                                        shellColors.success -> Icons.Default.Sync
+                                        shellColors.warning -> Icons.Default.SyncProblem
                                         else -> Icons.Default.SyncDisabled
                                     },
                                     contentDescription = null,
-                                    tint = Color.Black,
+                                    tint = shellColors.panelSunken,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -447,14 +450,14 @@ fun DebugScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Sync Worker Status",
-                                    color = Color.White,
+                                    color = shellColors.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "Unsynced entries: $unsyncedCount",
-                                    color = if (unsyncedCount > 0) Color(0xFF03DAC5) else Color.Gray,
+                                    color = if (unsyncedCount > 0) shellColors.accent else shellColors.onSurfaceMuted,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -463,7 +466,7 @@ fun DebugScreen(
                             Icon(
                                 imageVector = if (isSyncExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = "Toggle Expand",
-                                tint = Color.Gray
+                                tint = shellColors.onSurfaceMuted
                             )
                         }
 
@@ -477,39 +480,39 @@ fun DebugScreen(
                                     .fillMaxWidth()
                                     .padding(top = 16.dp)
                             ) {
-                                HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                HorizontalDivider(color = shellColors.outline, thickness = 1.dp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 // Last Succeeded
                                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Last Successful Sync:", color = Color.Gray, fontSize = 12.sp)
-                                    Text(formatTime(lastSuccessTime), color = Color.White, fontSize = 12.sp)
+                                    Text("Last Successful Sync:", color = shellColors.onSurfaceMuted, fontSize = 12.sp)
+                                    Text(formatTime(lastSuccessTime), color = shellColors.onSurface, fontSize = 12.sp)
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
 
                                 // Last Synced At (Server Time)
                                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Last Synced At (Server):", color = Color.Gray, fontSize = 12.sp)
-                                    Text(lastSyncedAtState ?: "None", color = Color.White, fontSize = 12.sp)
+                                    Text("Last Synced At (Server):", color = shellColors.onSurfaceMuted, fontSize = 12.sp)
+                                    Text(lastSyncedAtState ?: "None", color = shellColors.onSurface, fontSize = 12.sp)
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
 
                                 // Last Attempted
                                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Last Attempted Sync:", color = Color.Gray, fontSize = 12.sp)
-                                    Text(formatTime(lastAttemptTime), color = Color.White, fontSize = 12.sp)
+                                    Text("Last Attempted Sync:", color = shellColors.onSurfaceMuted, fontSize = 12.sp)
+                                    Text(formatTime(lastAttemptTime), color = shellColors.onSurface, fontSize = 12.sp)
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
 
                                 // Last Status
                                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Last Run Status:", color = Color.Gray, fontSize = 12.sp)
+                                    Text("Last Run Status:", color = shellColors.onSurfaceMuted, fontSize = 12.sp)
                                     Text(
                                         text = lastStatus ?: "No previous runs",
                                         color = when (lastStatus) {
-                                            "SUCCESS" -> Color.Green
-                                            "FAILURE", "RETRY" -> Color.Red
-                                            else -> Color.Gray
+                                            "SUCCESS" -> shellColors.success
+                                            "FAILURE", "RETRY" -> shellColors.danger
+                                            else -> shellColors.onSurfaceMuted
                                         },
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold
@@ -519,8 +522,8 @@ fun DebugScreen(
                                 if (lastError != null) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Card(
-                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF321414)),
-                                        border = BorderStroke(1.dp, Color.Red),
+                                        colors = CardDefaults.cardColors(containerColor = shellColors.dangerSurface),
+                                        border = BorderStroke(1.dp, shellColors.danger),
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -533,7 +536,7 @@ fun DebugScreen(
                                         ) {
                                             Text(
                                                 text = "Captured Exception Info:",
-                                                color = Color.Red,
+                                                color = shellColors.danger,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 11.sp,
                                                 fontFamily = FontFamily.Monospace
@@ -541,7 +544,7 @@ fun DebugScreen(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = lastError,
-                                                color = Color.White,
+                                                color = shellColors.onSurface,
                                                 fontSize = 12.sp,
                                                 fontFamily = FontFamily.Monospace
                                             )
@@ -558,17 +561,17 @@ fun DebugScreen(
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3700B3)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = shellColors.outline),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Sync,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
-                                        tint = Color.White
+                                        tint = shellColors.onSurface
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("FORCE SYNC ATTEMPT NOW", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("FORCE SYNC ATTEMPT NOW", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = shellColors.onSurface)
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -587,26 +590,26 @@ fun DebugScreen(
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = shellColors.danger),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
-                                        tint = Color.White
+                                        tint = shellColors.onSurface
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("RESET METADATA & FORCE FULL SYNC", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("RESET METADATA & FORCE FULL SYNC", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = shellColors.onSurface)
                                 }
 
                                 if (recentLogs.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(20.dp))
-                                    HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                    HorizontalDivider(color = shellColors.outline, thickness = 1.dp)
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = "EXECUTION LOG HISTORY",
-                                        color = Color.White,
+                                        color = shellColors.onSurface,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace,
                                         letterSpacing = 1.sp,
@@ -635,8 +638,8 @@ fun DebugScreen(
                         .fillMaxWidth()
                         .clickable { isTablesExpanded = !isTablesExpanded },
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161424)),
-                    border = BorderStroke(1.dp, Color(0xFF3700B3))
+                    colors = CardDefaults.cardColors(containerColor = shellColors.panel),
+                    border = BorderStroke(1.dp, shellColors.outline)
                 ) {
                     Column(
                         modifier = Modifier
@@ -650,13 +653,13 @@ fun DebugScreen(
                             Icon(
                                 imageVector = Icons.Default.Storage,
                                 contentDescription = null,
-                                tint = Color.Cyan,
+                                tint = shellColors.accent,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
                                 text = "Syncable Table Management",
-                                color = Color.White,
+                                color = shellColors.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 modifier = Modifier.weight(1f)
@@ -664,7 +667,7 @@ fun DebugScreen(
                             Icon(
                                 imageVector = if (isTablesExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = "Toggle Expand",
-                                tint = Color.Gray
+                                tint = shellColors.onSurfaceMuted
                             )
                         }
 
@@ -681,10 +684,10 @@ fun DebugScreen(
                                     .padding(top = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
+                                HorizontalDivider(color = shellColors.outline, thickness = 1.dp)
                                 Text(
                                     "Force items in these tables to re-sync as new insertions.",
-                                    color = Color.Gray,
+                                    color = shellColors.onSurfaceMuted,
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
@@ -752,9 +755,9 @@ fun DebugScreen(
                                     Button(
                                         onClick = { table.action() },
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF232135)),
+                                        colors = ButtonDefaults.buttonColors(containerColor = shellColors.panelRaised),
                                         shape = RoundedCornerShape(8.dp),
-                                        border = BorderStroke(1.dp, Color(0xFF3700B3))
+                                        border = BorderStroke(1.dp, shellColors.outline)
                                     ) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -764,12 +767,12 @@ fun DebugScreen(
                                                 Text(
                                                     text = table.name,
                                                     fontSize = 11.sp,
-                                                    color = Color.Cyan
+                                                    color = shellColors.accent
                                                 )
                                                 Text(
                                                     text = "${table.totalCount} total rows",
                                                     fontSize = 9.sp,
-                                                    color = Color.Gray
+                                                    color = shellColors.onSurfaceMuted
                                                 )
                                             }
                                             
@@ -782,13 +785,13 @@ fun DebugScreen(
                                                         text = "${table.unsyncedCount} PENDING",
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = Color.Yellow
+                                                        color = shellColors.warning
                                                     )
                                                 } else {
                                                     Text(
                                                         text = "SYNCED",
                                                         fontSize = 10.sp,
-                                                        color = Color.Green
+                                                        color = shellColors.success
                                                     )
                                                 }
                                             }
@@ -797,7 +800,7 @@ fun DebugScreen(
                                                 text = "FORCE PUSH",
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                color = shellColors.onSurface,
                                                 modifier = Modifier.width(80.dp),
                                                 textAlign = TextAlign.End
                                             )
@@ -815,8 +818,8 @@ fun DebugScreen(
                         modifier = Modifier
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161424)),
-                        border = BorderStroke(1.dp, Color(0xFF3700B3))
+                        colors = CardDefaults.cardColors(containerColor = shellColors.panel),
+                        border = BorderStroke(1.dp, shellColors.outline)
                     ) {
                         Column(
                             modifier = Modifier
@@ -830,13 +833,13 @@ fun DebugScreen(
                                 Icon(
                                     imageVector = Icons.Default.PendingActions,
                                     contentDescription = null,
-                                    tint = Color.Yellow,
+                                    tint = shellColors.warning,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = "Pending Sync Changes",
-                                    color = Color.White,
+                                    color = shellColors.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     modifier = Modifier.weight(1f)
@@ -844,7 +847,7 @@ fun DebugScreen(
                             }
                             
                             Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(color = Color(0xFF3700B3), thickness = 1.dp)
+                            HorizontalDivider(color = shellColors.outline, thickness = 1.dp)
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Column(
@@ -878,10 +881,11 @@ data class PendingChange(
 
 @Composable
 fun PendingChangeRow(change: PendingChange) {
+    val shellColors = TeddyTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF232135), RoundedCornerShape(8.dp))
+            .background(shellColors.panelRaised, RoundedCornerShape(8.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -891,7 +895,7 @@ fun PendingChangeRow(change: PendingChange) {
                 Text(
                     text = change.type,
                     fontSize = 10.sp,
-                    color = Color.Cyan,
+                    color = shellColors.accent,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.width(8.dp))
@@ -899,7 +903,7 @@ fun PendingChangeRow(change: PendingChange) {
                     Text(
                         text = "DELETED",
                         fontSize = 9.sp,
-                        color = Color.Red,
+                        color = shellColors.danger,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -908,20 +912,20 @@ fun PendingChangeRow(change: PendingChange) {
                     Text(
                         text = "REFRESHING",
                         fontSize = 9.sp,
-                        color = Color.Yellow,
+                        color = shellColors.warning,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
             Text(
                 text = change.label,
-                color = Color.White,
+                color = shellColors.onSurface,
                 fontSize = 13.sp,
                 maxLines = 1
             )
             Text(
                 text = "State: ${change.syncState} | ID: ${change.id.take(8)}...",
-                color = Color.Gray,
+                color = shellColors.onSurfaceMuted,
                 fontSize = 10.sp
             )
         }
@@ -932,7 +936,7 @@ fun PendingChangeRow(change: PendingChange) {
                     Icon(
                         imageVector = Icons.Default.CloudDownload,
                         contentDescription = "Force Update from Server",
-                        tint = Color.Cyan,
+                        tint = shellColors.accent,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -941,7 +945,7 @@ fun PendingChangeRow(change: PendingChange) {
                 Icon(
                     imageVector = Icons.Default.SettingsBackupRestore,
                     contentDescription = "Revert",
-                    tint = Color.Red,
+                    tint = shellColors.danger,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -958,6 +962,7 @@ data class TableInfo(
 
 @Composable
 fun SyncLogItemRow(log: SyncLog) {
+    val shellColors = TeddyTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -972,9 +977,9 @@ fun SyncLogItemRow(log: SyncLog) {
                     .clip(CircleShape)
                     .background(
                         when (log.status) {
-                            "SUCCESS" -> Color.Green
-                            "FAILURE" -> Color.Red
-                            else -> Color.Yellow
+                            "SUCCESS" -> shellColors.success
+                            "FAILURE" -> shellColors.danger
+                            else -> shellColors.warning
                         }
                     )
             )
@@ -982,7 +987,7 @@ fun SyncLogItemRow(log: SyncLog) {
             Column {
                 Text(
                     text = log.status,
-                    color = Color.White,
+                    color = shellColors.onSurface,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace
@@ -996,7 +1001,7 @@ fun SyncLogItemRow(log: SyncLog) {
                 
                 Text(
                     text = "↑$sentCount sent  |  ↓$recvCount recv",
-                    color = Color.Gray,
+                    color = shellColors.onSurfaceMuted,
                     fontSize = 11.sp
                 )
                 
@@ -1024,7 +1029,7 @@ fun SyncLogItemRow(log: SyncLog) {
                     if (details.isNotEmpty()) {
                         Text(
                             text = details.joinToString(", "),
-                            color = Color.DarkGray,
+                            color = shellColors.onSurfaceFaint,
                             fontSize = 9.sp,
                             fontFamily = FontFamily.Monospace,
                             lineHeight = 10.sp
@@ -1034,7 +1039,7 @@ fun SyncLogItemRow(log: SyncLog) {
                 if (!log.errorMessage.isNullOrEmpty()) {
                     Text(
                         text = log.errorMessage,
-                        color = Color(0xFFFF8A80),
+                        color = shellColors.dangerInk,
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
                         maxLines = 1
@@ -1047,13 +1052,13 @@ fun SyncLogItemRow(log: SyncLog) {
             val sdf = remember(locale) { SimpleDateFormat("HH:mm:ss", locale) }
             Text(
                 text = sdf.format(Date(log.timestamp)),
-                color = Color.White,
+                color = shellColors.onSurface,
                 fontSize = 12.sp,
                 fontFamily = FontFamily.Monospace
             )
             Text(
                 text = "${log.durationMillis}ms",
-                color = Color.Gray,
+                color = shellColors.onSurfaceMuted,
                 fontSize = 11.sp
             )
         }

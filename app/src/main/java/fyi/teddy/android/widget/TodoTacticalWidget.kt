@@ -49,7 +49,7 @@ import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.CheckboxDefaults
 import androidx.glance.appwidget.action.actionRunCallback
 import fyi.teddy.android.widget.ToggleTodoTaskAction
-import fyi.teddy.android.todo.ui.components.NeonTeal
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 
 class TodoTacticalWidget : GlanceAppWidget() {
 
@@ -232,7 +232,7 @@ class TodoTacticalWidget : GlanceAppWidget() {
                     androidx.compose.ui.graphics.Color(hex.toColorInt())
                 } else null
             } catch (_: Exception) { null }
-        } ?: NeonTeal
+        } ?: TodoTheme.staticColors.accent
 
         val badgeColorProvider = ColorProvider(day = itemColor, night = itemColor)
 

@@ -29,6 +29,7 @@ import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
+import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
@@ -80,7 +81,7 @@ fun PlanningPhaseContent(
         Text(
             text = "Where are you heading?",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = GroceryTheme.colors.onSurfaceMuted,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         LazyRow(
@@ -170,7 +171,7 @@ fun PlanningPhaseContent(
         Text(
             text = "Your List",
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = GroceryTheme.colors.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -210,7 +211,7 @@ fun PlanningPhaseContent(
                         Text(
                             "List is empty. Tap recommendations to add items.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = GroceryTheme.colors.onSurfaceMuted
                         )
                     }
                 }
@@ -248,7 +249,7 @@ fun RecommendationTile(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.errorContainer, tileShape)
+                        .background(GroceryTheme.colors.dangerSurface, tileShape)
                         .padding(horizontal = 12.dp),
                     contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
                         Alignment.CenterStart
@@ -259,7 +260,7 @@ fun RecommendationTile(
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Dismiss",
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        tint = GroceryTheme.colors.onDangerSurface,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -268,7 +269,7 @@ fun RecommendationTile(
     ) {
         Surface(
             onClick = onClick,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = GroceryTheme.colors.card,
             shape = tileShape,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -280,7 +281,7 @@ fun RecommendationTile(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = GroceryTheme.colors.onSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
@@ -314,9 +315,9 @@ fun PlanningItemTile(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
             ),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = GroceryTheme.colors.well,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, GroceryTheme.colors.outline)
     ) {
         AnimatedContent(
             targetState = showControls,
@@ -330,7 +331,7 @@ fun PlanningItemTile(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Remove, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
                     }
                     Text(
                         text = item.quantity,
@@ -339,10 +340,10 @@ fun PlanningItemTile(
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = GroceryTheme.colors.onSurfaceMuted, modifier = Modifier.size(18.dp))
                     }
                 }
             } else {
@@ -355,7 +356,7 @@ fun PlanningItemTile(
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = GroceryTheme.colors.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -364,7 +365,7 @@ fun PlanningItemTile(
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = GroceryTheme.colors.onSurfaceMuted
                         )
                     }
                 }

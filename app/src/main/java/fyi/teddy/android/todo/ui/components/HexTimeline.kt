@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fyi.teddy.android.todo.ui.theme.TodoTheme
 import java.time.LocalDate
 import java.time.format.TextStyle
 
@@ -28,6 +29,7 @@ fun HexTimeline(
     onOpenCalendar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val todoColors = TodoTheme.colors
     val locale = LocalLocale.current.platformLocale
     val today = LocalDate.now()
     val dates = (0..6).map { today.plusDays(it.toLong()) }
@@ -56,10 +58,10 @@ fun HexTimeline(
                     .width(64.dp)
                     .height(80.dp)
                     .clip(ClippedCornerShape(12f))
-                    .background(if (isSelected) NeonTeal.copy(alpha = 0.2f) else Color.Transparent)
+                    .background(if (isSelected) todoColors.accent.copy(alpha = 0.2f) else Color.Transparent)
                     .border(
                         width = 2.dp,
-                        color = if (isSelected) NeonTeal else MutedGrey.copy(alpha = 0.5f),
+                        color = if (isSelected) todoColors.accent else todoColors.onSurfaceDone.copy(alpha = 0.5f),
                         shape = ClippedCornerShape(12f)
                     )
                     .clickable { onDateSelected(dateStr) },
@@ -68,13 +70,13 @@ fun HexTimeline(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = label,
-                        color = if (isSelected) NeonTeal else MutedGrey,
+                        color = if (isSelected) todoColors.accent else todoColors.onSurfaceDone,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = dayNum,
-                        color = if (isSelected) Color.White else Color.Gray,
+                        color = if (isSelected) todoColors.onSurface else todoColors.onSurfaceMuted,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black
                     )
@@ -90,7 +92,7 @@ fun HexTimeline(
                     .clip(ClippedCornerShape(12f))
                     .border(
                         width = 2.dp,
-                        color = MutedGrey.copy(alpha = 0.5f),
+                        color = todoColors.onSurfaceDone.copy(alpha = 0.5f),
                         shape = ClippedCornerShape(12f)
                     )
                     .clickable { onOpenCalendar() },
@@ -99,7 +101,7 @@ fun HexTimeline(
                 Icon(
                     imageVector = Icons.Default.DateRange,
                     contentDescription = "Calendar",
-                    tint = Color.White
+                    tint = todoColors.onSurface
                 )
             }
         }
