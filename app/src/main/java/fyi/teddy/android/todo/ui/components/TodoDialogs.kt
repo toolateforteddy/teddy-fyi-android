@@ -1,7 +1,6 @@
 package fyi.teddy.android.todo.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,97 +18,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.Color
-import fyi.teddy.android.utils.getIconByName
-
-@Composable
-fun IconPickerDialog(
-    initialIcon: String? = null,
-    onDismiss: () -> Unit,
-    onConfirm: (String?) -> Unit,
-    onAutoAssign: (() -> Unit)? = null
-) {
-    val iconNames = listOf(
-        "Build", "Home", "Plumbing", "ElectricalServices", "CleaningServices",
-        "Brush", "Yard", "Work", "AttachMoney", "CreditCard",
-        "ReceiptLong", "Email", "Phone", "Analytics", "ShoppingCart",
-        "LocalShipping", "DirectionsCar", "Storefront", "LocalPharmacy", "FitnessCenter",
-        "DirectionsBike", "DirectionsRun", "MedicalInformation", "Restaurant", "Bed",
-        "Event", "Schedule", "List", "Group", "Person",
-        "Settings", "Computer", "MenuBook", "Movie", "Palette",
-        "MusicNote", "Pets", "Flight", "Eco", "Lock"
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select Icon") },
-        text = {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
-                modifier = Modifier.height(300.dp)
-            ) {
-                items(iconNames) { name ->
-                    val icon = getIconByName(name)
-                    val isSelected = initialIcon == name
-                    if (icon != null) {
-                        IconButton(
-                            onClick = { onConfirm(name) },
-                            modifier = if (isSelected) {
-                                Modifier.border(2.dp, NeonTeal, RoundedCornerShape(8.dp))
-                            } else Modifier
-                        ) {
-                            Icon(
-                                icon,
-                                contentDescription = name,
-                                tint = if (isSelected) NeonTeal else Color.White
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (onAutoAssign != null) {
-                    TextButton(
-                        onClick = onAutoAssign,
-                        contentPadding = PaddingValues(horizontal = 8.dp)
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Magic")
-                    }
-                }
-                TextButton(
-                    onClick = { onConfirm(null) },
-                    contentPadding = PaddingValues(horizontal = 8.dp)
-                ) {
-                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Clear")
-                }
-                TextButton(
-                    onClick = onDismiss,
-                    contentPadding = PaddingValues(horizontal = 8.dp)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        },
-        dismissButton = null
-    )
-}
 
 @Composable
 fun RecurrenceDialog(
