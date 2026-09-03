@@ -152,12 +152,27 @@ fun GroceryViewModel.toggleBought(item: GroceryItem, isChecked: Boolean) {
     }
 }
 
+/**
+ * Sign-off lines for a finished shop. Finishing a trip is the one moment in the app
+ * worth marking, and a line that is the same every single time stops being a mark;
+ * picking at random keeps it feeling like the app noticed.
+ */
+private val TRIP_DONE_LINES = listOf(
+    "That's a wrap on this run.",
+    "Cart emptied, kitchen restocked.",
+    "Trip filed away. Well done.",
+    "Groceries: defeated.",
+    "Done and dusted.",
+    "Everything's home safe.",
+)
+
 fun GroceryViewModel.markDoneForTrip() {
     val listId = _selectedListId.value
     _dismissedRecommendationIds.value = emptySet()
     viewModelScope.launch {
         repository.markDoneForTrip(userId, listId)
         setShoppingStoreId(null)
+        setSnackbarMessage(GrocerySnackbarMessage(message = TRIP_DONE_LINES.random()))
     }
 }
 

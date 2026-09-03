@@ -241,7 +241,7 @@ fun ShoppingItemRowContent(
         )
         val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
         Text(
-            text = "Quantity: ${item.quantity}$displayUnit",
+            text = "${item.quantity}$displayUnit",
             color = GroceryTheme.colors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall
         )
@@ -281,7 +281,7 @@ fun StandardItemRowContent(
         )
         val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
         Text(
-            text = "Quantity: ${item.quantity}$displayUnit",
+            text = "${item.quantity}$displayUnit",
             color = GroceryTheme.colors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.clickable { onEditQuantity() }
@@ -328,7 +328,7 @@ fun EditableItemRowContent(
             )
             val displayUnit = if (item.unit.isNullOrBlank()) "" else " ${item.unit}"
             Text(
-                text = "Quantity: ${item.quantity}$displayUnit",
+                text = "${item.quantity}$displayUnit",
                 color = GroceryTheme.colors.onSurfaceMuted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.clickable { onEditQuantity() }

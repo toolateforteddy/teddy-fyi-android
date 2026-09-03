@@ -35,6 +35,16 @@ internal object GroceryPalette {
     val InkMuted = Color(0xFF8A837B)
     val InkFaint = Color(0xFF44403B)
 
+    // Aisle tints: one muted hue per category, picked by category id so a category
+    // keeps the same colour between sessions. Deliberately desaturated so they read as
+    // signage next to the bronze accent rather than competing with it.
+    val AisleSage = Color(0xFF7FA07A)
+    val AisleRust = Color(0xFFC4744A)
+    val AisleSlate = Color(0xFF6E86B5)
+    val AislePlum = Color(0xFF9A6E9E)
+    val AisleAmber = Color(0xFFD2A24C)
+    val AisleTeal = Color(0xFF5E9A94)
+
     val Verdant = Color(0xFF388E3C)
     val Crimson = Color(0xFFD32F2F)
     val CrimsonSurface = Color(0xFF3A1512)

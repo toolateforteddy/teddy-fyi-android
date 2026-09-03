@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
@@ -67,6 +68,14 @@ fun NeedPhaseContent(
         )
     }
 
+    if (items.isEmpty()) {
+        GroceryEmptyState(
+            headline = "Nothing needed yet.",
+            hint = "Enjoy it while it lasts."
+        )
+        return
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
@@ -81,17 +90,21 @@ fun NeedPhaseContent(
         categories.forEach { category ->
             val categoryItems = grouped[category.id] ?: emptyList()
             if (categoryItems.isNotEmpty()) {
+                val icon = aisleIcon(category.icon)
                 item(span = { GridItemSpan(2) }) {
-                    Text(
-                        text = category.name.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = GroceryTheme.colors.onSurfaceMuted,
+                    AisleHeader(
+                        name = category.name,
+                        icon = icon,
+                        tint = aisleTint(category.id),
+                        itemCount = categoryItems.size,
                         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                     )
                 }
                 items(categoryItems, key = { it.id }) { item ->
                     NeedItemTile(
                         item = item,
+                        tint = aisleTint(category.id),
+                        aisleIcon = icon,
                         showControls = expandedItemId == item.id,
                         onToggleControls = {
                             expandedItemId = if (expandedItemId == item.id) null else item.id
@@ -118,16 +131,19 @@ fun NeedPhaseContent(
         val otherItems = sortedItems.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
         if (otherItems.isNotEmpty()) {
             item(span = { GridItemSpan(2) }) {
-                Text(
-                    text = "UNCATEGORIZED",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = GroceryTheme.colors.onSurfaceMuted,
+                AisleHeader(
+                    name = "Everything else",
+                    icon = aisleIcon(null),
+                    tint = aisleTint(null),
+                    itemCount = otherItems.size,
                     modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
                 )
             }
             items(otherItems, key = { it.id }) { item ->
                 NeedItemTile(
                     item = item,
+                    tint = aisleTint(null),
+                    aisleIcon = aisleIcon(null),
                     showControls = expandedItemId == item.id,
                     onToggleControls = {
                         expandedItemId = if (expandedItemId == item.id) null else item.id
@@ -155,6 +171,8 @@ fun NeedPhaseContent(
 @Composable
 fun NeedItemTile(
     item: GroceryItem,
+    tint: Color,
+    aisleIcon: ImageVector,
     showControls: Boolean,
     onToggleControls: () -> Unit,
     onDelete: () -> Unit,
@@ -202,57 +220,73 @@ fun NeedItemTile(
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(1.dp, GroceryTheme.colors.outline)
             ) {
-                AnimatedContent(
-                    targetState = showControls,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "NeedItemControls"
-                ) { isEditing ->
-                    if (isEditing) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            IconButton(onClick = onDecrement) {
-                                Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = GroceryTheme.colors.onSurface)
-                            }
-                            Text(
-                                text = item.quantity,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = GroceryTheme.colors.onSurface
-                            )
-                            IconButton(onClick = onIncrement) {
-                                Icon(Icons.Default.Add, contentDescription = "Increase", tint = GroceryTheme.colors.onSurface)
-                            }
-                            IconButton(onClick = onEditCategory) {
-                                Icon(Icons.Default.Category, contentDescription = "Category", tint = GroceryTheme.colors.onSurface)
-                            }
-                            IconButton(onClick = onDelete) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = GroceryTheme.colors.danger)
-                            }
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = item.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = GroceryTheme.colors.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-                            if ((item.quantity.isNotBlank()) && (item.quantity != "1")) {
-                                Spacer(Modifier.width(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Aisle tint edge: the same colour as the sign above this item.
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .background(tint)
+                    )
+                    AnimatedContent(
+                        targetState = showControls,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "NeedItemControls",
+                        modifier = Modifier.weight(1f)
+                    ) { isEditing ->
+                        if (isEditing) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                IconButton(onClick = onDecrement) {
+                                    Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = GroceryTheme.colors.onSurface)
+                                }
                                 Text(
-                                    text = "x${item.quantity}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = GroceryTheme.colors.onSurfaceMuted
+                                    text = item.quantity,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = GroceryTheme.colors.onSurface
                                 )
+                                IconButton(onClick = onIncrement) {
+                                    Icon(Icons.Default.Add, contentDescription = "Increase", tint = GroceryTheme.colors.onSurface)
+                                }
+                                IconButton(onClick = onEditCategory) {
+                                    Icon(Icons.Default.Category, contentDescription = "Category", tint = GroceryTheme.colors.onSurface)
+                                }
+                                IconButton(onClick = onDelete) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = GroceryTheme.colors.danger)
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 10.dp, end = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ItemLeadingMark(
+                                    itemName = item.name,
+                                    fallbackIcon = aisleIcon,
+                                    tint = tint
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = item.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = GroceryTheme.colors.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if ((item.quantity.isNotBlank()) && (item.quantity != "1")) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "x${item.quantity}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = GroceryTheme.colors.onSurfaceMuted
+                                    )
+                                }
                             }
                         }
                     }
