@@ -45,6 +45,12 @@ data class GroceryColors(
     val onSurfaceDone: Color,
     /** Prices and unit hints. */
     val price: Color,
+    /**
+     * One muted hue per category, used for aisle signage and the tint edge on item
+     * tiles. Index into it with [fyi.teddy.android.grocery.ui.components.aisleTint]
+     * rather than by hand, so a category keeps its colour everywhere it appears.
+     */
+    val aisleTints: List<Color>,
     /** Confirmation snackbars and success states. */
     val success: Color,
     /** Delete actions and error snackbars. */
@@ -85,6 +91,14 @@ private val GroceryDarkColors = GroceryColors(
     onSurfaceFaint = GroceryPalette.InkFaint,
     onSurfaceDone = GroceryPalette.InkMuted,
     price = GroceryPalette.Saffron,
+    aisleTints = listOf(
+        GroceryPalette.AisleSage,
+        GroceryPalette.AisleRust,
+        GroceryPalette.AisleSlate,
+        GroceryPalette.AislePlum,
+        GroceryPalette.AisleAmber,
+        GroceryPalette.AisleTeal,
+    ),
     success = GroceryPalette.Verdant,
     danger = GroceryPalette.Crimson,
     dangerSurface = GroceryPalette.CrimsonSurface,

@@ -221,16 +221,16 @@ private fun GroceryScreenContent(
                         if (showConfirmTripDone) {
                             AlertDialog(
                                 onDismissRequest = { showConfirmTripDone = false },
-                                title = { Text("Complete Trip?") },
-                                text = { Text("Are you sure you want to mark all In Cart items as done and move them to history?") },
+                                title = { Text("Call it a trip?") },
+                                text = { Text("Everything in your cart gets checked off and filed away.") },
                                 confirmButton = {
                                     TextButton(onClick = {
                                         viewModel.onEvent(GroceryUiEvent.MarkDoneForTrip)
                                         showConfirmTripDone = false
-                                    }) { Text("Confirm") }
+                                    }) { Text("That's a wrap") }
                                 },
                                 dismissButton = {
-                                    TextButton(onClick = { showConfirmTripDone = false }) { Text("Cancel") }
+                                    TextButton(onClick = { showConfirmTripDone = false }) { Text("Not yet") }
                                 }
                             )
                         }
@@ -501,7 +501,7 @@ private fun GroceryScreenContent(
                         .padding(bottom = 32.dp)
                 ) {
                     Text(
-                        "Add New Item",
+                        "What do we need?",
                         style = MaterialTheme.typography.titleLarge,
                         color = groceryColors.onSurface,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -564,7 +564,7 @@ private fun GroceryScreenContent(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "AI Smart Categorization Active",
+                                "Smart sorting is on",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = groceryColors.accent
                             )
@@ -580,7 +580,7 @@ private fun GroceryScreenContent(
                             .fillMaxWidth()
                             .padding(top = 24.dp)
                     ) {
-                        Text("Add to List")
+                        Text("Add it")
                     }
                 }
             }
