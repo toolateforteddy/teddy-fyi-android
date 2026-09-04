@@ -38,8 +38,9 @@ The Grocery module streamlines shopping and item gathering:
 
 ## Getting Started
 ```bash
-./gradlew assembleDebug        # or: make build
-./gradlew testDebugUnitTest    # or: make test
+./gradlew assembleDebug           # both flavours; or: make build
+./gradlew assembleGroceryDebug    # the grocery-only build; or: make build-grocery
+./gradlew testFullDebugUnitTest   # or: make test
 make install && make run       # adb install + launch on the first connected device
 ```
 See [setup.md](setup.md) for SDK prerequisites and [CODEBASE_MAP.md](CODEBASE_MAP.md) for an

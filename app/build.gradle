@@ -30,6 +30,32 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Two apps out of one tree. `full` is Teddy FYI as it has always been — Todo and Grocery
+    // side by side. `grocery` is the grocery list on its own, for a tablet left on a kitchen
+    // counter for somebody who has no reason to see anybody's todo list. It carries its own
+    // applicationId so both can sit on one device, and the shared sync layer means the two
+    // installs are the same lists, not copies.
+    flavorDimensions += "surface"
+
+    productFlavors {
+        full {
+            dimension "surface"
+            // Which app is asking, for /auth/device/start. The API answers with the page the
+            // code is redeemed on, and it keys that off this string — see APP_VERIFICATION_URIS
+            // in teddy-fyi-api-rust. A value it does not know sends people to somebody else's
+            // site, so this is not a free-form label.
+            buildConfigField "String", "PAIRING_APP", '"TEDDY_FYI"'
+            buildConfigField "boolean", "INCLUDE_TODO", "true"
+        }
+        grocery {
+            dimension "surface"
+            applicationIdSuffix ".grocery"
+            versionNameSuffix "-grocery"
+            buildConfigField "String", "PAIRING_APP", '"TEDDY_FYI_GROCERY"'
+            buildConfigField "boolean", "INCLUDE_TODO", "false"
+        }
+    }
+
     signingConfigs {
         debug {
             storeFile file("debug.keystore")
@@ -55,6 +81,8 @@ android {
     }
     buildFeatures {
         compose true
+        // PAIRING_APP and INCLUDE_TODO below are read from Kotlin, so BuildConfig has to exist.
+        buildConfig true
     }
     packaging {
         resources {

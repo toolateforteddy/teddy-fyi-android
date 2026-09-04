@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,7 +24,13 @@ fun GroceryConfigScreen(
     userId: String,
     onBack: () -> Unit,
     onManageStores: (String?) -> Unit,
-    onManageCategories: (String?) -> Unit
+    onManageCategories: (String?) -> Unit,
+    /**
+     * Signing out, where this screen is the only place to do it. Null in the full app, whose
+     * dashboard already carries it — passing it there would put a second sign-out inside
+     * grocery settings, which is not what settings for a list is for.
+     */
+    onSignOut: (() -> Unit)? = null,
 ) = GroceryTheme {
     val context = LocalContext.current
     val viewModel: GroceryViewModel = viewModel(
@@ -130,6 +137,15 @@ fun GroceryConfigScreen(
                     onClick = { onManageCategories(state.selectedListId) }
                 )
                 
+                if (onSignOut != null) {
+                    ConfigItem(
+                        title = stringResource(R.string.sign_out),
+                        subtitle = stringResource(R.string.sign_out_subtitle),
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        onClick = onSignOut,
+                    )
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
                 
                 Button(

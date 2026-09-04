@@ -81,7 +81,50 @@ The client uses the `androidx.credentials` library to facilitate one-tap sign-in
 3.  Call `credentialManager.getCredential()`.
 4.  Extract the `idToken` from the result and pass it to the `login` endpoint described in Section 2.
 
-## 7. Security Best Practices
+## 7. Pairing sign-in (devices with no Google account)
+
+A Fire tablet ships without Google Play Services, so Credential Manager has no identity provider
+to answer `getCredential()`: it throws rather than showing an account chooser, and there is no ID
+token to hand `/auth/login`. `LoginScreen` asks `GmsUtils.isGmsAvailable` **before** attempting
+sign-in and offers pairing instead, so nobody is told there is no Google account on a device that
+was never going to have one.
+
+The Google half of sign-in happens somewhere else entirely — on a phone or a laptop — and the
+tablet only ever sees the session that comes out of it.
+
+```
+Tablet (no Play Services)          api-rust.teddy.fyi                    teddy.fyi/link
+      |                                    |                                    |
+      |-- POST /auth/device/start -------->|                                    |
+      |<- user_code, device_code ----------|                                    |
+      |   shows "H4KP-9TQR"                |          signs in with Google -----|
+      |                                    |<- POST /auth/device/claim ---------|
+      |-- POST /auth/device/poll --------->|   (google id_token + user_code)    |
+      |<- access_token, refresh_token -----|                                    |
+```
+
+- **`POST /auth/device/start`** — body `{ client_uuid, app }`. `app` is `BuildConfig.PAIRING_APP`
+  (`TEDDY_FYI` / `TEDDY_FYI_GROCERY`); the API keys the redemption page off it, and a value it
+  does not recognise sends people to the wrong site. Returns
+  `{ device_code, user_code, verification_uri, expires_in, interval }`.
+- **`POST /auth/device/poll`** — body `{ device_code, client_uuid }`, on the interval the server
+  asked for. `202` while unredeemed, `200` + the same `{access_token, refresh_token}` pair
+  `/auth/login` returns once it is, `410` once expired or spent, `429` if polled too fast.
+- The **`client_uuid` must be the same on both calls**, and it is this install's identity
+  everywhere else, so it is taken from the session rather than invented for pairing.
+
+Client code: `network/DevicePairingRepository.kt` (the calls), `auth/DevicePairingState.kt` (what
+the screen is showing), `auth/DevicePairingSection.kt` (the code on screen).
+
+**A paired session has no Google ID token**, which is the one thing downstream code has to know:
+the user id comes out of the access token's `sub` rather than out of an ID token, there is no
+`picture` claim to read an avatar from, and `session.idToken` stays null. Anything asking "is
+somebody signed in?" therefore asks `UserSession.isSignedIn`, which is about the access token —
+a check for an ID token is a check for *which route was used*, not for being signed in.
+
+Codes are secrets: neither a `user_code` nor a `device_code` is ever logged, at any level.
+
+## 8. Security Best Practices
 - **Short-lived Access Tokens**: The backend should issue access tokens with short expiry (e.g., 15-60 minutes).
 - **Refresh Token Rotation**: Each refresh call should ideally return a new refresh token, invalidating the old one.
 - **SSL Pinning**: (Optional/Future) Implement SSL pinning for `api-rust.teddy.fyi` to prevent MITM attacks.

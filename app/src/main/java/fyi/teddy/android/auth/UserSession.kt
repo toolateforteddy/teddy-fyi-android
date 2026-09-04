@@ -41,6 +41,17 @@ class UserSession(
     val isLoggedIn: Boolean
         get() = !accessToken.isNullOrBlank()
 
+    /**
+     * Whether there is a session to work with, by either way in.
+     *
+     * Google sign-in leaves an [idToken] behind and pairing sign-in does not — a Fire tablet
+     * has no Google identity to mint one — so a check for an ID token is a check for one of
+     * the two routes rather than for being signed in. What both leave behind is the access
+     * token the API issued, and that is what the app actually runs on.
+     */
+    val isSignedIn: Boolean
+        get() = !accessToken.isNullOrBlank() || !idToken.isNullOrBlank()
+
     fun updateTokens(access: String?, refresh: String?) {
         _accessToken = access
         _refreshToken = refresh

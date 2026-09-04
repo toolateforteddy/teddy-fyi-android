@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The launcher label for the grocery-only build. Both builds can be installed at once
+        (this one carries the .grocery applicationId), so they must not read as the same app
+        on the home screen. The icon is deliberately shared for now.
+    -->
+    <string name="app_name">Teddy Grocery</string>
+</resources>

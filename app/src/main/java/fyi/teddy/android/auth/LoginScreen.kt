@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,14 +20,35 @@ import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import fyi.teddy.android.BuildConfig
+import fyi.teddy.android.R
+import fyi.teddy.android.network.DevicePairingRepository
+import fyi.teddy.android.network.NetworkClient
 import fyi.teddy.android.ui.theme.TeddyTheme
 import fyi.teddy.android.utils.EmulatorUtils
 import fyi.teddy.android.utils.GmsUtils
 import kotlinx.coroutines.launch
 import android.net.Uri
+import java.util.UUID
 
+/**
+ * The way in, by whichever of the two routes this device can actually run.
+ *
+ * With Play Services present that is Google sign-in through Credential Manager, unchanged.
+ * Without it — a Fire tablet has none — Credential Manager has no identity provider to answer
+ * it and throws rather than showing an account chooser, so the screen offers pairing instead:
+ * a code shown here and redeemed at teddy.fyi/link on a device that does have a Google
+ * account. Asked before the attempt rather than after the failure, so nobody is told there is
+ * no account on a tablet that was never going to have one.
+ *
+ * @param onLoginSuccess a Google ID token to exchange at `/auth/login`.
+ * @param onPaired a session the API already minted, so there is nothing left to exchange.
+ */
 @Composable
-fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
+fun LoginScreen(
+    onLoginSuccess: (GoogleSignInResult) -> Unit,
+    onPaired: (DevicePairingRepository.PairedSession) -> Unit = {},
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = CredentialManager.create(context)
@@ -35,6 +57,46 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
 
     val isEmulator = remember { EmulatorUtils.isEmulator() }
     val isGmsAvailable = remember { GmsUtils.isGmsAvailable(context) }
+
+    var pairingState by remember { mutableStateOf<DevicePairingState>(DevicePairingState.Idle) }
+    // Bumped to ask for a code; zeroed to stop. Keying the effect on it means leaving the
+    // screen, or cancelling, cancels the poll loop with it.
+    var pairingAttempt by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(pairingAttempt) {
+        if (pairingAttempt == 0) return@LaunchedEffect
+        pairingState = DevicePairingState.Starting
+
+        val session = NetworkClient.session
+        // The same client_uuid has to be on /start and /poll, and it is this install's
+        // identity everywhere else too, so it is settled here rather than invented twice.
+        val clientUuid = session.clientUuid ?: UUID.randomUUID().toString().also {
+            session.clientUuid = it
+        }
+
+        val request = DevicePairingRepository.start(clientUuid, BuildConfig.PAIRING_APP)
+        if (request == null) {
+            pairingState = DevicePairingState.Failure(DevicePairingRepository.startFailureMessage())
+            return@LaunchedEffect
+        }
+
+        pairingState = DevicePairingState.AwaitingRedemption(
+            userCode = request.userCode,
+            verificationUri = request.verificationUri,
+        )
+
+        when (val result = DevicePairingRepository.awaitPairing(request, clientUuid)) {
+            is DevicePairingRepository.PollResult.Paired -> {
+                pairingState = DevicePairingState.Idle
+                onPaired(result.session)
+            }
+            is DevicePairingRepository.PollResult.Failure ->
+                pairingState = DevicePairingState.Failure(result.message)
+            // awaitPairing resolves to one of the three above or gives up; a code it is still
+            // waiting on when the deadline passes is an expired code.
+            else -> pairingState = DevicePairingState.Expired
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -45,7 +107,13 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome to Teddy FYI", color = TeddyTheme.colors.onSurface, fontSize = 24.sp)
+            // The label, not a literal: the grocery build is a different app on the home
+            // screen and should not welcome anybody to a name it does not carry.
+            Text(
+                text = "Welcome to ${stringResource(R.string.app_name)}",
+                color = TeddyTheme.colors.onSurface,
+                fontSize = 24.sp,
+            )
             Spacer(modifier = Modifier.height(20.dp))
             
             if (isLoggingIn) {
@@ -91,25 +159,45 @@ fun LoginScreen(onLoginSuccess: (GoogleSignInResult) -> Unit) {
                         Text("Sign in with Google")
                     }
                 } else {
-                    Button(onClick = {
-                        val clientId = "34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav.apps.googleusercontent.com"
-                        val redirectUri = "com.googleusercontent.apps.34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav:/oauth2redirect"
-                        val nonce = java.util.UUID.randomUUID().toString()
-                        val scopeParam = "openid profile email"
-                        
-                        val authUrl = Uri.parse("https://accounts.google.com/o/oauth2/v2/auth")
-                            .buildUpon()
-                            .appendQueryParameter("client_id", clientId)
-                            .appendQueryParameter("redirect_uri", redirectUri)
-                            .appendQueryParameter("response_type", "id_token")
-                            .appendQueryParameter("scope", scopeParam)
-                            .appendQueryParameter("nonce", nonce)
-                            .build()
+                    DevicePairingSection(
+                        state = pairingState,
+                        onStart = { pairingAttempt += 1 },
+                        onCancel = {
+                            pairingAttempt = 0
+                            pairingState = DevicePairingState.Idle
+                        },
+                    )
 
-                        val intent = CustomTabsIntent.Builder().build()
-                        intent.launchUrl(context, authUrl)
-                    }) {
-                        Text("Sign in with Google (Web Fallback)")
+                    // The browser flow that predates pairing, kept as a second way in — it
+                    // needs a browser that can hand the redirect back to this app, which is
+                    // exactly what a Fire tablet may not have, so it is no longer the offer.
+                    // Out of the way entirely once there is a code on screen: a second way in
+                    // is a distraction while somebody is typing the first one into a phone.
+                    if (pairingState == DevicePairingState.Idle) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        TextButton(onClick = {
+                            val clientId = "34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav.apps.googleusercontent.com"
+                            val redirectUri = "com.googleusercontent.apps.34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav:/oauth2redirect"
+                            val nonce = java.util.UUID.randomUUID().toString()
+                            val scopeParam = "openid profile email"
+                        
+                            val authUrl = Uri.parse("https://accounts.google.com/o/oauth2/v2/auth")
+                                .buildUpon()
+                                .appendQueryParameter("client_id", clientId)
+                                .appendQueryParameter("redirect_uri", redirectUri)
+                                .appendQueryParameter("response_type", "id_token")
+                                .appendQueryParameter("scope", scopeParam)
+                                .appendQueryParameter("nonce", nonce)
+                                .build()
+
+                            val intent = CustomTabsIntent.Builder().build()
+                            intent.launchUrl(context, authUrl)
+                        }) {
+                            Text(
+                                "Sign in through a browser instead",
+                                color = TeddyTheme.colors.onSurfaceMuted,
+                            )
+                        }
                     }
                 }
 

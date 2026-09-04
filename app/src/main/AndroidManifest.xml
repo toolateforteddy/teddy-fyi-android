@@ -25,18 +25,6 @@
         </activity>
 
         <receiver
-            android:name=".widget.TodoTacticalWidgetReceiver"
-            android:exported="true"
-            android:label="TODO Tactical Widget">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/todo_tactical_widget_info" />
-        </receiver>
-
-        <receiver
             android:name=".widget.GroceryWidgetReceiver"
             android:exported="true"
             android:label="Grocery List Widget">
