@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -41,7 +40,10 @@ private val REC_TILE_HEIGHT = 40.dp
 private val REC_TILE_SPACING = 8.dp
 
 /** Narrowest a recommendation tile may get before the grid drops a column. */
-private val REC_TILE_MIN_WIDTH = 200.dp
+private val REC_TILE_MIN_WIDTH = 220.dp
+
+/** Recommendations to offer even when fewer than that would fit without scrolling. */
+private const val REC_MIN_COUNT = 8
 
 /** Floor for the recommendation tray so it still shows two rows on a short window. */
 private val REC_TRAY_MIN_HEIGHT = REC_TILE_HEIGHT * 2 + REC_TILE_SPACING
@@ -92,30 +94,30 @@ fun PlanningPhaseContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 1. The Top Store Bar: Horizontal chips for store context
+        // 1. The Top Store Bar: wrapping chips for store context
         Text(
             text = "Where are you heading?",
             style = MaterialTheme.typography.labelMedium,
             color = GroceryTheme.colors.onSurfaceMuted,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            item {
-                FilterChip(
-                    selected = state.planningStoreContextId == null,
-                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
-                    label = { Text("General") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
+            FilterChip(
+                selected = state.planningStoreContextId == null,
+                onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
+                label = { Text("General") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
-            }
-            items(stores) { store ->
+            )
+            stores.forEach { store ->
                 FilterChip(
                     selected = state.planningStoreContextId == store.id,
                     onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(store.id)) },
@@ -131,18 +133,18 @@ fun PlanningPhaseContent(
         Spacer(modifier = Modifier.height(4.dp))
 
         // 2. The "Commonly Bought" Recommendation Tray
-        // The tray, its column count, and how many recommendations it holds all follow
-        // the window: two columns of four rows on a phone (the old hardcoded 8), up to
-        // four columns on a tablet, fewer rows on a short landscape window.
+        // The tray height and the number of recommendations in it follow the window
+        // instead of one reference phone: a quarter of the window height, and as many
+        // tiles as that fits at the grid's own adaptive column count (never fewer than
+        // the 8 a phone has always shown).
         val recTrayHeight = fractionOfWindowHeight(fraction = 0.25f, min = REC_TRAY_MIN_HEIGHT)
-        val recColumns = columnsForWindowWidth(minColumnWidth = REC_TILE_MIN_WIDTH, min = 2, max = 4)
+        val recColumns = columnsForWindowWidth(minColumnWidth = REC_TILE_MIN_WIDTH)
         val recCapacity = itemsThatFit(
             availableHeight = recTrayHeight,
             rowHeight = REC_TILE_HEIGHT,
             rowSpacing = REC_TILE_SPACING,
-            columns = recColumns,
-            minRows = 2
-        )
+            columns = recColumns
+        ).coerceAtLeast(REC_MIN_COUNT)
 
         val storeSpecificRecs = remember(
             state.planningStoreContextId,
@@ -183,7 +185,7 @@ fun PlanningPhaseContent(
             // Grid of recommendations, sized to the window rather than to one phone.
             Box(modifier = Modifier.heightIn(max = recTrayHeight)) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(recColumns),
+                    columns = GridCells.Adaptive(REC_TILE_MIN_WIDTH),
                     horizontalArrangement = Arrangement.spacedBy(REC_TILE_SPACING),
                     verticalArrangement = Arrangement.spacedBy(REC_TILE_SPACING),
                     modifier = Modifier.fillMaxWidth()

@@ -34,34 +34,44 @@ class WindowMetricsTest {
     }
 
     @Test
-    fun `column count follows the window width within bounds`() {
-        assertEquals(2, columnsForWidth(411.dp, minColumnWidth = 200.dp, min = 2, max = 4))
-        assertEquals(4, columnsForWidth(800.dp, minColumnWidth = 200.dp, min = 2, max = 4))
-        assertEquals(4, columnsForWidth(1280.dp, minColumnWidth = 200.dp, min = 2, max = 4))
+    fun `column count follows the window width`() {
+        // Mirrors GridCells.Adaptive(220dp) in the recommendation tray.
+        assertEquals(1, columnsForWidth(411.dp, minColumnWidth = 220.dp))
+        assertEquals(3, columnsForWidth(800.dp, minColumnWidth = 220.dp))
+        assertEquals(5, columnsForWidth(1280.dp, minColumnWidth = 220.dp))
+    }
+
+    @Test
+    fun `column count is at least one on a narrow window`() {
+        assertEquals(1, columnsForWidth(100.dp, minColumnWidth = 220.dp))
     }
 
     @Test
     fun `grid capacity fills the tray without a trailing gap`() {
         // 4 rows of 40dp + 3 gaps of 8dp = 184dp, and a 5th row would need 232dp.
-        assertEquals(8, itemsThatFit(222.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 2, minRows = 2))
-        assertEquals(4, itemsThatFit(88.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 2, minRows = 2))
+        assertEquals(8, itemsThatFit(222.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 2))
+        assertEquals(4, itemsThatFit(88.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 2))
     }
 
     @Test
     fun `recommendation capacity per reference window`() {
+        // Mirrors PlanningPhaseContent: a quarter of the window height, the grid's own
+        // adaptive column count, and never fewer than the 8 a phone has always shown.
         fun capacity(width: Int, height: Int): Int {
             val tray = fractionOfHeight(height.dp, fraction = 0.25f, min = 88.dp)
-            val columns = columnsForWidth(width.dp, minColumnWidth = 200.dp, min = 2, max = 4)
-            return itemsThatFit(tray, rowHeight = 40.dp, rowSpacing = 8.dp, columns = columns, minRows = 2)
+            val columns = columnsForWidth(width.dp, minColumnWidth = 220.dp)
+            return itemsThatFit(tray, rowHeight = 40.dp, rowSpacing = 8.dp, columns = columns)
+                .coerceAtLeast(8)
         }
 
-        assertEquals(8, capacity(width = 411, height = 890))   // phone: unchanged from the old hardcoded 8
-        assertEquals(16, capacity(width = 1280, height = 800)) // 11" tablet landscape
-        assertEquals(8, capacity(width = 800, height = 533))   // 8" tablet landscape, short window
+        assertEquals(8, capacity(width = 411, height = 890))   // phone: one column, floored at 8
+        assertEquals(20, capacity(width = 1280, height = 800)) // 11" tablet landscape: 5 x 4
+        assertEquals(8, capacity(width = 800, height = 533))   // 8" landscape: 3 x 2, floored at 8
     }
 
     @Test
     fun `grid capacity never collapses to nothing`() {
-        assertEquals(4, itemsThatFit(0.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 2, minRows = 2))
+        assertEquals(2, itemsThatFit(0.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 2))
+        assertEquals(1, itemsThatFit(40.dp, rowHeight = 40.dp, rowSpacing = 8.dp, columns = 0))
     }
 }

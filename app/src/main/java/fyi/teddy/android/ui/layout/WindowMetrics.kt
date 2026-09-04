@@ -48,43 +48,34 @@ fun fractionOfHeight(
 ): Dp = (windowHeight * fraction).coerceIn(min, max.coerceAtLeast(min))
 
 /**
- * Number of grid columns that fit the window width, giving each column at least
- * [minColumnWidth], clamped to [[min], [max]].
+ * Number of grid columns that fit the window width giving each column at least
+ * [minColumnWidth], and at least one. Mirrors what `GridCells.Adaptive` resolves to,
+ * for code that needs the count as a number rather than as a layout.
  */
 @Composable
 @ReadOnlyComposable
-fun columnsForWindowWidth(
-    minColumnWidth: Dp,
-    min: Int = 1,
-    max: Int = Int.MAX_VALUE
-): Int = columnsForWidth(windowSizeDp().width, minColumnWidth, min, max)
+fun columnsForWindowWidth(minColumnWidth: Dp): Int =
+    columnsForWidth(windowSizeDp().width, minColumnWidth)
 
 /** Non-composable core of [columnsForWindowWidth], so the arithmetic is unit-testable. */
-fun columnsForWidth(
-    windowWidth: Dp,
-    minColumnWidth: Dp,
-    min: Int = 1,
-    max: Int = Int.MAX_VALUE
-): Int {
+fun columnsForWidth(windowWidth: Dp, minColumnWidth: Dp): Int {
     require(minColumnWidth > 0.dp) { "minColumnWidth must be positive" }
-    val fits = (windowWidth / minColumnWidth).toInt()
-    return fits.coerceIn(min, max.coerceAtLeast(min))
+    return (windowWidth / minColumnWidth).toInt().coerceAtLeast(1)
 }
 
 /**
  * How many items a uniform grid can show inside [availableHeight] without scrolling.
  *
  * Rows are [rowHeight] tall with [rowSpacing] between them (no trailing gap), and the
- * result is rows x [columns], with at least [minRows] rows so the grid never renders empty.
+ * result is rows x [columns] — at least one row and one column, so the grid is never empty.
  */
 fun itemsThatFit(
     availableHeight: Dp,
     rowHeight: Dp,
     rowSpacing: Dp,
-    columns: Int,
-    minRows: Int = 1
+    columns: Int
 ): Int {
     require(rowHeight > 0.dp) { "rowHeight must be positive" }
     val rows = ((availableHeight + rowSpacing) / (rowHeight + rowSpacing)).toInt()
-    return rows.coerceAtLeast(minRows) * columns.coerceAtLeast(1)
+    return rows.coerceAtLeast(1) * columns.coerceAtLeast(1)
 }
