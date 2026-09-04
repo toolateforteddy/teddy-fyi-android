@@ -44,6 +44,17 @@ object GroceryDisplayPreferences {
         }
     }
 
+    /**
+     * The density flow, having loaded it from preferences if nothing has yet.
+     *
+     * What composition should call: it hands back state to observe rather than performing a
+     * side effect, so it is safe to `remember` and survives a composition that is abandoned.
+     */
+    fun densityIn(context: Context): StateFlow<GroceryDensity> {
+        load(context)
+        return density
+    }
+
     /** Records a new density and pushes it to every Grocery screen currently composed. */
     fun setDensity(context: Context, density: GroceryDensity) {
         context.applicationContext

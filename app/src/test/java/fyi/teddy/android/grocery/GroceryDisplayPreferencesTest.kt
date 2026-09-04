@@ -84,6 +84,16 @@ class GroceryDisplayPreferencesTest {
     }
 
     @Test
+    fun `asking for the flow loads the stored choice`() {
+        GroceryDisplayPreferences.setDensity(application, GroceryDensity.COMPACT)
+        GroceryDisplayPreferences.resetForTest()
+
+        val flow = GroceryDisplayPreferences.densityIn(application)
+
+        assertEquals(GroceryDensity.COMPACT, flow.value)
+    }
+
+    @Test
     fun `every density resolves to its own sizes, ordered smallest to largest`() {
         val compact = metricsFor(GroceryDensity.COMPACT)
         val comfortable = metricsFor(GroceryDensity.COMFORTABLE)

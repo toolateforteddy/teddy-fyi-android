@@ -154,8 +154,8 @@ private val LocalGroceryMetrics = staticCompositionLocalOf { metricsFor(GroceryD
 @Composable
 fun GroceryTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    remember(context) { GroceryDisplayPreferences.load(context) }
-    val density by GroceryDisplayPreferences.density.collectAsState()
+    val densityFlow = remember(context) { GroceryDisplayPreferences.densityIn(context) }
+    val density by densityFlow.collectAsState()
 
     CompositionLocalProvider(
         LocalGroceryColors provides GroceryDarkColors,
