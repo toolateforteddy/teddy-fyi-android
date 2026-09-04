@@ -14,9 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -44,14 +44,39 @@ import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import kotlinx.coroutines.delay
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+
+/** How many just-added names the rapid-entry sheet keeps on screen as a receipt. */
+private const val MAX_RAPID_ENTRY_RECEIPTS = 8
+
+/** Long enough for the bottom sheet's entry animation to place the field before it is focused. */
+private val FOCUS_SETTLE_DELAY = 150.milliseconds
 
 enum class GroceryPhase {
     NEED, PLANNING, SHOPPING;
     
     val displayName: String
         get() = name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+    /** Shared by the phone NavigationBar and the tablet NavigationRail so they cannot drift. */
+    val icon: ImageVector
+        get() = when (this) {
+            NEED -> Icons.AutoMirrored.Filled.List
+            PLANNING -> Icons.Default.DateRange
+            SHOPPING -> Icons.Default.ShoppingCart
+        }
 }
+
+/** Width at or above which the layout stops being a phone layout (Material compact/medium boundary). */
+private const val MEDIUM_WIDTH_BREAKPOINT_DP = 600
+
+/**
+ * The rail is wider than a Material NavigationRail's 80dp because it carries list names, not
+ * just three icons. Wide enough for a name like "Costco run", narrow enough that a 600dp
+ * portrait tablet still keeps two thirds of its width for the list itself.
+ */
+private val RAIL_WIDTH = 180.dp
 
 /**
  * Entry point for the Grocery app. Applies [GroceryTheme] so every Grocery screen and
@@ -130,6 +155,10 @@ private fun GroceryScreenContent(
     
     val nameFocusRequester = remember { FocusRequester() }
 
+    // Names filed since the add sheet was opened, newest first, so a long entry run shows
+    // its own progress without the list behind the sheet having to be visible.
+    var addedThisSession by remember { mutableStateOf(emptyList<String>()) }
+
     val uniqueNames = remember(items) {
         items.asSequence().map { it.name }.distinct().sorted().toList()
     }
@@ -144,8 +173,10 @@ private fun GroceryScreenContent(
         }
     }
 
-    // A wide screen (the kitchen tablet) gets a rail; a phone gets the bottom bar.
-    val isWideScreen = LocalConfiguration.current.screenWidthDp >= 600
+    // Material's compact/medium breakpoint. At medium and up the phases and the list switcher
+    // both move to a rail, which hands ~80dp of height back to the list and puts them under
+    // the thumb of whichever hand is holding the tablet's left bezel.
+    val useNavigationRail = LocalConfiguration.current.screenWidthDp >= MEDIUM_WIDTH_BREAKPOINT_DP
 
     val spaceOptions = remember(lists, state.hasItemsInDefaultList, state.selectedListId) {
         grocerySpaceOptions(lists, state.hasItemsInDefaultList, state.selectedListId)
@@ -165,9 +196,9 @@ private fun GroceryScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    // On a phone the switcher is the title, so lists can be changed
-                    // without entering edit mode. On a wide screen the rail carries it.
-                    if (isWideScreen) {
+                    // On a phone the title is the switcher, so lists can be changed without
+                    // entering edit mode. On rail widths the rail carries the spaces instead.
+                    if (useNavigationRail) {
                         Text("Grocery: ${state.currentPhase.displayName}")
                     } else {
                         GrocerySpaceSwitcherTitle(
@@ -275,14 +306,16 @@ private fun GroceryScreenContent(
             }
         },
         bottomBar = {
-            if (!isWideScreen) {
+            // On a tablet the rail down the left already carries the three phases, and the
+            // vertical axis is the scarce one — so the bar only exists on phone widths.
+            if (!useNavigationRail) {
                 NavigationBar(containerColor = groceryColors.screen) {
-                    phaseDestinations.forEach { destination ->
+                    GroceryPhase.entries.forEach { phase ->
                         NavigationBarItem(
-                            selected = state.currentPhase == destination.phase,
-                            onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(destination.phase)) },
-                            icon = { Icon(destination.icon, contentDescription = destination.label) },
-                            label = { Text(destination.label) }
+                            selected = state.currentPhase == phase,
+                            onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(phase)) },
+                            icon = { Icon(phase.icon, contentDescription = phase.displayName) },
+                            label = { Text(phase.displayName) }
                         )
                     }
                 }
@@ -290,13 +323,13 @@ private fun GroceryScreenContent(
         }
     ) { paddingValues ->
         Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (isWideScreen) {
+            if (useNavigationRail) {
                 GroceryRail(
                     currentPhase = state.currentPhase,
-                    onPhaseSelected = { viewModel.onEvent(GroceryUiEvent.SetPhase(it)) },
+                    onSelectPhase = { viewModel.onEvent(GroceryUiEvent.SetPhase(it)) },
                     spaceOptions = spaceOptions,
                     selectedListId = state.selectedListId,
-                    onSpaceSelected = { viewModel.onEvent(GroceryUiEvent.SetSelectedListId(it)) }
+                    onSelectSpace = { viewModel.onEvent(GroceryUiEvent.SetSelectedListId(it)) }
                 )
             }
             Surface(
@@ -306,8 +339,8 @@ private fun GroceryScreenContent(
                 Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp)
                 ) {
-                    // Edit mode is now only the list *management* actions: switching
-                    // between spaces lives in the top bar (phone) or the rail (tablet).
+                    // Edit mode is only the list *management* actions now: switching between
+                    // spaces lives in the top bar (phone) or the rail (tablet).
                     val activeList = lists.find { it.id == state.selectedListId }
                     val activeListName = spaceOptions.nameFor(state.selectedListId)
 
@@ -472,6 +505,20 @@ private fun GroceryScreenContent(
         }
 
         if (showAddItemSheet) {
+            // Rapid entry: the sheet stays open so a whole week's list can be typed in one
+            // sitting. Each submit files the item, clears the field and hands focus straight
+            // back, with the running tally below acting as the receipt.
+            LaunchedEffect(showAddItemSheet) { addedThisSession = emptyList() }
+
+            val submitItem: () -> Unit = {
+                val entry = state.newItemInput.trim()
+                if (entry.isNotEmpty()) {
+                    viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(entry))
+                    addedThisSession = (listOf(entry) + addedThisSession).take(MAX_RAPID_ENTRY_RECEIPTS)
+                }
+                nameFocusRequester.requestFocus()
+            }
+
             ModalBottomSheet(
                 onDismissRequest = { showAddItemSheet = false },
                 sheetState = sheetState,
@@ -483,12 +530,33 @@ private fun GroceryScreenContent(
                         .padding(16.dp)
                         .padding(bottom = 32.dp)
                 ) {
-                    Text(
-                        "What do we need?",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = groceryColors.onSurface,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    // Claim focus once the sheet has settled, so the keyboard is already up
+                    // and the first item can be typed without a tap.
+                    LaunchedEffect(Unit) {
+                        delay(FOCUS_SETTLE_DELAY)
+                        nameFocusRequester.requestFocus()
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "What do we need?",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = groceryColors.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (addedThisSession.isNotEmpty()) {
+                            Text(
+                                "${addedThisSession.size} added",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = groceryColors.accent
+                            )
+                        }
+                    }
 
                     TextField(
                         value = state.newItemInput,
@@ -496,6 +564,7 @@ private fun GroceryScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(nameFocusRequester),
+                        singleLine = true,
                         placeholder = { Text("e.g. 2 bunches of Bananas", color = groceryColors.onSurfaceMuted) },
                         colors = TextFieldDefaults.colors(
                             focusedTextColor = groceryColors.onSurface,
@@ -505,15 +574,39 @@ private fun GroceryScreenContent(
                         ),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Done
+                            imeAction = ImeAction.Next
                         ),
+                        // Both actions do the same thing: a hardware Enter reports Done on
+                        // some keyboards even when the field asks for Next.
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                                showAddItemSheet = false
-                            }
+                            onNext = { submitItem() },
+                            onDone = { submitItem() }
                         )
                     )
+
+                    if (addedThisSession.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 12.dp)
+                        ) {
+                            items(addedThisSession) { added ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = groceryColors.success,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        added,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = groceryColors.onSurfaceMuted
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     if (suggestions.isNotEmpty()) {
                         Text(
@@ -554,16 +647,21 @@ private fun GroceryScreenContent(
                         }
                     }
 
-                    Button(
-                        onClick = {
-                            viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                            showAddItemSheet = false
-                        },
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 24.dp)
+                            .padding(top = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("Add it")
+                        Button(
+                            onClick = submitItem,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Add it")
+                        }
+                        OutlinedButton(onClick = { showAddItemSheet = false }) {
+                            Text(if (addedThisSession.isEmpty()) "Close" else "Done")
+                        }
                     }
                 }
             }
@@ -582,46 +680,37 @@ private fun GroceryScreenContent(
     }
 }
 
-/** A phase destination, rendered in the phone's bottom bar or the tablet's rail. */
-private data class PhaseDestination(
-    val phase: GroceryPhase,
-    val icon: ImageVector,
-    val label: String,
-)
-
-private val phaseDestinations = listOf(
-    PhaseDestination(GroceryPhase.NEED, Icons.AutoMirrored.Filled.List, "Need"),
-    PhaseDestination(GroceryPhase.PLANNING, Icons.Default.DateRange, "Planning"),
-    PhaseDestination(GroceryPhase.SHOPPING, Icons.Default.ShoppingCart, "Shopping"),
-)
-
 /**
- * The tablet rail: the three phases, then every grocery space, all permanently on
- * screen. Changing lists here costs one tap and never routes through edit mode.
+ * The left-hand rail: Need / Planning / Shopping, then every grocery space, at widths where a
+ * bottom bar would be spending height the lists need more than the navigation does.
+ *
+ * This is a plain Column rather than a Material NavigationRail because the spaces belong here
+ * too, and a NavigationRail is 80dp wide — enough for three icons, not for "weeknight list".
+ * Phases and spaces share one row style so the rail reads as a single column of destinations.
  */
 @Composable
 private fun GroceryRail(
     currentPhase: GroceryPhase,
-    onPhaseSelected: (GroceryPhase) -> Unit,
+    onSelectPhase: (GroceryPhase) -> Unit,
     spaceOptions: List<GrocerySpaceOption>,
     selectedListId: String?,
-    onSpaceSelected: (String?) -> Unit,
+    onSelectSpace: (String?) -> Unit,
 ) {
     val groceryColors = GroceryTheme.colors
     Surface(
-        modifier = Modifier.width(216.dp).fillMaxHeight(),
+        modifier = Modifier.width(RAIL_WIDTH).fillMaxHeight(),
         color = groceryColors.screen
     ) {
         Column(modifier = Modifier.fillMaxHeight().padding(vertical = 12.dp)) {
-            phaseDestinations.forEach { destination ->
-                val selected = currentPhase == destination.phase
+            GroceryPhase.entries.forEach { phase ->
+                val selected = currentPhase == phase
                 GroceryRailEntry(
-                    label = destination.label,
+                    label = phase.displayName,
                     selected = selected,
-                    onClick = { onPhaseSelected(destination.phase) },
+                    onClick = { onSelectPhase(phase) },
                     icon = {
                         Icon(
-                            destination.icon,
+                            phase.icon,
                             contentDescription = null,
                             tint = if (selected) groceryColors.accentBright else groceryColors.onSurfaceMuted
                         )
@@ -637,7 +726,7 @@ private fun GroceryRail(
             GrocerySpaceRailSection(
                 options = spaceOptions,
                 selectedListId = selectedListId,
-                onSelect = onSpaceSelected,
+                onSelect = onSelectSpace,
                 modifier = Modifier.weight(1f, fill = false)
             )
         }
