@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -77,7 +76,7 @@ fun PlanningPhaseContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 1. The Top Store Bar: Horizontal chips for store context
+        // 1. The Top Store Bar: wrapping chips for store context
         StoreContextBar(
             stores = stores,
             selectedStoreId = state.planningStoreContextId,
@@ -183,7 +182,11 @@ fun PlanningPhaseContent(
     }
 }
 
-/** Below this width the tray stacks above the list, as it always has. */
+/**
+ * Below this much *content* width the tray stacks above the list, as it always has.
+ * Same number as GroceryScreen's compact/medium breakpoint, but measured after the
+ * NavigationRail has taken its share rather than against the whole screen.
+ */
 private val TwoPaneMinWidth = 600.dp
 
 /** Height the tray is allowed when it is stacked above the list. */
@@ -197,6 +200,7 @@ private const val STACKED_RECOMMENDATION_COUNT = 8
 /** A full-height tray has room for more jogs than a 200dp strip does. */
 private const val WIDE_RECOMMENDATION_COUNT = 16
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StoreContextBar(
     stores: List<Store>,
@@ -209,23 +213,23 @@ private fun StoreContextBar(
         color = GroceryTheme.colors.onSurfaceMuted,
         modifier = Modifier.padding(bottom = 4.dp)
     )
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        item {
-            FilterChip(
-                selected = selectedStoreId == null,
-                onClick = { onSelectStore(null) },
-                label = { Text("General") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                )
+        FilterChip(
+            selected = selectedStoreId == null,
+            onClick = { onSelectStore(null) },
+            label = { Text("General") },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
             )
-        }
-        items(stores) { store ->
+        )
+        stores.forEach { store ->
             FilterChip(
                 selected = selectedStoreId == store.id,
                 onClick = { onSelectStore(store.id) },
@@ -272,8 +276,8 @@ private fun RecommendationTray(
     }
 }
 
-/** Two columns at phone width, more only once a pane is genuinely wide. */
-private val RecommendationTileMinWidth = 150.dp
+/** Tiles below this are too narrow for an item name; wider panes get more columns. */
+private val RecommendationTileMinWidth = 220.dp
 
 /** "Your List": every active item, whatever else is on screen beside it. */
 @Composable
