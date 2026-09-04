@@ -1,6 +1,5 @@
 package fyi.teddy.android.grocery.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
@@ -12,17 +11,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.ui.components.AddItemForm
 import fyi.teddy.android.grocery.ui.components.AddListDialog
+import fyi.teddy.android.grocery.ui.components.GrocerySpaceOption
+import fyi.teddy.android.grocery.ui.components.GrocerySpaceRailSection
+import fyi.teddy.android.grocery.ui.components.GrocerySpaceSwitcherTitle
+import fyi.teddy.android.grocery.ui.components.GroceryRailEntry
+import fyi.teddy.android.grocery.ui.components.grocerySpaceOptions
+import fyi.teddy.android.grocery.ui.components.nameFor
 import fyi.teddy.android.grocery.ui.components.RenameListDialog
 import fyi.teddy.android.grocery.ui.components.JoinListDialog
 import fyi.teddy.android.grocery.ui.components.DOCKED_ADD_PANE_WIDTH
@@ -59,6 +63,13 @@ enum class GroceryPhase {
 
 /** Width at or above which the layout stops being a phone layout (Material compact/medium boundary). */
 private const val MEDIUM_WIDTH_BREAKPOINT_DP = 600
+
+/**
+ * The rail is wider than a Material NavigationRail's 80dp because it carries list names, not
+ * just three icons. Wide enough for a name like "Costco run", narrow enough that a 600dp
+ * portrait tablet still keeps two thirds of its width for the list itself.
+ */
+private val RAIL_WIDTH = 180.dp
 
 /**
  * Entry point for the Grocery app. Applies [GroceryTheme] so every Grocery screen and
@@ -129,7 +140,6 @@ private fun GroceryScreenContent(
     val sheetState = rememberModalBottomSheetState()
     var showAddItemSheet by remember { mutableStateOf(false) }
     
-    var showListSelectorMenu by remember { mutableStateOf(value = false) }
     var showAddListDialog by remember { mutableStateOf(value = false) }
     var showRenameListDialog by remember { mutableStateOf(value = false) }
     var showJoinListDialog by remember { mutableStateOf(value = false) }
@@ -156,10 +166,14 @@ private fun GroceryScreenContent(
         }
     }
 
-    // Material's compact/medium breakpoint. At medium and up the phase switcher moves to a
-    // NavigationRail, which hands ~80dp of height back to the list and puts the phases under
+    // Material's compact/medium breakpoint. At medium and up the phases and the list switcher
+    // both move to a rail, which hands ~80dp of height back to the list and puts them under
     // the thumb of whichever hand is holding the tablet's left bezel.
     val useNavigationRail = LocalConfiguration.current.screenWidthDp >= MEDIUM_WIDTH_BREAKPOINT_DP
+
+    val spaceOptions = remember(lists, state.hasItemsInDefaultList, state.selectedListId) {
+        grocerySpaceOptions(lists, state.hasItemsInDefaultList, state.selectedListId)
+    }
 
     // Wider still, the modal sheet is a full-width slab and the soft keyboard buries the very
     // list being added to, so entry docks beside the list instead of on top of it.
@@ -196,12 +210,19 @@ private fun GroceryScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    val activeList = lists.find { it.id == state.selectedListId }
-                    val activeListName = activeList?.name ?: "Default List"
-
-                    if (state.isEditMode) Text("Grocery: ${state.currentPhase.displayName}")
-                    else Text("Grocery: ${state.currentPhase.displayName}: $activeListName")
-                        },
+                    // On a phone the title is the switcher, so lists can be changed without
+                    // entering edit mode. On rail widths the rail carries the spaces instead.
+                    if (useNavigationRail) {
+                        Text("Grocery: ${state.currentPhase.displayName}")
+                    } else {
+                        GrocerySpaceSwitcherTitle(
+                            phaseLabel = state.currentPhase.displayName,
+                            options = spaceOptions,
+                            selectedListId = state.selectedListId,
+                            onSelect = { viewModel.onEvent(GroceryUiEvent.SetSelectedListId(it)) }
+                        )
+                    }
+                },
                 actions = {
                     if (state.currentPhase == GroceryPhase.NEED || state.currentPhase == GroceryPhase.SHOPPING) {
                         val syncIconColor = when (state.lastSyncStatus) {
@@ -317,10 +338,12 @@ private fun GroceryScreenContent(
     ) { paddingValues ->
         Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             if (useNavigationRail) {
-                GroceryPhaseRail(
+                GroceryRail(
                     currentPhase = state.currentPhase,
-                    containerColor = groceryColors.screen,
-                    onSelectPhase = { viewModel.onEvent(GroceryUiEvent.SetPhase(it)) }
+                    onSelectPhase = { viewModel.onEvent(GroceryUiEvent.SetPhase(it)) },
+                    spaceOptions = spaceOptions,
+                    selectedListId = state.selectedListId,
+                    onSelectSpace = { viewModel.onEvent(GroceryUiEvent.SetSelectedListId(it)) }
                 )
             }
             Surface(
@@ -330,9 +353,10 @@ private fun GroceryScreenContent(
                 Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp)
                 ) {
-                    // List / Space selector Row for Shared Lists
+                    // Edit mode is only the list *management* actions now: switching between
+                    // spaces lives in the top bar (phone) or the rail (tablet).
                     val activeList = lists.find { it.id == state.selectedListId }
-                    val activeListName = activeList?.name ?: "Default List"
+                    val activeListName = spaceOptions.nameFor(state.selectedListId)
 
                     if (state.isEditMode) {
                         Row(
@@ -342,55 +366,14 @@ private fun GroceryScreenContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Box {
-                                Row(
-                                    modifier = Modifier
-                                        .clickable { showListSelectorMenu = true }
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.Menu,
-                                        contentDescription = "Lists",
-                                        tint = groceryColors.onSurfaceMuted
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = activeListName,
-                                        color = groceryColors.onSurface,
-                                        fontSize = 18.sp,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Icon(
-                                        Icons.Default.ArrowDropDown,
-                                        contentDescription = "Switch List",
-                                        tint = groceryColors.onSurface
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = showListSelectorMenu,
-                                    onDismissRequest = { showListSelectorMenu = false }
-                                ) {
-                                    if (state.hasItemsInDefaultList) {
-                                        DropdownMenuItem(
-                                            text = { Text("Default List") },
-                                            onClick = {
-                                                viewModel.onEvent(GroceryUiEvent.SetSelectedListId(null))
-                                                showListSelectorMenu = false
-                                            }
-                                        )
-                                    }
-                                    lists.forEach { list ->
-                                        DropdownMenuItem(
-                                            text = { Text(list.name) },
-                                            onClick = {
-                                                viewModel.onEvent(GroceryUiEvent.SetSelectedListId(list.id))
-                                                showListSelectorMenu = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+                            Text(
+                                text = "Editing $activeListName",
+                                color = groceryColors.onSurfaceMuted,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { showJoinListDialog = true }) {
@@ -600,27 +583,53 @@ private fun GroceryScreenContent(
 }
 
 /**
- * The Need / Planning / Shopping switcher as a left-hand rail, for widths where a bottom bar
- * would be spending height the lists need more than the navigation does.
+ * The left-hand rail: Need / Planning / Shopping, then every grocery space, at widths where a
+ * bottom bar would be spending height the lists need more than the navigation does.
+ *
+ * This is a plain Column rather than a Material NavigationRail because the spaces belong here
+ * too, and a NavigationRail is 80dp wide — enough for three icons, not for "weeknight list".
+ * Phases and spaces share one row style so the rail reads as a single column of destinations.
  */
 @Composable
-private fun GroceryPhaseRail(
+private fun GroceryRail(
     currentPhase: GroceryPhase,
-    containerColor: Color,
     onSelectPhase: (GroceryPhase) -> Unit,
+    spaceOptions: List<GrocerySpaceOption>,
+    selectedListId: String?,
+    onSelectSpace: (String?) -> Unit,
 ) {
-    NavigationRail(
-        containerColor = containerColor,
-        // The Scaffold already handed us its content padding, so the rail must not add the
-        // system bar insets a second time.
-        windowInsets = WindowInsets(0, 0, 0, 0),
+    val groceryColors = GroceryTheme.colors
+    Surface(
+        modifier = Modifier.width(RAIL_WIDTH).fillMaxHeight(),
+        color = groceryColors.screen
     ) {
-        GroceryPhase.entries.forEach { phase ->
-            NavigationRailItem(
-                selected = currentPhase == phase,
-                onClick = { onSelectPhase(phase) },
-                icon = { Icon(phase.icon, contentDescription = phase.displayName) },
-                label = { Text(phase.displayName) }
+        Column(modifier = Modifier.fillMaxHeight().padding(vertical = 12.dp)) {
+            GroceryPhase.entries.forEach { phase ->
+                val selected = currentPhase == phase
+                GroceryRailEntry(
+                    label = phase.displayName,
+                    selected = selected,
+                    onClick = { onSelectPhase(phase) },
+                    icon = {
+                        Icon(
+                            phase.icon,
+                            contentDescription = null,
+                            tint = if (selected) groceryColors.accentBright else groceryColors.onSurfaceMuted
+                        )
+                    }
+                )
+            }
+
+            HorizontalDivider(
+                color = groceryColors.outline,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+
+            GrocerySpaceRailSection(
+                options = spaceOptions,
+                selectedListId = selectedListId,
+                onSelect = onSelectSpace,
+                modifier = Modifier.weight(1f, fill = false)
             )
         }
     }
