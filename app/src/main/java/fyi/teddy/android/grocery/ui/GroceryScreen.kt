@@ -109,7 +109,14 @@ private fun GroceryScreenContent(
 
     LaunchedEffect(state.snackbarMessage) {
         state.snackbarMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg.message)
+            val result = snackbarHostState.showSnackbar(
+                message = msg.message,
+                actionLabel = msg.actionLabel,
+                duration = if (msg.action != null) SnackbarDuration.Long else SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                msg.action?.let { viewModel.onEvent(it) }
+            }
             viewModel.onEvent(GroceryUiEvent.DismissSnackbar(msg.id))
         }
     }
@@ -203,6 +210,7 @@ private fun GroceryScreenContent(
                 Snackbar(
                     containerColor = if (isError) groceryColors.danger else groceryColors.success,
                     contentColor = groceryColors.onStatus,
+                    actionColor = groceryColors.onStatus,
                     snackbarData = data
                 )
             }

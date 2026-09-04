@@ -9,6 +9,7 @@ import fyi.teddy.android.data.UserSyncMetadataDao
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.repository.GroceryRepository
+import fyi.teddy.android.network.SyncHold
 import fyi.teddy.android.grocery.ui.GroceryPhase
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryViewModel
@@ -81,6 +82,8 @@ class GroceryViewModelTest {
 
     @After
     fun tearDown() {
+        // The sync hold is process-wide; leaving one set would leak into the next test.
+        SyncHold.release(application)
         Dispatchers.resetMain()
         unmockkAll()
     }
@@ -218,6 +221,47 @@ class GroceryViewModelTest {
 
         coVerify(exactly = 1) { repository.deleteItem(item) }
         coVerify(exactly = 0) { repository.updateItem(any()) }
+    }
+
+    @Test
+    fun `test deleteItem offers an undo action`() = runTest {
+        val viewModel = createViewModel()
+        val item = GroceryItem(id = "1", name = "Bananas", timesBought = 0, userId = userId)
+
+        viewModel.deleteItem(item)
+        testScheduler.advanceUntilIdle()
+
+        val message = viewModel.state.value.snackbarMessage
+        assertNotNull(message)
+        assertEquals("Removed Bananas.", message!!.message)
+        assertEquals("Undo", message.actionLabel)
+        assertEquals(GroceryUiEvent.RestoreItem(item), message.action)
+    }
+
+    @Test
+    fun `test RestoreItem puts the item back verbatim`() = runTest {
+        val viewModel = createViewModel()
+        val item = GroceryItem(id = "1", name = "Bananas", timesBought = 3, userId = userId)
+
+        viewModel.onEvent(GroceryUiEvent.RestoreItem(item))
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.restoreItem(item) }
+    }
+
+    @Test
+    fun `test deleteItem holds sync until the undo window closes`() = runTest {
+        val viewModel = createViewModel()
+        val item = GroceryItem(id = "1", name = "Bananas", timesBought = 0, userId = userId)
+
+        viewModel.deleteItem(item)
+        testScheduler.advanceUntilIdle()
+        assertTrue(SyncHold.isHeld())
+
+        val messageId = viewModel.state.value.snackbarMessage!!.id
+        viewModel.onEvent(GroceryUiEvent.DismissSnackbar(messageId))
+        testScheduler.advanceUntilIdle()
+        assertFalse(SyncHold.isHeld())
     }
 
     @Test

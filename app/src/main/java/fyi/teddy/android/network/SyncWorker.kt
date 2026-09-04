@@ -86,6 +86,13 @@ class SyncWorker(
 
         Log.d(TAG, "[$workerId] Starting synchronization worker...")
 
+        if (SyncHold.isHeld()) {
+            // A reversible change is on screen. Backing off is safe: SyncHold.release
+            // enqueues a sync the moment the window closes.
+            Log.d(TAG, "[$workerId] Sync is held, skipping this run.")
+            return Result.success()
+        }
+
         if (shouldSkipMeteredSync(workerId)) return Result.success()
 
         val session = NetworkClient.session
@@ -311,6 +318,10 @@ class SyncWorker(
         }
 
         fun enqueue(context: Context) {
+            if (SyncHold.isHeld()) {
+                Log.d(TAG, "Sync is held, not enqueuing.")
+                return
+            }
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
@@ -343,6 +354,10 @@ class SyncWorker(
         }
 
         fun enqueueDelayed(context: Context, delaySeconds: Long) {
+            if (SyncHold.isHeld()) {
+                Log.d(TAG, "Sync is held, not enqueuing.")
+                return
+            }
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()

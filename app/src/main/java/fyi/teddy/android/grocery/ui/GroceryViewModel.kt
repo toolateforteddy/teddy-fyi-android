@@ -19,6 +19,7 @@ import fyi.teddy.android.grocery.domain.MoveGroceryItemDownUseCase
 import fyi.teddy.android.grocery.domain.MoveGroceryItemUpUseCase
 import fyi.teddy.android.grocery.domain.ai.GroceryCategorizer
 import fyi.teddy.android.grocery.repository.GroceryRepository
+import fyi.teddy.android.network.SyncHold
 import fyi.teddy.android.network.SyncWorker
 import fyi.teddy.android.utils.StringUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -279,6 +280,7 @@ class GroceryViewModel(
             is GroceryUiEvent.InsertItem -> insertItem(event.name, event.quantity, event.categoryId, event.unit)
             is GroceryUiEvent.UpdateItem -> updateItem(event.item)
             is GroceryUiEvent.DeleteItem -> deleteItem(event.item)
+            is GroceryUiEvent.RestoreItem -> restoreItem(event.item)
             is GroceryUiEvent.MoveItemUp -> viewModelScope.launch { moveGroceryItemUpUseCase(event.item, event.siblings) }
             is GroceryUiEvent.MoveItemDown -> viewModelScope.launch { moveGroceryItemDownUseCase(event.item, event.siblings) }
             is GroceryUiEvent.UpdateStoreInfo -> updateStoreInfo(event.info)
@@ -321,16 +323,20 @@ class GroceryViewModel(
             is GroceryUiEvent.ShareList -> shareListWithUser(event.listId, event.userId)
             is GroceryUiEvent.CreateInvite -> createInvite(event.listId)
             is GroceryUiEvent.JoinList -> joinList(event.code)
-            is GroceryUiEvent.DismissSnackbar -> {
-                if (_snackbarMessage.value?.id == event.messageId) {
-                    _snackbarMessage.value = null
-                }
-            }
+            is GroceryUiEvent.DismissSnackbar -> dismissSnackbar(event.messageId)
             is GroceryUiEvent.RemoveListMember -> removeListMember(event.member)
             is GroceryUiEvent.AddRecommendedItems -> addRecommendedItems(event.selectedIds)
             is GroceryUiEvent.DismissRecommendation -> dismissRecommendation(event.itemId)
             else -> {}
         }
+    }
+
+    private fun dismissSnackbar(messageId: Long) {
+        val dismissed = _snackbarMessage.value ?: return
+        if (dismissed.id != messageId) return
+        _snackbarMessage.value = null
+        // An undoable message held sync open; the choice has been made, so let it go.
+        if (dismissed.action != null) SyncHold.release(application)
     }
 
     fun dismissRecommendation(itemId: String) {
