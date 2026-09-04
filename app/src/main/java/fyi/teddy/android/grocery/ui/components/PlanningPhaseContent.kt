@@ -149,7 +149,7 @@ fun PlanningPhaseContent(
             // Two-column grid of recommendations
             Box(modifier = Modifier.heightIn(max = 200.dp)) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(220.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()

@@ -144,7 +144,7 @@ fun ShoppingPhaseContent(
             )
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(220.dp),
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(bottom = 88.dp, start = 8.dp, end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -159,7 +159,7 @@ fun ShoppingPhaseContent(
                     if (categoryItems.isNotEmpty()) {
                         val isExpanded = expandedCategories[category.id] ?: true
                         val icon = aisleIcon(category.icon)
-                        item(span = { GridItemSpan(2) }) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             AisleHeader(
                                 name = category.name,
                                 icon = icon,
@@ -188,7 +188,7 @@ fun ShoppingPhaseContent(
                 val otherItems = sortedItems.filter { it.categoryId == null || !knownCategoryIds.contains(it.categoryId) }
                 if (otherItems.isNotEmpty()) {
                     val isExpanded = expandedCategories[null] ?: true
-                    item(span = { GridItemSpan(2) }) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         AisleHeader(
                             name = "Everything else",
                             icon = aisleIcon(null),
@@ -215,7 +215,7 @@ fun ShoppingPhaseContent(
 
                 if (inCartItems.isNotEmpty()) {
                     val sortedInCartItems = inCartItems.sortedBy { it.name }
-                    item(span = { GridItemSpan(2) }) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             "In the cart (${sortedInCartItems.size})",
                             style = MaterialTheme.typography.titleSmall,
