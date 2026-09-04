@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
@@ -29,6 +28,9 @@ import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+
+/** The resting height of a planning row; it grows only when stacked controls open beneath the name. */
+private val PlanningTileMinHeight = 48.dp
 
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
@@ -309,7 +311,7 @@ fun PlanningItemTile(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .heightIn(min = PlanningTileMinHeight)
             .combinedClickable(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
@@ -318,53 +320,72 @@ fun PlanningItemTile(
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, GroceryTheme.colors.outline)
     ) {
-        AnimatedContent(
-            targetState = showControls,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "PlanningItemControls"
-        ) { isEditing ->
-            if (isEditing) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val name = @Composable { modifier: Modifier ->
                 Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
-                    }
-                    Text(
-                        text = item.quantity,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = GroceryTheme.colors.onSurfaceMuted, modifier = Modifier.size(18.dp))
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp),
+                    modifier = modifier.heightIn(min = PlanningTileMinHeight),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.bodyLarge,
                         color = GroceryTheme.colors.onSurface,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f, fill = false),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (item.quantity.isNotBlank() && item.quantity != "1") {
+                    // The stepper states the quantity while it is open, so don't repeat it.
+                    if (!showControls && item.quantity.isNotBlank() && item.quantity != "1") {
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
                             style = MaterialTheme.typography.bodySmall,
                             color = GroceryTheme.colors.onSurfaceMuted
+                        )
+                    }
+                }
+            }
+            val controls = @Composable { modifier: Modifier, arrangement: Arrangement.Horizontal ->
+                ItemQuantityControls(
+                    quantity = item.quantity,
+                    onDecrement = onDecrement,
+                    onIncrement = onIncrement,
+                    onEditCategory = onEditCategory,
+                    modifier = modifier,
+                    quantityColor = MaterialTheme.colorScheme.primary,
+                    horizontalArrangement = arrangement
+                )
+            }
+
+            if (inlineControlsFit(maxWidth, withDelete = false)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    name(Modifier.weight(1f))
+                    AnimatedVisibility(
+                        visible = showControls,
+                        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
+                        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)
+                    ) {
+                        controls(Modifier, Arrangement.End)
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    name(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                    )
+                    AnimatedVisibility(visible = showControls) {
+                        controls(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp),
+                            Arrangement.SpaceEvenly
                         )
                     }
                 }
