@@ -8,6 +8,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 
 /**
  * Semantic colour slots for the Grocery app.
@@ -147,9 +149,16 @@ private val LocalGroceryColors = staticCompositionLocalOf { GroceryDarkColors }
  */
 @Composable
 fun GroceryTheme(content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalGroceryColors provides GroceryDarkColors) {
-        MaterialTheme(
-            colorScheme = GroceryDarkColorScheme,
+    MaterialTheme(colorScheme = GroceryDarkColorScheme) {
+        // Metrics are read inside MaterialTheme so they can be built from its type scale.
+        // Width comes from the window rather than the display, so a split-screen Grocery
+        // gets phone metrics even on a tablet.
+        val containerWidth = LocalWindowInfo.current.containerSize.width
+        val widthDp = with(LocalDensity.current) { containerWidth.toDp() }
+        val metrics = groceryMetricsFor(widthDp)
+        CompositionLocalProvider(
+            LocalGroceryColors provides GroceryDarkColors,
+            LocalGroceryMetrics provides metrics,
             content = content,
         )
     }
@@ -161,6 +170,12 @@ object GroceryTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalGroceryColors.current
+
+    /** Width-dependent sizes and text styles; see [GroceryMetrics]. */
+    val metrics: GroceryMetrics
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalGroceryMetrics.current
 
     /**
      * Non-composable palette access for surfaces that cannot read a CompositionLocal,

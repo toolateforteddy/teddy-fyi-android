@@ -310,7 +310,7 @@ fun PlanningItemTile(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(GroceryTheme.metrics.itemTileHeight)
             .combinedClickable(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
@@ -330,20 +330,20 @@ fun PlanningItemTile(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
+                    IconButton(onClick = onDecrement, modifier = Modifier.size(GroceryTheme.metrics.itemTileControlSize)) {
+                        Icon(Icons.Default.Remove, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(GroceryTheme.metrics.itemTileControlIconSize))
                     }
                     Text(
                         text = item.quantity,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = GroceryTheme.metrics.itemName,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
+                    IconButton(onClick = onIncrement, modifier = Modifier.size(GroceryTheme.metrics.itemTileControlSize)) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(GroceryTheme.metrics.itemTileControlIconSize))
                     }
-                    IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = GroceryTheme.colors.onSurfaceMuted, modifier = Modifier.size(18.dp))
+                    IconButton(onClick = onEditCategory, modifier = Modifier.size(GroceryTheme.metrics.itemTileControlSize)) {
+                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = GroceryTheme.colors.onSurfaceMuted, modifier = Modifier.size(GroceryTheme.metrics.itemTileControlIconSize))
                     }
                 }
             } else {
@@ -355,7 +355,7 @@ fun PlanningItemTile(
                 ) {
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = GroceryTheme.metrics.itemName,
                         color = GroceryTheme.colors.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
@@ -364,7 +364,7 @@ fun PlanningItemTile(
                     if (item.quantity.isNotBlank() && item.quantity != "1") {
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = GroceryTheme.metrics.itemMeta,
                             color = GroceryTheme.colors.onSurfaceMuted
                         )
                     }

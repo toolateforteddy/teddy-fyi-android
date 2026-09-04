@@ -301,6 +301,12 @@ Rules:
 - Each scheme defines the full `surfaceContainer*` ladder and `errorContainer` / `onErrorContainer`
   explicitly. Material's dark defaults for those roles are purple-tinted, so any role left unset
   leaks purple into an otherwise near-black UI.
+- **No hardcoded row heights or type slots on Grocery item tiles.** Read
+  `GroceryTheme.metrics` (`grocery/ui/theme/GroceryMetrics.kt`): it swaps 48dp rows with
+  `bodyLarge` names for 60dp rows with `titleMedium` names once the window is at least
+  `ExpandedWidth` (600dp), because a Fire tablet is usually propped on a counter at about
+  twice a phone's reading distance. New size-class-dependent values belong in that table,
+  not in an `if` at the call site.
 - **A component shared by both apps reads `MaterialTheme.colorScheme` only** — never a feature
   theme, and it lives in the neutral `ui/components` package rather than inside either app.
   `IconPickerDialog` is the live example: Todo uses it, and so does Grocery category management,

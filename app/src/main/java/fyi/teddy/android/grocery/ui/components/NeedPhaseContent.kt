@@ -211,7 +211,7 @@ fun NeedItemTile(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(GroceryTheme.metrics.itemTileHeight)
                     .combinedClickable(
                         onClick = onToggleControls,
                         onLongClick = onTagStores
@@ -273,7 +273,7 @@ fun NeedItemTile(
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     text = item.name,
-                                    style = MaterialTheme.typography.bodyLarge,
+                                    style = GroceryTheme.metrics.itemName,
                                     color = GroceryTheme.colors.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -283,7 +283,7 @@ fun NeedItemTile(
                                     Spacer(Modifier.width(4.dp))
                                     Text(
                                         text = "x${item.quantity}",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = GroceryTheme.metrics.itemMeta,
                                         color = GroceryTheme.colors.onSurfaceMuted
                                     )
                                 }

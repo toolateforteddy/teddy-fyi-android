@@ -252,7 +252,7 @@ fun ShoppingItemTile(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(GroceryTheme.metrics.itemTileHeight)
             .combinedClickable(
                 onClick = { onToggleBought(!item.isBought) },
                 onLongClick = onEditCategory
@@ -285,7 +285,7 @@ fun ShoppingItemTile(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = item.name,
-                    style = MaterialTheme.typography.bodyMedium.copy(
+                    style = GroceryTheme.metrics.itemName.copy(
                         textDecoration = if (item.isBought) TextDecoration.LineThrough else TextDecoration.None
                     ),
                     color = GroceryTheme.colors.onSurface,
@@ -296,7 +296,7 @@ fun ShoppingItemTile(
                 if ((item.quantity.isNotBlank()) && (item.quantity != "1")) {
                     Text(
                         text = "x${item.quantity}",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = GroceryTheme.metrics.itemMeta,
                         color = GroceryTheme.colors.onSurfaceMuted,
                         modifier = Modifier.padding(start = 4.dp)
                     )
