@@ -86,9 +86,9 @@ class SyncWorker(
 
         Log.d(TAG, "[$workerId] Starting synchronization worker...")
 
-        if (isSyncHeld()) {
-            // A reversible change is on screen. Backing off is safe: releaseSyncHold enqueues
-            // a sync the moment the window closes.
+        if (SyncHold.isHeld()) {
+            // A reversible change is on screen. Backing off is safe: SyncHold.release
+            // enqueues a sync the moment the window closes.
             Log.d(TAG, "[$workerId] Sync is held, skipping this run.")
             return Result.success()
         }
@@ -297,44 +297,6 @@ class SyncWorker(
         const val WORK_NAME = "SyncWorker"
         private val syncMutex = Mutex()
 
-        /**
-         * While this is in the future no sync is enqueued or run. It exists so a change the
-         * user can still take back does not get pushed to the server or overwritten by a
-         * remote copy of the row mid-undo. The deadline is a failsafe: if whoever took the
-         * hold never releases it (the screen went away, the process died), sync resumes on
-         * its own rather than staying off forever.
-         */
-        @Volatile
-        private var syncHoldUntilMillis = 0L
-
-        fun isSyncHeld(): Boolean = System.currentTimeMillis() < syncHoldUntilMillis
-
-        /**
-         * Parks sync for [durationMillis] and clears any sync already waiting in the queue.
-         * Extends an existing hold rather than shortening it.
-         */
-        @Suppress("TooGenericExceptionCaught")
-        fun holdSync(context: Context, durationMillis: Long) {
-            syncHoldUntilMillis = maxOf(syncHoldUntilMillis, System.currentTimeMillis() + durationMillis)
-            try {
-                WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not cancel queued sync while taking the hold.", e)
-            }
-        }
-
-        /** Lifts the hold and syncs immediately, since whatever it was protecting is now settled. */
-        @Suppress("TooGenericExceptionCaught")
-        fun releaseSyncHold(context: Context) {
-            if (syncHoldUntilMillis == 0L) return
-            syncHoldUntilMillis = 0L
-            try {
-                enqueue(context)
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not enqueue the sync deferred by the hold.", e)
-            }
-        }
-
         private fun isCharging(context: Context): Boolean {
             val intentFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
             val batteryStatus = context.registerReceiver(null, intentFilter)
@@ -356,7 +318,7 @@ class SyncWorker(
         }
 
         fun enqueue(context: Context) {
-            if (isSyncHeld()) {
+            if (SyncHold.isHeld()) {
                 Log.d(TAG, "Sync is held, not enqueuing.")
                 return
             }
@@ -392,7 +354,7 @@ class SyncWorker(
         }
 
         fun enqueueDelayed(context: Context, delaySeconds: Long) {
-            if (isSyncHeld()) {
+            if (SyncHold.isHeld()) {
                 Log.d(TAG, "Sync is held, not enqueuing.")
                 return
             }

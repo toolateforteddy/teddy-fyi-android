@@ -9,7 +9,7 @@ import fyi.teddy.android.data.UserSyncMetadataDao
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.repository.GroceryRepository
-import fyi.teddy.android.network.SyncWorker
+import fyi.teddy.android.network.SyncHold
 import fyi.teddy.android.grocery.ui.GroceryPhase
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryViewModel
@@ -83,7 +83,7 @@ class GroceryViewModelTest {
     @After
     fun tearDown() {
         // The sync hold is process-wide; leaving one set would leak into the next test.
-        SyncWorker.releaseSyncHold(application)
+        SyncHold.release(application)
         Dispatchers.resetMain()
         unmockkAll()
     }
@@ -256,12 +256,12 @@ class GroceryViewModelTest {
 
         viewModel.deleteItem(item)
         testScheduler.advanceUntilIdle()
-        assertTrue(SyncWorker.isSyncHeld())
+        assertTrue(SyncHold.isHeld())
 
         val messageId = viewModel.state.value.snackbarMessage!!.id
         viewModel.onEvent(GroceryUiEvent.DismissSnackbar(messageId))
         testScheduler.advanceUntilIdle()
-        assertFalse(SyncWorker.isSyncHeld())
+        assertFalse(SyncHold.isHeld())
     }
 
     @Test

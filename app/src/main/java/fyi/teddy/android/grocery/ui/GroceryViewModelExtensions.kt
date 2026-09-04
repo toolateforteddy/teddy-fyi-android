@@ -9,6 +9,7 @@ import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.network.GroceryNetworkRepository
+import fyi.teddy.android.network.SyncHold
 import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -136,7 +137,7 @@ internal const val UNDO_WINDOW_MILLIS = 15_000L
  */
 fun GroceryViewModel.deleteItem(item: GroceryItem) {
     viewModelScope.launch {
-        SyncWorker.holdSync(application, UNDO_WINDOW_MILLIS)
+        SyncHold.hold(application, UNDO_WINDOW_MILLIS)
         if (item.timesBought > 0) {
             repository.updateItem(item.copy(isActive = false))
         } else {
