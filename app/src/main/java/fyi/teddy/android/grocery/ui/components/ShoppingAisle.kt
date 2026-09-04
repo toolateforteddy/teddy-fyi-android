@@ -65,14 +65,14 @@ fun AisleJumpRail(
         verticalArrangement = Arrangement.spacedBy(metrics.gutter),
         contentPadding = PaddingValues(vertical = 4.dp),
     ) {
-        items(stops, key = { (aisle, _) -> aisle.categoryId ?: UncategorizedRailKey }) { (aisle, span) ->
+        items(stops, key = { (aisle, _) -> aisle.categoryId ?: UNCATEGORIZED_RAIL_KEY }) { (aisle, span) ->
             AisleRailStop(aisle = aisle, onClick = { onJumpTo(span.headerIndex) })
         }
     }
 }
 
 /** List key for the "Everything else" stop, which has no category id of its own. */
-private const val UncategorizedRailKey = "__uncategorized__"
+private const val UNCATEGORIZED_RAIL_KEY = "__uncategorized__"
 
 /** One glyph in the rail: the aisle's mark over the number of items still to grab. */
 @Composable
