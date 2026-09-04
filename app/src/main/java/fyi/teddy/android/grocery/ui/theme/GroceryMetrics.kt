@@ -22,6 +22,12 @@ import androidx.compose.ui.unit.dp
  */
 @Immutable
 data class GroceryMetrics(
+    /**
+     * True once the window is at least [ExpandedWidth]. Layouts that restructure rather
+     * than resize — the phase switcher becoming a NavigationRail — branch on this, so the
+     * app has one breakpoint rather than one per screen.
+     */
+    val isExpandedWidth: Boolean,
     /** Height of an item tile in the need, planning and shopping lists. */
     val itemTileHeight: Dp,
     /** Touch target of the inline +/-/category controls inside an item tile. */
@@ -72,6 +78,7 @@ internal fun groceryMetricsFor(width: Dp): GroceryMetrics {
     val dimens = if (expanded) ExpandedTileDimens else CompactTileDimens
     val typography = MaterialTheme.typography
     return GroceryMetrics(
+        isExpandedWidth = expanded,
         itemTileHeight = dimens.itemTileHeight,
         itemTileControlSize = dimens.itemTileControlSize,
         itemTileControlIconSize = dimens.itemTileControlIconSize,

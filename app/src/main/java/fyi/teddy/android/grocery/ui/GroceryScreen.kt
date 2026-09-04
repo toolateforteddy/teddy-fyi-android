@@ -19,7 +19,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -63,9 +62,6 @@ enum class GroceryPhase {
             SHOPPING -> Icons.Default.ShoppingCart
         }
 }
-
-/** Width at or above which the layout stops being a phone layout (Material compact/medium boundary). */
-private const val MEDIUM_WIDTH_BREAKPOINT_DP = 600
 
 /**
  * Entry point for the Grocery app. Applies [GroceryTheme] so every Grocery screen and
@@ -163,10 +159,11 @@ private fun GroceryScreenContent(
         }
     }
 
-    // Material's compact/medium breakpoint. At medium and up the phase switcher moves to a
-    // NavigationRail, which hands ~80dp of height back to the list and puts the phases under
-    // the thumb of whichever hand is holding the tablet's left bezel.
-    val useNavigationRail = LocalConfiguration.current.screenWidthDp >= MEDIUM_WIDTH_BREAKPOINT_DP
+    // Material's compact/medium breakpoint, shared with the tile metrics. At medium and up
+    // the phase switcher moves to a NavigationRail, which hands ~80dp of height back to the
+    // list and puts the phases under the thumb of whichever hand is holding the tablet's
+    // left bezel.
+    val useNavigationRail = GroceryTheme.metrics.isExpandedWidth
 
     Scaffold(
         snackbarHost = {
