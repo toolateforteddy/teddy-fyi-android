@@ -44,6 +44,16 @@ class GroceryRepository(
         scheduleSync()
     }
 
+    /**
+     * Reinstates an item that was just deleted. The row is written back verbatim, so an
+     * undo restores the original id, position and history rather than a look-alike copy.
+     */
+    suspend fun restoreItem(item: GroceryItem) {
+        val nextSyncState = if (item.syncState == "SYNCED") "PENDING_UPDATE" else item.syncState
+        groceryDao.insertItem(item.copy(syncState = nextSyncState, isDeleted = false))
+        scheduleSync()
+    }
+
     suspend fun swapItemPositions(item1: GroceryItem, item2: GroceryItem) {
         groceryDao.swapItemPositions(item1, item2)
         scheduleSync()

@@ -8,8 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import fyi.teddy.android.ui.layout.windowSizeDp
 
 /**
  * Semantic colour slots for the Grocery app.
@@ -151,11 +150,9 @@ private val LocalGroceryColors = staticCompositionLocalOf { GroceryDarkColors }
 fun GroceryTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = GroceryDarkColorScheme) {
         // Metrics are read inside MaterialTheme so they can be built from its type scale.
-        // Width comes from the window rather than the display, so a split-screen Grocery
+        // The width is the window's rather than the display's, so a split-screen Grocery
         // gets phone metrics even on a tablet.
-        val containerWidth = LocalWindowInfo.current.containerSize.width
-        val widthDp = with(LocalDensity.current) { containerWidth.toDp() }
-        val metrics = groceryMetricsFor(widthDp)
+        val metrics = groceryMetricsFor(windowSizeDp().width)
         CompositionLocalProvider(
             LocalGroceryColors provides GroceryDarkColors,
             LocalGroceryMetrics provides metrics,

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+import fyi.teddy.android.ui.layout.fractionOfWindowHeight
 import kotlinx.coroutines.flow.Flow
 
 @Composable
@@ -70,7 +71,10 @@ fun ShareListDialog(
                 if (members.isEmpty()) {
                     Text("Only you have access to this list.", style = MaterialTheme.typography.bodyMedium, color = GroceryTheme.colors.onSurfaceMuted)
                 } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 150.dp)) {
+                    // The member list shares the dialog with the invite code block, so it
+                    // takes a smaller slice of the window than a full-height list would.
+                    val membersMaxHeight = fractionOfWindowHeight(fraction = 0.22f, min = 120.dp, max = 280.dp)
+                    LazyColumn(modifier = Modifier.heightIn(max = membersMaxHeight)) {
                         items(members) { member ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

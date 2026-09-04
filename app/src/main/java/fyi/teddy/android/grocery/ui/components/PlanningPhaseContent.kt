@@ -28,6 +28,9 @@ import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+import fyi.teddy.android.ui.layout.columnsForWidth
+import fyi.teddy.android.ui.layout.fractionOfHeight
+import fyi.teddy.android.ui.layout.itemsThatFit
 
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
@@ -94,7 +97,23 @@ fun PlanningPhaseContent(
             // into a strip above the list.
             val twoPane = maxWidth >= TwoPaneMinWidth
 
-            val recommendationLimit = if (twoPane) WIDE_RECOMMENDATION_COUNT else STACKED_RECOMMENDATION_COUNT
+            // The tray is as tall as its pane allows — the full height beside the list,
+            // a floored quarter of it when stacked above — and holds as many jogs as
+            // that fits at the grid's own column count, rather than a count picked on
+            // one reference phone.
+            val trayHeight = if (twoPane) {
+                maxHeight
+            } else {
+                fractionOfHeight(maxHeight, STACKED_TRAY_HEIGHT_FRACTION, min = StackedTrayMinHeight)
+            }
+            val trayWidth = if (twoPane) (maxWidth - TwoPaneSpacing) * TRAY_PANE_WEIGHT else maxWidth
+            val recommendationLimit = itemsThatFit(
+                availableHeight = trayHeight - RecommendationTitleHeight,
+                rowHeight = RecommendationTileHeight,
+                rowSpacing = RecommendationTileSpacing,
+                columns = columnsForWidth(trayWidth, RecommendationTileMinWidth)
+            ).coerceAtLeast(MIN_RECOMMENDATION_COUNT)
+
             val storeSpecificRecs = remember(
                 state.planningStoreContextId,
                 recommendedItems,
@@ -141,7 +160,7 @@ fun PlanningPhaseContent(
             if (twoPane) {
                 Row(
                     modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(TwoPaneSpacing)
                 ) {
                     if (storeSpecificRecs.isNotEmpty()) {
                         RecommendationTray(
@@ -168,7 +187,7 @@ fun PlanningPhaseContent(
                             onEvent = onEvent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = StackedTrayMaxHeight)
+                                .heightIn(max = trayHeight)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -188,16 +207,33 @@ fun PlanningPhaseContent(
  */
 private val TwoPaneMinWidth = 600.dp
 
-/** Height the tray is allowed when it is stacked above the list. */
-private val StackedTrayMaxHeight = 200.dp
+/** Gap between the two panes. */
+private val TwoPaneSpacing = 16.dp
+
+/** Share of the window a stacked tray may take before it starts crowding the list. */
+private const val STACKED_TRAY_HEIGHT_FRACTION = 0.25f
+
+/** Tiles below this are too narrow for an item name; wider panes get more columns. */
+private val RecommendationTileMinWidth = 220.dp
+
+/** One line of bodyMedium plus the tile's vertical padding. */
+private val RecommendationTileHeight = 40.dp
+
+/** Gap between tiles, horizontally and vertically. */
+private val RecommendationTileSpacing = 8.dp
+
+/** The tray's heading and the gap below it, which sit above the grid. */
+private val RecommendationTitleHeight = 28.dp
+
+/** A stacked tray never shrinks below its title plus two rows of tiles. */
+private val StackedTrayMinHeight =
+    RecommendationTitleHeight + RecommendationTileHeight * 2 + RecommendationTileSpacing
 
 private const val TRAY_PANE_WEIGHT = 0.4f
 private const val LIST_PANE_WEIGHT = 0.6f
 
-private const val STACKED_RECOMMENDATION_COUNT = 8
-
-/** A full-height tray has room for more jogs than a 200dp strip does. */
-private const val WIDE_RECOMMENDATION_COUNT = 16
+/** Jogs to offer even when fewer than that fit without scrolling — what phones have always shown. */
+private const val MIN_RECOMMENDATION_COUNT = 8
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -260,8 +296,8 @@ private fun RecommendationTray(
 
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = RecommendationTileMinWidth),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(RecommendationTileSpacing),
+            verticalArrangement = Arrangement.spacedBy(RecommendationTileSpacing),
             modifier = Modifier.fillMaxWidth()
         ) {
             items(recommendations, key = { it.id }) { rec ->
@@ -274,9 +310,6 @@ private fun RecommendationTray(
         }
     }
 }
-
-/** Tiles below this are too narrow for an item name; wider panes get more columns. */
-private val RecommendationTileMinWidth = 220.dp
 
 /** "Your List": every active item, whatever else is on screen beside it. */
 @Composable

@@ -9,6 +9,7 @@ import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.data.GroceryListMember
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.network.GroceryNetworkRepository
+import fyi.teddy.android.network.SyncHold
 import fyi.teddy.android.network.SyncWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -119,14 +120,41 @@ fun GroceryViewModel.updateItem(item: GroceryItem) {
     viewModelScope.launch { repository.updateItem(item) }
 }
 
+/**
+ * How long sync stays parked after a delete. A little longer than the snackbar's own
+ * duration, so the window closes after the undo option has left the screen rather than
+ * while it is still fading.
+ */
+internal const val UNDO_WINDOW_MILLIS = 15_000L
+
+/**
+ * Removes an item and offers it straight back. A swipe on a shared kitchen tablet is
+ * cheap to trigger by accident, so the delete always comes with a way to undo it.
+ *
+ * Sync is parked before the write lands and stays parked for the life of the snackbar:
+ * a row the user can still take back has no business being pushed to the server, and a
+ * remote copy arriving mid-undo would race the restore.
+ */
 fun GroceryViewModel.deleteItem(item: GroceryItem) {
     viewModelScope.launch {
+        SyncHold.hold(application, UNDO_WINDOW_MILLIS)
         if (item.timesBought > 0) {
             repository.updateItem(item.copy(isActive = false))
         } else {
             repository.deleteItem(item)
         }
+        setSnackbarMessage(
+            GrocerySnackbarMessage(
+                message = "Removed ${item.name}.",
+                actionLabel = "Undo",
+                action = GroceryUiEvent.RestoreItem(item)
+            )
+        )
     }
+}
+
+fun GroceryViewModel.restoreItem(item: GroceryItem) {
+    viewModelScope.launch { repository.restoreItem(item) }
 }
 
 fun GroceryViewModel.updateStoreInfo(info: GroceryItemStoreInfo) {
