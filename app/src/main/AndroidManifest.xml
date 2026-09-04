@@ -23,18 +23,6 @@
                 <data android:scheme="com.googleusercontent.apps.34718544535-a8csa0c9ihbe5543dcl21h4ruvilpjav" />
             </intent-filter>
         </activity>
-
-        <receiver
-            android:name=".widget.GroceryWidgetReceiver"
-            android:exported="true"
-            android:label="Grocery List Widget">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/grocery_widget_info" />
-        </receiver>
     </application>
 
 </manifest>
