@@ -37,7 +37,14 @@ import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import kotlinx.coroutines.delay
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+
+/** How many just-added names the rapid-entry sheet keeps on screen as a receipt. */
+private const val MAX_RAPID_ENTRY_RECEIPTS = 8
+
+/** Long enough for the bottom sheet's entry animation to place the field before it is focused. */
+private val FOCUS_SETTLE_DELAY = 150.milliseconds
 
 enum class GroceryPhase {
     NEED, PLANNING, SHOPPING;
@@ -123,6 +130,10 @@ private fun GroceryScreenContent(
     var showReorderSpacesModal by remember { mutableStateOf(value = false) }
     
     val nameFocusRequester = remember { FocusRequester() }
+
+    // Names filed since the add sheet was opened, newest first, so a long entry run shows
+    // its own progress without the list behind the sheet having to be visible.
+    var addedThisSession by remember { mutableStateOf(emptyList<String>()) }
 
     val uniqueNames = remember(items) {
         items.asSequence().map { it.name }.distinct().sorted().toList()
@@ -489,6 +500,20 @@ private fun GroceryScreenContent(
         }
 
         if (showAddItemSheet) {
+            // Rapid entry: the sheet stays open so a whole week's list can be typed in one
+            // sitting. Each submit files the item, clears the field and hands focus straight
+            // back, with the running tally below acting as the receipt.
+            LaunchedEffect(showAddItemSheet) { addedThisSession = emptyList() }
+
+            val submitItem: () -> Unit = {
+                val entry = state.newItemInput.trim()
+                if (entry.isNotEmpty()) {
+                    viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(entry))
+                    addedThisSession = (listOf(entry) + addedThisSession).take(MAX_RAPID_ENTRY_RECEIPTS)
+                }
+                nameFocusRequester.requestFocus()
+            }
+
             ModalBottomSheet(
                 onDismissRequest = { showAddItemSheet = false },
                 sheetState = sheetState,
@@ -500,12 +525,33 @@ private fun GroceryScreenContent(
                         .padding(16.dp)
                         .padding(bottom = 32.dp)
                 ) {
-                    Text(
-                        "What do we need?",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = groceryColors.onSurface,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    // Claim focus once the sheet has settled, so the keyboard is already up
+                    // and the first item can be typed without a tap.
+                    LaunchedEffect(Unit) {
+                        delay(FOCUS_SETTLE_DELAY)
+                        nameFocusRequester.requestFocus()
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "What do we need?",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = groceryColors.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (addedThisSession.isNotEmpty()) {
+                            Text(
+                                "${addedThisSession.size} added",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = groceryColors.accent
+                            )
+                        }
+                    }
 
                     TextField(
                         value = state.newItemInput,
@@ -513,6 +559,7 @@ private fun GroceryScreenContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(nameFocusRequester),
+                        singleLine = true,
                         placeholder = { Text("e.g. 2 bunches of Bananas", color = groceryColors.onSurfaceMuted) },
                         colors = TextFieldDefaults.colors(
                             focusedTextColor = groceryColors.onSurface,
@@ -522,15 +569,39 @@ private fun GroceryScreenContent(
                         ),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Done
+                            imeAction = ImeAction.Next
                         ),
+                        // Both actions do the same thing: a hardware Enter reports Done on
+                        // some keyboards even when the field asks for Next.
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                                showAddItemSheet = false
-                            }
+                            onNext = { submitItem() },
+                            onDone = { submitItem() }
                         )
                     )
+
+                    if (addedThisSession.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 12.dp)
+                        ) {
+                            items(addedThisSession) { added ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = groceryColors.success,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        added,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = groceryColors.onSurfaceMuted
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     if (suggestions.isNotEmpty()) {
                         Text(
@@ -571,16 +642,21 @@ private fun GroceryScreenContent(
                         }
                     }
 
-                    Button(
-                        onClick = {
-                            viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                            showAddItemSheet = false
-                        },
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 24.dp)
+                            .padding(top = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("Add it")
+                        Button(
+                            onClick = submitItem,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Add it")
+                        }
+                        OutlinedButton(onClick = { showAddItemSheet = false }) {
+                            Text(if (addedThisSession.isEmpty()) "Close" else "Done")
+                        }
                     }
                 }
             }
