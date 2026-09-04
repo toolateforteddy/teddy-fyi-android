@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -37,12 +39,26 @@ import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.time.Duration.Companion.minutes
 
+/** How many just-added names the rapid-entry field keeps on screen as a receipt. */
+private const val MAX_RAPID_ENTRY_RECEIPTS = 8
+
 enum class GroceryPhase {
     NEED, PLANNING, SHOPPING;
     
     val displayName: String
         get() = name.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+    /** Shared by the phone NavigationBar and the tablet NavigationRail so they cannot drift. */
+    val icon: ImageVector
+        get() = when (this) {
+            NEED -> Icons.AutoMirrored.Filled.List
+            PLANNING -> Icons.Default.DateRange
+            SHOPPING -> Icons.Default.ShoppingCart
+        }
 }
+
+/** Width at or above which the layout stops being a phone layout (Material compact/medium boundary). */
+private const val MEDIUM_WIDTH_BREAKPOINT_DP = 600
 
 /**
  * Entry point for the Grocery app. Applies [GroceryTheme] so every Grocery screen and
@@ -110,19 +126,8 @@ private fun GroceryScreenContent(
         }
     }
 
-    // On a tablet the modal sheet is a full-width slab and the soft keyboard eats the rest of
-    // the screen, so entry gets docked beside the list instead of stacked on top of it.
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val useDockedAddPane = shouldDockAddItemPane(screenWidthDp)
-    val showDockedAddPane = useDockedAddPane && state.currentPhase == GroceryPhase.NEED
-
     val sheetState = rememberModalBottomSheetState()
     var showAddItemSheet by remember { mutableStateOf(false) }
-
-    // Rotating a tablet into a docked layout should not leave a stale sheet queued up behind it.
-    LaunchedEffect(useDockedAddPane) {
-        if (useDockedAddPane) showAddItemSheet = false
-    }
     
     var showListSelectorMenu by remember { mutableStateOf(value = false) }
     var showAddListDialog by remember { mutableStateOf(value = false) }
@@ -132,6 +137,10 @@ private fun GroceryScreenContent(
     var showReorderSpacesModal by remember { mutableStateOf(value = false) }
     
     val nameFocusRequester = remember { FocusRequester() }
+
+    // Names filed since entry began, newest first, so a long entry run shows its own progress
+    // without the list behind the sheet having to be visible.
+    var addedThisSession by remember { mutableStateOf(emptyList<String>()) }
 
     val uniqueNames = remember(items) {
         items.asSequence().map { it.name }.distinct().sorted().toList()
@@ -145,6 +154,32 @@ private fun GroceryScreenContent(
                 ignoreCase = true
             )
         }
+    }
+
+    // Material's compact/medium breakpoint. At medium and up the phase switcher moves to a
+    // NavigationRail, which hands ~80dp of height back to the list and puts the phases under
+    // the thumb of whichever hand is holding the tablet's left bezel.
+    val useNavigationRail = LocalConfiguration.current.screenWidthDp >= MEDIUM_WIDTH_BREAKPOINT_DP
+
+    // Wider still, the modal sheet is a full-width slab and the soft keyboard buries the very
+    // list being added to, so entry docks beside the list instead of on top of it.
+    val useDockedAddPane = shouldDockAddItemPane(LocalConfiguration.current.screenWidthDp)
+    val showDockedAddPane = useDockedAddPane && state.currentPhase == GroceryPhase.NEED
+
+    // Rotating into the docked layout should not leave a stale sheet queued up behind it.
+    LaunchedEffect(useDockedAddPane) {
+        if (useDockedAddPane) showAddItemSheet = false
+    }
+
+    // Rapid entry: each submit files the item, clears the field and hands focus straight back,
+    // with the running tally acting as the receipt. Shared by the sheet and the docked pane.
+    val submitItem: () -> Unit = {
+        val entry = state.newItemInput.trim()
+        if (entry.isNotEmpty()) {
+            viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(entry))
+            addedThisSession = (listOf(entry) + addedThisSession).take(MAX_RAPID_ENTRY_RECEIPTS)
+        }
+        nameFocusRequester.requestFocus()
     }
 
     Scaffold(
@@ -264,261 +299,270 @@ private fun GroceryScreenContent(
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = groceryColors.screen) {
-                NavigationBarItem(
-                    selected = state.currentPhase == GroceryPhase.NEED,
-                    onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.NEED)) },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Need") },
-                    label = { Text("Need") }
-                )
-                NavigationBarItem(
-                    selected = state.currentPhase == GroceryPhase.PLANNING,
-                    onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.PLANNING)) },
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Planning") },
-                    label = { Text("Planning") }
-                )
-                NavigationBarItem(
-                    selected = state.currentPhase == GroceryPhase.SHOPPING,
-                    onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.SHOPPING)) },
-                    icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Shopping") },
-                    label = { Text("Shopping") }
-                )
+            // On a tablet the rail down the left already carries the three phases, and the
+            // vertical axis is the scarce one — so the bar only exists on phone widths.
+            if (!useNavigationRail) {
+                NavigationBar(containerColor = groceryColors.screen) {
+                    GroceryPhase.entries.forEach { phase ->
+                        NavigationBarItem(
+                            selected = state.currentPhase == phase,
+                            onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(phase)) },
+                            icon = { Icon(phase.icon, contentDescription = phase.displayName) },
+                            label = { Text(phase.displayName) }
+                        )
+                    }
+                }
             }
         }
     ) { paddingValues ->
-        Surface(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = groceryColors.screen
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+        Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (useNavigationRail) {
+                GroceryPhaseRail(
+                    currentPhase = state.currentPhase,
+                    containerColor = groceryColors.screen,
+                    onSelectPhase = { viewModel.onEvent(GroceryUiEvent.SetPhase(it)) }
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = groceryColors.screen
             ) {
-                // List / Space selector Row for Shared Lists
-                val activeList = lists.find { it.id == state.selectedListId }
-                val activeListName = activeList?.name ?: "Default List"
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp)
+                ) {
+                    // List / Space selector Row for Shared Lists
+                    val activeList = lists.find { it.id == state.selectedListId }
+                    val activeListName = activeList?.name ?: "Default List"
 
-                if (state.isEditMode) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Box {
-                            Row(
-                                modifier = Modifier
-                                    .clickable { showListSelectorMenu = true }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Menu,
-                                    contentDescription = "Lists",
-                                    tint = groceryColors.onSurfaceMuted
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = activeListName,
-                                    color = groceryColors.onSurface,
-                                    fontSize = 18.sp,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Icon(
-                                    Icons.Default.ArrowDropDown,
-                                    contentDescription = "Switch List",
-                                    tint = groceryColors.onSurface
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showListSelectorMenu,
-                                onDismissRequest = { showListSelectorMenu = false }
-                            ) {
-                                if (state.hasItemsInDefaultList) {
-                                    DropdownMenuItem(
-                                        text = { Text("Default List") },
-                                        onClick = {
-                                            viewModel.onEvent(GroceryUiEvent.SetSelectedListId(null))
-                                            showListSelectorMenu = false
-                                        }
-                                    )
-                                }
-                                lists.forEach { list ->
-                                    DropdownMenuItem(
-                                        text = { Text(list.name) },
-                                        onClick = {
-                                            viewModel.onEvent(GroceryUiEvent.SetSelectedListId(list.id))
-                                            showListSelectorMenu = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { showJoinListDialog = true }) {
-                                    Icon(
-                                        Icons.Default.GroupAdd,
-                                        contentDescription = "Join List",
-                                        tint = groceryColors.onSurface
-                                    )
-                                }
-                                IconButton(onClick = { showAddListDialog = true }) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = "New List",
-                                        tint = groceryColors.onSurface
-                                    )
-                                }
-                                if (state.selectedListId != null) {
-                                    IconButton(onClick = { showRenameListDialog = true }) {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Rename List",
-                                            tint = groceryColors.onSurface
-                                        )
-                                    }
-                                    IconButton(onClick = { showShareListDialog = true }) {
-                                        Icon(
-                                            Icons.Default.Share,
-                                            contentDescription = "Share List",
-                                            tint = groceryColors.onSurface
-                                        )
-                                    }
-                                    IconButton(onClick = {
-                                        viewModel.onEvent(GroceryUiEvent.DeleteList(activeList!!))
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Delete List",
-                                            tint = groceryColors.danger
-                                        )
-                                    }
-                                }
-                            }
-
-                    }
-                }
-
-                // Add List Dialog
-                if (showAddListDialog) {
-                    AddListDialog(
-                        onDismiss = { showAddListDialog = false },
-                        onConfirm = { name ->
-                            viewModel.onEvent(GroceryUiEvent.InsertList(name))
-                            showAddListDialog = false
-                        }
-                    )
-                }
-
-                // Rename List Dialog
-                if (showRenameListDialog && activeList != null) {
-                    RenameListDialog(
-                        initialName = activeList.name,
-                        onDismiss = { showRenameListDialog = false },
-                        onConfirm = { newName ->
-                            viewModel.onEvent(GroceryUiEvent.UpdateList(activeList.copy(name = newName)))
-                            showRenameListDialog = false
-                        }
-                    )
-                }
-
-                // Join List Dialog
-                if (showJoinListDialog) {
-                    JoinListDialog(
-                        onDismiss = { showJoinListDialog = false },
-                        onJoin = { code ->
-                            viewModel.onEvent(GroceryUiEvent.JoinList(code))
-                        }
-                    )
-                }
-
-                // Share List Dialog
-                if (showShareListDialog && (state.selectedListId != null)) {
-                    ShareListDialog(
-                        listName = activeListName,
-                        membersFlow = remember(state.selectedListId) { viewModel.getListMembers(state.selectedListId!!) },
-                        activeInviteCode = state.activeInviteCode,
-                        onDismiss = { showShareListDialog = false },
-                        onCreateInvite = {
-                            viewModel.onEvent(GroceryUiEvent.CreateInvite(state.selectedListId!!))
-                        },
-                        onRemoveMember = { member ->
-                            viewModel.onEvent(GroceryUiEvent.RemoveListMember(member))
-                        }
-                    )
-                }
-
-                if (showReorderSpacesModal) {
-                    ReorderGrocerySpacesDialog(
-                        spaces = lists,
-                        onDismiss = { showReorderSpacesModal = false },
-                        onSave = { reordered ->
-                            viewModel.onEvent(GroceryUiEvent.ReorderLists(reordered))
-                            showReorderSpacesModal = false
-                        }
-                    )
-                }
-
-//                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        when (state.currentPhase) {
-                            GroceryPhase.NEED -> {
-                                NeedPhaseContent(
-                                    items = standardCategoryItems,
-                                    categories = categories,
-                                    stores = stores,
-                                    storeInfos = storeInfos,
-                                    onEvent = viewModel::onEvent
-                                )
-                            }
-                            GroceryPhase.PLANNING -> {
-                                PlanningPhaseContent(
-                                    state = state,
-                                    items = items.filter { it.isActive },
-                                    stores = stores,
-                                    storeInfos = storeInfos,
-                                    recommendedItems = recommendedItems,
-                                    categories = categories,
-                                    onEvent = viewModel::onEvent
-                                )
-                            }
-                            GroceryPhase.SHOPPING -> {
-                                ShoppingPhaseContent(
-                                    state = state,
-                                    items = standardCategoryItems,
-                                    inCartItems = inCartItems,
-                                    stores = stores,
-                                    categories = categories,
-                                    onEvent = viewModel::onEvent
-                                )
-                            }
-                        }
-                    }
-
-                    if (showDockedAddPane) {
-                        Spacer(modifier = Modifier.width(16.dp))
-                        DockedAddItemPane(
-                            input = state.newItemInput,
-                            suggestions = suggestions,
-                            isAiReady = state.isAiReady,
-                            onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
-                            onSubmit = {
-                                viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                            },
-                            focusRequester = nameFocusRequester,
+                    if (state.isEditMode) {
+                        Row(
                             modifier = Modifier
-                                .width(DOCKED_ADD_PANE_WIDTH)
-                                .fillMaxHeight()
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Box {
+                                Row(
+                                    modifier = Modifier
+                                        .clickable { showListSelectorMenu = true }
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Menu,
+                                        contentDescription = "Lists",
+                                        tint = groceryColors.onSurfaceMuted
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = activeListName,
+                                        color = groceryColors.onSurface,
+                                        fontSize = 18.sp,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = "Switch List",
+                                        tint = groceryColors.onSurface
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showListSelectorMenu,
+                                    onDismissRequest = { showListSelectorMenu = false }
+                                ) {
+                                    if (state.hasItemsInDefaultList) {
+                                        DropdownMenuItem(
+                                            text = { Text("Default List") },
+                                            onClick = {
+                                                viewModel.onEvent(GroceryUiEvent.SetSelectedListId(null))
+                                                showListSelectorMenu = false
+                                            }
+                                        )
+                                    }
+                                    lists.forEach { list ->
+                                        DropdownMenuItem(
+                                            text = { Text(list.name) },
+                                            onClick = {
+                                                viewModel.onEvent(GroceryUiEvent.SetSelectedListId(list.id))
+                                                showListSelectorMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { showJoinListDialog = true }) {
+                                        Icon(
+                                            Icons.Default.GroupAdd,
+                                            contentDescription = "Join List",
+                                            tint = groceryColors.onSurface
+                                        )
+                                    }
+                                    IconButton(onClick = { showAddListDialog = true }) {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "New List",
+                                            tint = groceryColors.onSurface
+                                        )
+                                    }
+                                    if (state.selectedListId != null) {
+                                        IconButton(onClick = { showRenameListDialog = true }) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = "Rename List",
+                                                tint = groceryColors.onSurface
+                                            )
+                                        }
+                                        IconButton(onClick = { showShareListDialog = true }) {
+                                            Icon(
+                                                Icons.Default.Share,
+                                                contentDescription = "Share List",
+                                                tint = groceryColors.onSurface
+                                            )
+                                        }
+                                        IconButton(onClick = {
+                                            viewModel.onEvent(GroceryUiEvent.DeleteList(activeList!!))
+                                        }) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Delete List",
+                                                tint = groceryColors.danger
+                                            )
+                                        }
+                                    }
+                                }
+
+                        }
+                    }
+
+                    // Add List Dialog
+                    if (showAddListDialog) {
+                        AddListDialog(
+                            onDismiss = { showAddListDialog = false },
+                            onConfirm = { name ->
+                                viewModel.onEvent(GroceryUiEvent.InsertList(name))
+                                showAddListDialog = false
+                            }
                         )
+                    }
+
+                    // Rename List Dialog
+                    if (showRenameListDialog && activeList != null) {
+                        RenameListDialog(
+                            initialName = activeList.name,
+                            onDismiss = { showRenameListDialog = false },
+                            onConfirm = { newName ->
+                                viewModel.onEvent(GroceryUiEvent.UpdateList(activeList.copy(name = newName)))
+                                showRenameListDialog = false
+                            }
+                        )
+                    }
+
+                    // Join List Dialog
+                    if (showJoinListDialog) {
+                        JoinListDialog(
+                            onDismiss = { showJoinListDialog = false },
+                            onJoin = { code ->
+                                viewModel.onEvent(GroceryUiEvent.JoinList(code))
+                            }
+                        )
+                    }
+
+                    // Share List Dialog
+                    if (showShareListDialog && (state.selectedListId != null)) {
+                        ShareListDialog(
+                            listName = activeListName,
+                            membersFlow = remember(state.selectedListId) { viewModel.getListMembers(state.selectedListId!!) },
+                            activeInviteCode = state.activeInviteCode,
+                            onDismiss = { showShareListDialog = false },
+                            onCreateInvite = {
+                                viewModel.onEvent(GroceryUiEvent.CreateInvite(state.selectedListId!!))
+                            },
+                            onRemoveMember = { member ->
+                                viewModel.onEvent(GroceryUiEvent.RemoveListMember(member))
+                            }
+                        )
+                    }
+
+                    if (showReorderSpacesModal) {
+                        ReorderGrocerySpacesDialog(
+                            spaces = lists,
+                            onDismiss = { showReorderSpacesModal = false },
+                            onSave = { reordered ->
+                                viewModel.onEvent(GroceryUiEvent.ReorderLists(reordered))
+                                showReorderSpacesModal = false
+                            }
+                        )
+                    }
+
+    //                Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            when (state.currentPhase) {
+                                GroceryPhase.NEED -> {
+                                    NeedPhaseContent(
+                                        items = standardCategoryItems,
+                                        categories = categories,
+                                        stores = stores,
+                                        storeInfos = storeInfos,
+                                        onEvent = viewModel::onEvent
+                                    )
+                                }
+                                GroceryPhase.PLANNING -> {
+                                    PlanningPhaseContent(
+                                        state = state,
+                                        items = items.filter { it.isActive },
+                                        stores = stores,
+                                        storeInfos = storeInfos,
+                                        recommendedItems = recommendedItems,
+                                        categories = categories,
+                                        onEvent = viewModel::onEvent
+                                    )
+                                }
+                                GroceryPhase.SHOPPING -> {
+                                    ShoppingPhaseContent(
+                                        state = state,
+                                        items = standardCategoryItems,
+                                        inCartItems = inCartItems,
+                                        stores = stores,
+                                        categories = categories,
+                                        onEvent = viewModel::onEvent
+                                    )
+                                }
+                            }
+                        }
+
+                        if (showDockedAddPane) {
+                            // The pane's own receipt starts fresh each time the Need phase opens.
+                            LaunchedEffect(Unit) { addedThisSession = emptyList() }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+                            DockedAddItemPane(
+                                input = state.newItemInput,
+                                suggestions = suggestions,
+                                isAiReady = state.isAiReady,
+                                addedThisSession = addedThisSession,
+                                focusRequester = nameFocusRequester,
+                                onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
+                                onSubmit = submitItem,
+                                modifier = Modifier
+                                    .width(DOCKED_ADD_PANE_WIDTH)
+                                    .fillMaxHeight()
+                            )
+                        }
                     }
                 }
             }
         }
 
         if (showAddItemSheet && !useDockedAddPane) {
+            // Rapid entry: the sheet stays open so a whole week's list can be typed in one
+            // sitting.
+            LaunchedEffect(showAddItemSheet) { addedThisSession = emptyList() }
+
             ModalBottomSheet(
                 onDismissRequest = { showAddItemSheet = false },
                 sheetState = sheetState,
@@ -528,12 +572,12 @@ private fun GroceryScreenContent(
                     input = state.newItemInput,
                     suggestions = suggestions,
                     isAiReady = state.isAiReady,
-                    onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
-                    onSubmit = {
-                        viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                        showAddItemSheet = false
-                    },
+                    addedThisSession = addedThisSession,
                     focusRequester = nameFocusRequester,
+                    onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
+                    onSubmit = submitItem,
+                    onClose = { showAddItemSheet = false },
+                    autoFocusOnAppear = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
@@ -555,3 +599,29 @@ private fun GroceryScreenContent(
     }
 }
 
+/**
+ * The Need / Planning / Shopping switcher as a left-hand rail, for widths where a bottom bar
+ * would be spending height the lists need more than the navigation does.
+ */
+@Composable
+private fun GroceryPhaseRail(
+    currentPhase: GroceryPhase,
+    containerColor: Color,
+    onSelectPhase: (GroceryPhase) -> Unit,
+) {
+    NavigationRail(
+        containerColor = containerColor,
+        // The Scaffold already handed us its content padding, so the rail must not add the
+        // system bar insets a second time.
+        windowInsets = WindowInsets(0, 0, 0, 0),
+    ) {
+        GroceryPhase.entries.forEach { phase ->
+            NavigationRailItem(
+                selected = currentPhase == phase,
+                onClick = { onSelectPhase(phase) },
+                icon = { Icon(phase.icon, contentDescription = phase.displayName) },
+                label = { Text(phase.displayName) }
+            )
+        }
+    }
+}
