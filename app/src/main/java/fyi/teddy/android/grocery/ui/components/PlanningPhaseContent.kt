@@ -30,6 +30,21 @@ import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+import fyi.teddy.android.ui.layout.columnsForWindowWidth
+import fyi.teddy.android.ui.layout.fractionOfWindowHeight
+import fyi.teddy.android.ui.layout.itemsThatFit
+
+/** Height of a single [RecommendationTile]: one line of bodyMedium plus its vertical padding. */
+private val REC_TILE_HEIGHT = 40.dp
+
+/** Gap between recommendation tiles, horizontally and vertically. */
+private val REC_TILE_SPACING = 8.dp
+
+/** Narrowest a recommendation tile may get before the grid drops a column. */
+private val REC_TILE_MIN_WIDTH = 200.dp
+
+/** Floor for the recommendation tray so it still shows two rows on a short window. */
+private val REC_TRAY_MIN_HEIGHT = REC_TILE_HEIGHT * 2 + REC_TILE_SPACING
 
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
@@ -116,14 +131,33 @@ fun PlanningPhaseContent(
         Spacer(modifier = Modifier.height(4.dp))
 
         // 2. The "Commonly Bought" Recommendation Tray
-        val storeSpecificRecs = remember(state.planningStoreContextId, recommendedItems, storeInfos, state.dismissedRecommendationIds) {
+        // The tray, its column count, and how many recommendations it holds all follow
+        // the window: two columns of four rows on a phone (the old hardcoded 8), up to
+        // four columns on a tablet, fewer rows on a short landscape window.
+        val recTrayHeight = fractionOfWindowHeight(fraction = 0.25f, min = REC_TRAY_MIN_HEIGHT)
+        val recColumns = columnsForWindowWidth(minColumnWidth = REC_TILE_MIN_WIDTH, min = 2, max = 4)
+        val recCapacity = itemsThatFit(
+            availableHeight = recTrayHeight,
+            rowHeight = REC_TILE_HEIGHT,
+            rowSpacing = REC_TILE_SPACING,
+            columns = recColumns,
+            minRows = 2
+        )
+
+        val storeSpecificRecs = remember(
+            state.planningStoreContextId,
+            recommendedItems,
+            storeInfos,
+            state.dismissedRecommendationIds,
+            recCapacity
+        ) {
             val storeId = state.planningStoreContextId
             val availableRecs = recommendedItems.filter { rec ->
                 !state.dismissedRecommendationIds.contains(rec.id)
             }
             if (storeId == null) {
                 // General: items with high frequency
-                availableRecs.take(8)
+                availableRecs.take(recCapacity)
             } else {
                 // Filter OUT items that are explicitly marked as unavailable for this store
                 // Items with NO mapping for this store are included by default
@@ -131,8 +165,8 @@ fun PlanningPhaseContent(
                     val info = storeInfos.find { (it.groceryItemId == rec.id) && (it.storeId == storeId) }
                     info?.isAvailable ?: true
                 }
-                
-                filtered.take(8)
+
+                filtered.take(recCapacity)
             }
         }
 
@@ -146,12 +180,12 @@ fun PlanningPhaseContent(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             
-            // Two-column grid of recommendations
-            Box(modifier = Modifier.heightIn(max = 200.dp)) {
+            // Grid of recommendations, sized to the window rather than to one phone.
+            Box(modifier = Modifier.heightIn(max = recTrayHeight)) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    columns = GridCells.Fixed(recColumns),
+                    horizontalArrangement = Arrangement.spacedBy(REC_TILE_SPACING),
+                    verticalArrangement = Arrangement.spacedBy(REC_TILE_SPACING),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(storeSpecificRecs, key = { it.id }) { rec ->

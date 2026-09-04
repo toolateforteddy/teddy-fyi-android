@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.GroceryList
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+import fyi.teddy.android.ui.layout.fractionOfWindowHeight
 
 @Composable
 fun ReorderGrocerySpacesDialog(
@@ -55,10 +56,11 @@ fun ReorderGrocerySpacesDialog(
             )
         },
         text = {
+            val listMaxHeight = fractionOfWindowHeight(fraction = 0.5f, min = 200.dp)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp)
+                    .heightIn(max = listMaxHeight)
             ) {
                 if (workingList.isEmpty()) {
                     Text(
