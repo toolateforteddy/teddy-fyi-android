@@ -34,7 +34,7 @@ class WindowMetricsTest {
     }
 
     @Test
-    fun `column count follows the window width`() {
+    fun `column count follows the available width`() {
         // Mirrors GridCells.Adaptive(220dp) in the recommendation tray.
         assertEquals(1, columnsForWidth(411.dp, minColumnWidth = 220.dp))
         assertEquals(3, columnsForWidth(800.dp, minColumnWidth = 220.dp))
@@ -54,19 +54,33 @@ class WindowMetricsTest {
     }
 
     @Test
-    fun `recommendation capacity per reference window`() {
-        // Mirrors PlanningPhaseContent: a quarter of the window height, the grid's own
-        // adaptive column count, and never fewer than the 8 a phone has always shown.
-        fun capacity(width: Int, height: Int): Int {
-            val tray = fractionOfHeight(height.dp, fraction = 0.25f, min = 88.dp)
-            val columns = columnsForWidth(width.dp, minColumnWidth = 220.dp)
-            return itemsThatFit(tray, rowHeight = 40.dp, rowSpacing = 8.dp, columns = columns)
-                .coerceAtLeast(8)
+    fun `recommendation capacity per reference pane`() {
+        // Mirrors PlanningPhaseContent's BoxWithConstraints arithmetic: the tray is the
+        // full pane height beside the list and a floored quarter of it when stacked,
+        // minus the tray heading, at the grid's own adaptive column count — never fewer
+        // than the 8 recommendations a phone has always shown.
+        fun capacity(paneWidth: Int, paneHeight: Int): Int {
+            val twoPane = paneWidth >= 600
+            val trayHeight = if (twoPane) {
+                paneHeight.dp
+            } else {
+                fractionOfHeight(paneHeight.dp, fraction = 0.25f, min = 124.dp)
+            }
+            val trayWidth = if (twoPane) (paneWidth.dp - 16.dp) * 0.4f else paneWidth.dp
+            return itemsThatFit(
+                availableHeight = trayHeight - 28.dp,
+                rowHeight = 40.dp,
+                rowSpacing = 8.dp,
+                columns = columnsForWidth(trayWidth, minColumnWidth = 220.dp)
+            ).coerceAtLeast(8)
         }
 
-        assertEquals(8, capacity(width = 411, height = 890))   // phone: one column, floored at 8
-        assertEquals(20, capacity(width = 1280, height = 800)) // 11" tablet landscape: 5 x 4
-        assertEquals(8, capacity(width = 800, height = 533))   // 8" landscape: 3 x 2, floored at 8
+        // Phone portrait: stacked, one column, floored at 8.
+        assertEquals(8, capacity(paneWidth = 379, paneHeight = 700))
+        // 11" tablet landscape: two-pane, a 461dp tray pane holding 2 x 12.
+        assertEquals(24, capacity(paneWidth = 1170, paneHeight = 640))
+        // 8" tablet landscape: two-pane but short and narrow, so the floor still applies.
+        assertEquals(8, capacity(paneWidth = 700, paneHeight = 380))
     }
 
     @Test
