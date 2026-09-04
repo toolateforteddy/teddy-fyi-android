@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -77,30 +76,30 @@ fun PlanningPhaseContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 1. The Top Store Bar: Horizontal chips for store context
+        // 1. The Top Store Bar: wrapping chips for store context
         Text(
             text = "Where are you heading?",
             style = MaterialTheme.typography.labelMedium,
             color = GroceryTheme.colors.onSurfaceMuted,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            item {
-                FilterChip(
-                    selected = state.planningStoreContextId == null,
-                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
-                    label = { Text("General") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
+            FilterChip(
+                selected = state.planningStoreContextId == null,
+                onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
+                label = { Text("General") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
-            }
-            items(stores) { store ->
+            )
+            stores.forEach { store ->
                 FilterChip(
                     selected = state.planningStoreContextId == store.id,
                     onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(store.id)) },
