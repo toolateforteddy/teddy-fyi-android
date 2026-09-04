@@ -4,16 +4,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,7 +49,7 @@ fun ShoppingPhaseContent(
     categories: List<Category>,
     onEvent: (GroceryUiEvent) -> Unit,
 ) {
-    val expandedAisles = remember { mutableStateMapOf<String, Boolean>() }
+    val expandedAisles = remember { mutableStateMapOf<String?, Boolean>() }
     var itemToEditCategory by remember { mutableStateOf<GroceryItem?>(null) }
 
     itemToEditCategory?.let { editing ->
@@ -86,8 +81,13 @@ fun ShoppingPhaseContent(
             )
         } else {
             ShoppingAisleGrid(
-                aisles = shoppingAisles(items, inCartItems, categories, expandedAisles),
-                onToggleAisle = { key -> expandedAisles[key] = !(expandedAisles[key] ?: true) },
+                aisles = shoppingAisles(items, categories),
+                inCartItems = inCartItems.sortedBy { it.name },
+                categories = categories,
+                isExpanded = { categoryId -> expandedAisles[categoryId] ?: true },
+                onToggleAisle = { categoryId ->
+                    expandedAisles[categoryId] = !(expandedAisles[categoryId] ?: true)
+                },
                 onToggleBought = { item, isBought -> onEvent(GroceryUiEvent.ToggleBought(item, isBought)) },
                 onEditCategory = { itemToEditCategory = it },
                 modifier = Modifier.weight(1f),
@@ -182,70 +182,48 @@ private fun ShoppingStoreBar(
 }
 
 /**
- * The trip in the order it is walked: one aisle per category that has anything in it, then
- * whatever has no aisle, then the cart.
+ * The aisles in the order the grid draws them: every category that has something left to
+ * buy, then whatever has no aisle of its own.
  */
 @Composable
 private fun shoppingAisles(
     items: List<GroceryItem>,
-    inCartItems: List<GroceryItem>,
     categories: List<Category>,
-    expandedAisles: Map<String, Boolean>,
 ): List<ShoppingAisle> {
     val sortedItems = items.sortedBy { it.name }
     val grouped = sortedItems.groupBy { it.categoryId }
     val knownCategoryIds = categories.map { it.id }.toSet()
-    val aisles = mutableListOf<ShoppingAisle>()
 
-    categories.forEach { category ->
-        val categoryItems = grouped[category.id].orEmpty()
-        if (categoryItems.isNotEmpty()) {
-            aisles += ShoppingAisle(
-                key = category.id,
-                name = category.name,
-                icon = aisleIcon(category.icon),
-                tint = aisleTint(category.id),
-                items = categoryItems,
-                isExpanded = expandedAisles[category.id] ?: true,
-            )
+    return buildList {
+        categories.forEach { category ->
+            val categoryItems = grouped[category.id].orEmpty()
+            if (categoryItems.isNotEmpty()) {
+                add(ShoppingAisle(category.id, category.name, aisleIcon(category.icon), categoryItems))
+            }
+        }
+        val otherItems = sortedItems.filter {
+            it.categoryId == null || !knownCategoryIds.contains(it.categoryId)
+        }
+        if (otherItems.isNotEmpty()) {
+            add(ShoppingAisle(null, "Everything else", aisleIcon(null), otherItems))
         }
     }
-
-    val orphans = sortedItems.filter { it.categoryId == null || it.categoryId !in knownCategoryIds }
-    if (orphans.isNotEmpty()) {
-        aisles += ShoppingAisle(
-            key = ShoppingAisle.UNCATEGORIZED_KEY,
-            name = "Everything else",
-            icon = aisleIcon(null),
-            tint = aisleTint(null),
-            items = orphans,
-            isExpanded = expandedAisles[ShoppingAisle.UNCATEGORIZED_KEY] ?: true,
-        )
-    }
-
-    if (inCartItems.isNotEmpty()) {
-        aisles += ShoppingAisle(
-            key = ShoppingAisle.CART_KEY,
-            name = "In the cart",
-            icon = Icons.Default.ShoppingCart,
-            tint = GroceryTheme.colors.accent,
-            items = inCartItems.sortedBy { it.name },
-            isCollapsible = false,
-            isCart = true,
-        )
-    }
-
-    return aisles
 }
 
 /**
- * The list itself: an adaptive grid of tiles under aisle signs, with the jump rail beside
- * it once the screen is wide enough to spare the room.
+ * The list itself: an adaptive grid of tiles under aisle signs, the sign of the aisle you
+ * are in pinned above it, and the jump rail beside it once the screen is wide enough.
+ *
+ * All three navigate by the same [aisleSpans] arithmetic, so a tap on the rail and the sign
+ * that pins can never disagree about where an aisle starts.
  */
 @Composable
 private fun ShoppingAisleGrid(
     aisles: List<ShoppingAisle>,
-    onToggleAisle: (String) -> Unit,
+    inCartItems: List<GroceryItem>,
+    categories: List<Category>,
+    isExpanded: (String?) -> Boolean,
+    onToggleAisle: (String?) -> Unit,
     onToggleBought: (GroceryItem, Boolean) -> Unit,
     onEditCategory: (GroceryItem) -> Unit,
     modifier: Modifier = Modifier,
@@ -253,57 +231,123 @@ private fun ShoppingAisleGrid(
     val metrics = GroceryTheme.metrics
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
+    val spans = aisleSpans(aisles.map { it.categoryId to it.items.size }, isExpanded)
+    // In a shop you are standing in one aisle at a time, so the sign for the aisle you are
+    // in stays put once its own sign has scrolled off the top.
+    val pinned by remember(spans) {
+        derivedStateOf { pinnedAisle(spans, gridState.firstVisibleItemIndex) }
+    }
 
     BoxWithConstraints(modifier = modifier) {
         val showRail = maxWidth >= RailBreakpoint && aisles.size > 1
 
         Row(modifier = Modifier.fillMaxSize()) {
-            LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Adaptive(minSize = metrics.minTileWidth),
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = GridBottomInset, start = 8.dp, end = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(metrics.gutter),
-                verticalArrangement = Arrangement.spacedBy(metrics.gutter),
-            ) {
-                aisles.forEach { aisle ->
-                    item(key = aisle.key, span = { GridItemSpan(maxLineSpan) }) {
-                        AisleHeader(
-                            name = aisle.name,
-                            icon = aisle.icon,
-                            tint = aisle.tint,
-                            itemCount = aisle.items.size,
-                            doneCount = if (aisle.isCart) null else aisle.items.count { it.isBought },
-                            isExpanded = if (aisle.isCollapsible) aisle.isExpanded else null,
-                            onToggle = if (aisle.isCollapsible) ({ onToggleAisle(aisle.key) }) else null,
-                            modifier = Modifier.padding(top = metrics.gutter),
-                        )
+            Box(modifier = Modifier.weight(1f)) {
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = metrics.minTileWidth),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = GridBottomInset, start = 8.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(metrics.gutter),
+                    verticalArrangement = Arrangement.spacedBy(metrics.gutter),
+                ) {
+                    aisles.forEach { aisle ->
+                        val expanded = isExpanded(aisle.categoryId)
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            AisleHeader(
+                                name = aisle.name,
+                                icon = aisle.icon,
+                                tint = aisleTint(aisle.categoryId),
+                                itemCount = aisle.items.size,
+                                doneCount = aisle.items.count { it.isBought },
+                                isExpanded = expanded,
+                                onToggle = { onToggleAisle(aisle.categoryId) },
+                                modifier = Modifier.padding(top = metrics.gutter),
+                            )
+                        }
+                        if (expanded) {
+                            items(aisle.items, key = { it.id }) { item ->
+                                ShoppingItemTile(
+                                    item = item,
+                                    tint = aisleTint(aisle.categoryId),
+                                    aisleIcon = aisle.icon,
+                                    onToggleBought = { onToggleBought(item, it) },
+                                    onEditCategory = { onEditCategory(item) }
+                                )
+                            }
+                        }
                     }
-                    if (aisle.isExpanded) {
-                        items(aisle.items, key = { it.id }) { item ->
+
+                    if (inCartItems.isNotEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                "In the cart (${inCartItems.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = GroceryTheme.colors.onSurfaceMuted,
+                                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
+                            )
+                        }
+                        items(inCartItems, key = { it.id }) { item ->
                             ShoppingItemTile(
                                 item = item,
-                                tint = aisle.tint,
-                                aisleIcon = aisle.icon,
-                                onToggleBought = { isBought ->
-                                    onToggleBought(item, if (aisle.isCart) false else isBought)
-                                },
+                                tint = aisleTint(item.categoryId),
+                                aisleIcon = aisleIcon(categories.find { it.id == item.categoryId }?.icon),
+                                onToggleBought = { onToggleBought(item, false) },
                                 onEditCategory = { onEditCategory(item) }
                             )
                         }
                     }
                 }
+
+                PinnedAisleSign(
+                    span = pinned,
+                    aisles = aisles,
+                    onClick = { headerIndex -> scope.launch { gridState.animateScrollToItem(headerIndex) } },
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
             }
 
             if (showRail) {
                 Spacer(modifier = Modifier.width(metrics.gutter))
                 AisleJumpRail(
                     aisles = aisles,
-                    onJumpTo = { index -> scope.launch { gridState.animateScrollToItem(index) } },
+                    spans = spans,
+                    onJumpTo = { headerIndex -> scope.launch { gridState.animateScrollToItem(headerIndex) } },
                     modifier = Modifier.padding(bottom = GridBottomInset),
                 )
             }
         }
+    }
+}
+
+/** The sign for the aisle being scrolled through, held above the list. */
+@Composable
+private fun PinnedAisleSign(
+    span: AisleSpan?,
+    aisles: List<ShoppingAisle>,
+    onClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val pinnedSpan = span ?: return
+    val aisle = aisles.firstOrNull { it.categoryId == pinnedSpan.categoryId } ?: return
+
+    // Opaque backdrop: the tiles scroll underneath the pinned sign.
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(GroceryTheme.colors.screen)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        AisleHeader(
+            name = aisle.name,
+            icon = aisle.icon,
+            tint = aisleTint(aisle.categoryId),
+            itemCount = aisle.items.size,
+            doneCount = aisle.items.count { it.isBought },
+            modifier = Modifier.clickable(
+                onClickLabel = "Scroll to ${aisle.name}"
+            ) { onClick(pinnedSpan.headerIndex) }
+        )
     }
 }
 

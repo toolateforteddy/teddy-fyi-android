@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The todo widget belongs to the full app only: the grocery build has no todo surfaces, and
-    a home-screen widget is a surface. Declared here rather than removed in the grocery
-    manifest so that the flavour that has the feature is the flavour that declares it.
+    Both home-screen widgets belong to the full app only. The todo widget because the grocery
+    build has no todo surfaces and a widget is a surface; the grocery widget because that build
+    runs on a Fire tablet, whose launcher hosts no app widgets at all. Declared here rather than
+    removed in the grocery manifest so that the flavour that has the feature is the flavour that
+    declares it, and the widget code itself lives in src/full/ alongside these receivers.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
@@ -16,6 +18,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/todo_tactical_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.GroceryWidgetReceiver"
+            android:exported="true"
+            android:label="Grocery List Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grocery_widget_info" />
         </receiver>
     </application>
 </manifest>
