@@ -11,7 +11,7 @@ import org.junit.Test
  * The arithmetic behind the pinned aisle sign in the shopping grid: which grid indices
  * belong to which aisle, and therefore which sign should stay on screen.
  */
-class AisleScrollLayoutTest {
+class AisleSpanTest {
 
     private val produce = "produce"
     private val dairy = "dairy"
