@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.data.GroceryItem
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+import fyi.teddy.android.ui.layout.fractionOfWindowHeight
 
 @Composable
 fun RecommendedItemsDialog(
@@ -32,7 +33,10 @@ fun RecommendedItemsDialog(
             if (availableRecommendations.isEmpty()) {
                 Text("No recommendations yet. Buy items to see them here!")
             } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                // Half the window, floored: ~266dp on a short landscape tablet where a
+                // flat 400dp would overflow the dialog, ~440dp on a tall one.
+                val listMaxHeight = fractionOfWindowHeight(fraction = 0.5f, min = 200.dp)
+                LazyColumn(modifier = Modifier.heightIn(max = listMaxHeight)) {
                     items(availableRecommendations) { item ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
