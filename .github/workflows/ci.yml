@@ -42,3 +42,10 @@ jobs:
 
       - name: Run Focused Unit Tests
         run: ./run_focused_tests.sh
+
+      # Everything above this runs against the `full` flavour only: `lint` lints the
+      # default variant, and the unit tests compile the flavour they run in. Assembling
+      # builds both, so the grocery build's manifest merge and resources are checked by
+      # CI rather than by whoever next installs it.
+      - name: Assemble both flavours
+        run: ./gradlew assembleDebug

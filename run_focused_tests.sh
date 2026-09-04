@@ -4,19 +4,24 @@
 # Usage:
 #   ./run_focused_tests.sh                        (Smart selection based on git diff)
 #   ./run_focused_tests.sh "fyi.teddy.android.*"  (Run tests matching pattern)
-#   ./run_focused_tests.sh testDebugUnitTest      (Run specific Gradle task)
+#   ./run_focused_tests.sh testFullDebugUnitTest  (Run specific Gradle task)
 
 set -e
+
+# The unit tests are shared by both product flavours (`full` and `grocery`), so one of the two
+# variant tasks runs all of them; there is no flavour-less `testDebugUnitTest` task to call
+# once the flavours exist. `full` is the one that compiles every surface, todo included.
+UNIT_TEST_TASK="testFullDebugUnitTest"
 
 # If arguments are passed, execute targeting those tests or tasks
 if [ $# -gt 0 ]; then
   ARG="$1"
-  if [ "$ARG" = "test" ] || [ "$ARG" = "testDebugUnitTest" ] || [ "${ARG#*:}" != "$ARG" ]; then
+  if [ "$ARG" = "test" ] || [ "$ARG" = "$UNIT_TEST_TASK" ] || [ "${ARG#*:}" != "$ARG" ]; then
     echo "==> Executing specified Gradle task: $ARG"
     exec ./gradlew "$@"
   else
     echo "==> Executing focused unit tests for pattern: $ARG"
-    exec ./gradlew testDebugUnitTest --tests "$ARG"
+    exec ./gradlew "$UNIT_TEST_TASK" --tests "$ARG"
   fi
 fi
 
@@ -37,7 +42,7 @@ CHANGED_FILES=$( (git diff --name-only "$TARGET_REF"...HEAD 2>/dev/null || true;
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "==> No modified files detected. Executing default unit test suite."
-  exec ./gradlew testDebugUnitTest
+  exec ./gradlew "$UNIT_TEST_TASK"
 fi
 
 echo "==> Modified files detected:"
@@ -74,7 +79,7 @@ done <<< "$CHANGED_FILES"
 
 if [ "$BUILD_INFRA_TOUCHED" = true ]; then
   echo "==> [Rule 2] Build infrastructure files modified. Executing full unit test suite."
-  exec ./gradlew testDebugUnitTest
+  exec ./gradlew "$UNIT_TEST_TASK"
 fi
 
 # Rule 3 & 4: Subsystem/Feature isolation
@@ -99,8 +104,8 @@ if [ "$PKG_COUNT" -eq 1 ]; then
   PKG=$(echo "$UNIQUE_PACKAGES" | tr -d '\r\n')
   TEST_PATTERN="fyi.teddy.android.${PKG}.*"
   echo "==> [Rule 4] Changes isolated to subsystem '${PKG}'. Executing focused test pattern: ${TEST_PATTERN}"
-  exec ./gradlew testDebugUnitTest --tests "$TEST_PATTERN"
+  exec ./gradlew "$UNIT_TEST_TASK" --tests "$TEST_PATTERN"
 else
   echo "==> [Rule 3] Changes affect multiple subsystems or shared components. Executing full unit test suite."
-  exec ./gradlew testDebugUnitTest
+  exec ./gradlew "$UNIT_TEST_TASK"
 fi

@@ -14,6 +14,17 @@ object ApiRoutes {
     const val LOGIN = "$BACKEND_BASE/auth/login"
     const val REFRESH = "$BACKEND_BASE/auth/refresh"
 
+    // Pairing sign-in, for devices with no Google account of their own (Fire tablets).
+    const val DEVICE_START = "$BACKEND_BASE/auth/device/start"
+    const val DEVICE_POLL = "$BACKEND_BASE/auth/device/poll"
+
+    /**
+     * Where somebody redeems a pairing code. `/auth/device/start` answers with this too, and
+     * that answer is what the screen shows; this is the fallback for a response that left it
+     * out, and the spelling the API is expected to send back.
+     */
+    const val DEVICE_LINK_PAGE = "$SITE_BASE/link"
+
     // Sync
     const val SYNC = "$BACKEND_BASE/api/sync"
 

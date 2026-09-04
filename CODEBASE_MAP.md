@@ -68,6 +68,8 @@ there, not at the call sites.
 | --- | --- | --- | --- |
 | `/auth/login` | POST | [AuthRepository.kt:55](app/src/main/java/fyi/teddy/android/network/AuthRepository.kt:55) | Exchange Google ID token → app JWTs |
 | `/auth/refresh` | POST | [NetworkClient.kt:150](app/src/main/java/fyi/teddy/android/network/NetworkClient.kt:150) | Rotate access/refresh tokens |
+| `/auth/device/start` | POST | [DevicePairingRepository.kt](app/src/main/java/fyi/teddy/android/network/DevicePairingRepository.kt) | Ask for a pairing code, where there is no Google account |
+| `/auth/device/poll` | POST | [DevicePairingRepository.kt](app/src/main/java/fyi/teddy/android/network/DevicePairingRepository.kt) | Wait for that code to be redeemed at `teddy.fyi/link` |
 | `/api/sync` | POST | [SyncWorker.kt:113](app/src/main/java/fyi/teddy/android/network/SyncWorker.kt:113) | **The** bidirectional delta sync |
 | `/api/hc` | GET | [TeddyRepository.kt:52](app/src/main/java/fyi/teddy/android/repository/TeddyRepository.kt:52) | Authed health check (debug screens) |
 | `/api/assign-icon` | POST | [TodoRepository.kt:118](app/src/main/java/fyi/teddy/android/todo/repository/TodoRepository.kt:118) | Server picks an emoji/asset for a todo title |
@@ -110,6 +112,18 @@ deliberate: it exercises the refresh path frequently.
    `NetworkClient.resetClient()`, then enqueues one-shot + periodic sync.
 5. Tokens persist through `EncryptedDataStore` → Tink `Aead` → DataStore Preferences.
    `TokenStorage` adds an in-memory cache, a `Mutex`, and a one-shot 50 ms retry on decrypt failure.
+
+### The second way in — pairing
+On a device with no Play Services (a Fire tablet) Credential Manager has no provider to answer it,
+so `LoginScreen` asks `GmsUtils.isGmsAvailable` first and offers pairing: the tablet gets a code
+from `/auth/device/start`, shows it, and polls `/auth/device/poll` until somebody redeems it at
+`teddy.fyi/link` on a device that does have a Google account. What comes back is the same token
+pair `/auth/login` mints, so steps 4 and 5 above are unchanged.
+
+The one thing to know downstream: **a paired session has no Google ID token.** The user id comes
+out of the access token's `sub`, there is no avatar, and `session.idToken` is null — so
+"is somebody signed in?" is `UserSession.isSignedIn` (the access token), never `idToken != null`.
+See §7 of [AUTH_SPECIFICATION.md](AUTH_SPECIFICATION.md).
 
 ### Refresh semantics — `NetworkClient.performRefreshToken`
 Guarded by a `refreshMutex`. Four outcomes, and the distinction matters:
@@ -229,11 +243,26 @@ per-table `NEED_UPDATE` marking, auth probes. First stop for manual diagnosis.
 ## 8. Build, test, run
 
 ```bash
-./gradlew assembleDebug        # or: make build
-./gradlew testDebugUnitTest    # or: make test
+./gradlew assembleDebug           # both flavours; or: make build
+./gradlew assembleGroceryDebug    # the grocery-only build; or: make build-grocery
+./gradlew testFullDebugUnitTest   # or: make test
 ./run_focused_tests.sh         # git-aware selective runner (what CI uses)
 make install && make run       # adb install + launch on first connected device
 ```
+
+There are two product flavours on one `surface` dimension, so every variant task is
+flavour-qualified: `full` is Teddy FYI as it has always been, and `grocery` is the grocery list
+on its own (`fyi.teddy.android.grocery`, label *Teddy Grocery*, same icon), for a tablet left
+where somebody has no reason to see anybody's todo list. Both can be installed at once. There is
+no flavour-less `testDebugUnitTest` task any more — the tests are shared, so
+`testFullDebugUnitTest` runs all of them, and that is what `run_focused_tests.sh` calls.
+
+What the `grocery` flavour changes, all of it driven by `BuildConfig.INCLUDE_TODO`: sign-in lands
+on `Screen.Grocery` instead of the dashboard (`HOME_DESTINATION` in `MainActivity`), the `Home`
+and `Todo` routes are not registered, the todo widget is declared only in `src/full/`'s manifest,
+and sign-out moves into grocery settings because there is no dashboard to carry it. Everything
+below the UI — the database, both sync managers, the todo tables — is shared and unchanged, so
+the two installs are the same account's lists rather than copies.
 
 `run_focused_tests.sh` inspects the diff against `main` and applies four rules: docs-only → skip;
 build/infra touched → full suite; changes in exactly one subpackage → `--tests fyi.teddy.android.<pkg>.*`;

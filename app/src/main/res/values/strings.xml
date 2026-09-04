@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Teddy FYI</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_subtitle">Ends syncing on this device</string>
     <string name="welcome_message">Welcome to Teddy FYI</string>
     <string name="sign_in_google">Sign in with Google</string>
     <string name="skip_auth">Skip Auth (Emulator only)</string>
