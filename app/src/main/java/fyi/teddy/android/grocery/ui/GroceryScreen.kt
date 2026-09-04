@@ -2,10 +2,6 @@ package fyi.teddy.android.grocery.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -16,24 +12,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
+import fyi.teddy.android.grocery.ui.components.AddItemForm
 import fyi.teddy.android.grocery.ui.components.AddListDialog
 import fyi.teddy.android.grocery.ui.components.RenameListDialog
 import fyi.teddy.android.grocery.ui.components.JoinListDialog
+import fyi.teddy.android.grocery.ui.components.DOCKED_ADD_PANE_WIDTH
+import fyi.teddy.android.grocery.ui.components.DockedAddItemPane
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
 import fyi.teddy.android.grocery.ui.components.PlanningPhaseContent
 import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog
 import fyi.teddy.android.grocery.ui.components.ReorderGrocerySpacesDialog
 import fyi.teddy.android.grocery.ui.components.ShareListDialog
 import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
+import fyi.teddy.android.grocery.ui.components.shouldDockAddItemPane
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import kotlinx.coroutines.delay
 import java.util.*
@@ -112,8 +110,19 @@ private fun GroceryScreenContent(
         }
     }
 
+    // On a tablet the modal sheet is a full-width slab and the soft keyboard eats the rest of
+    // the screen, so entry gets docked beside the list instead of stacked on top of it.
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val useDockedAddPane = shouldDockAddItemPane(screenWidthDp)
+    val showDockedAddPane = useDockedAddPane && state.currentPhase == GroceryPhase.NEED
+
     val sheetState = rememberModalBottomSheetState()
     var showAddItemSheet by remember { mutableStateOf(false) }
+
+    // Rotating a tablet into a docked layout should not leave a stale sheet queued up behind it.
+    LaunchedEffect(useDockedAddPane) {
+        if (useDockedAddPane) showAddItemSheet = false
+    }
     
     var showListSelectorMenu by remember { mutableStateOf(value = false) }
     var showAddListDialog by remember { mutableStateOf(value = false) }
@@ -244,7 +253,7 @@ private fun GroceryScreenContent(
             )
         },
         floatingActionButton = {
-            if (state.currentPhase == GroceryPhase.NEED) {
+            if (state.currentPhase == GroceryPhase.NEED && !useDockedAddPane) {
                 FloatingActionButton(
                     onClick = { showAddItemSheet = true },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -453,139 +462,86 @@ private fun GroceryScreenContent(
 
 //                Spacer(modifier = Modifier.height(8.dp))
 
-                when (state.currentPhase) {
-                    GroceryPhase.NEED -> {
-                        NeedPhaseContent(
-                            items = standardCategoryItems,
-                            categories = categories,
-                            stores = stores,
-                            storeInfos = storeInfos,
-                            onEvent = viewModel::onEvent
-                        )
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        when (state.currentPhase) {
+                            GroceryPhase.NEED -> {
+                                NeedPhaseContent(
+                                    items = standardCategoryItems,
+                                    categories = categories,
+                                    stores = stores,
+                                    storeInfos = storeInfos,
+                                    onEvent = viewModel::onEvent
+                                )
+                            }
+                            GroceryPhase.PLANNING -> {
+                                PlanningPhaseContent(
+                                    state = state,
+                                    items = items.filter { it.isActive },
+                                    stores = stores,
+                                    storeInfos = storeInfos,
+                                    recommendedItems = recommendedItems,
+                                    categories = categories,
+                                    onEvent = viewModel::onEvent
+                                )
+                            }
+                            GroceryPhase.SHOPPING -> {
+                                ShoppingPhaseContent(
+                                    state = state,
+                                    items = standardCategoryItems,
+                                    inCartItems = inCartItems,
+                                    stores = stores,
+                                    categories = categories,
+                                    onEvent = viewModel::onEvent
+                                )
+                            }
+                        }
                     }
-                    GroceryPhase.PLANNING -> {
-                        PlanningPhaseContent(
-                            state = state,
-                            items = items.filter { it.isActive },
-                            stores = stores,
-                            storeInfos = storeInfos,
-                            recommendedItems = recommendedItems,
-                            categories = categories,
-                            onEvent = viewModel::onEvent
-                        )
-                    }
-                    GroceryPhase.SHOPPING -> {
-                        ShoppingPhaseContent(
-                            state = state,
-                            items = standardCategoryItems,
-                            inCartItems = inCartItems,
-                            stores = stores,
-                            categories = categories,
-                            onEvent = viewModel::onEvent
+
+                    if (showDockedAddPane) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        DockedAddItemPane(
+                            input = state.newItemInput,
+                            suggestions = suggestions,
+                            isAiReady = state.isAiReady,
+                            onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
+                            onSubmit = {
+                                viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
+                            },
+                            focusRequester = nameFocusRequester,
+                            modifier = Modifier
+                                .width(DOCKED_ADD_PANE_WIDTH)
+                                .fillMaxHeight()
                         )
                     }
                 }
             }
         }
 
-        if (showAddItemSheet) {
+        if (showAddItemSheet && !useDockedAddPane) {
             ModalBottomSheet(
                 onDismissRequest = { showAddItemSheet = false },
                 sheetState = sheetState,
                 containerColor = groceryColors.card
             ) {
-                Column(
+                AddItemForm(
+                    input = state.newItemInput,
+                    suggestions = suggestions,
+                    isAiReady = state.isAiReady,
+                    onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
+                    onSubmit = {
+                        viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
+                        showAddItemSheet = false
+                    },
+                    focusRequester = nameFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                         .padding(bottom = 32.dp)
-                ) {
-                    Text(
-                        "What do we need?",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = groceryColors.onSurface,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    TextField(
-                        value = state.newItemInput,
-                        onValueChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(nameFocusRequester),
-                        placeholder = { Text("e.g. 2 bunches of Bananas", color = groceryColors.onSurfaceMuted) },
-                        colors = TextFieldDefaults.colors(
-                            focusedTextColor = groceryColors.onSurface,
-                            unfocusedTextColor = groceryColors.onSurface,
-                            focusedContainerColor = groceryColors.well,
-                            unfocusedContainerColor = groceryColors.well
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                                showAddItemSheet = false
-                            }
-                        )
-                    )
-
-                    if (suggestions.isNotEmpty()) {
-                        Text(
-                            "Suggestions",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = groceryColors.onSurfaceMuted,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(suggestions) { suggestion ->
-                                SuggestionChip(
-                                    onClick = {
-                                        viewModel.onEvent(GroceryUiEvent.SetNewItemInput(suggestion))
-                                    },
-                                    label = { Text(suggestion) }
-                                )
-                            }
-                        }
-                    }
-                    
-                    if (state.isAiReady) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = groceryColors.accent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "Smart sorting is on",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = groceryColors.accent
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(state.newItemInput))
-                            showAddItemSheet = false
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp)
-                    ) {
-                        Text("Add it")
-                    }
-                }
+                )
             }
         }
-        
+
         if (state.showRecommendedDialog) {
             RecommendedItemsDialog(
                 recommendedItems = recommendedItems,
