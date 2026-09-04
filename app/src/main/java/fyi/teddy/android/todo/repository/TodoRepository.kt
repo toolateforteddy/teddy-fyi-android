@@ -8,7 +8,7 @@ import fyi.teddy.android.todo.util.TaskSchedulerUtils
 import fyi.teddy.android.network.ApiRoutes
 import fyi.teddy.android.network.NetworkClient
 import fyi.teddy.android.network.SyncWorker
-import fyi.teddy.android.widget.WidgetUpdateHelper
+import fyi.teddy.android.widget.Widgets
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -36,7 +36,7 @@ class TodoRepository(
     internal fun scheduleSync() {
         context?.let {
             SyncWorker.enqueue(it)
-            WidgetUpdateHelper.updateAllTodoWidgets(it)
+            Widgets.refreshTodo(it)
         }
     }
 
