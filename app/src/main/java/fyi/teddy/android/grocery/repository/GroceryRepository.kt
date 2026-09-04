@@ -3,7 +3,7 @@ package fyi.teddy.android.grocery.repository
 import android.content.Context
 import fyi.teddy.android.grocery.data.*
 import fyi.teddy.android.network.SyncWorker
-import fyi.teddy.android.widget.WidgetUpdateHelper
+import fyi.teddy.android.widget.Widgets
 import kotlinx.coroutines.flow.Flow
 
 class GroceryRepository(
@@ -13,7 +13,7 @@ class GroceryRepository(
     private fun scheduleSync() {
         context?.let {
             SyncWorker.enqueueDebounced(it)
-            WidgetUpdateHelper.updateAllGroceryWidgets(it)
+            Widgets.refreshGrocery(it)
         }
     }
 

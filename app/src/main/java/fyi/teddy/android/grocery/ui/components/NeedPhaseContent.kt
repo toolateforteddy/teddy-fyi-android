@@ -15,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,6 +27,9 @@ import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
+
+/** Width of the aisle tint stripe painted down the leading edge of each tile. */
+private val TintEdgeWidth = 4.dp
 
 /**
  * Need Phase: Focused on frictionless entry.
@@ -211,7 +216,7 @@ fun NeedItemTile(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(GroceryTheme.metrics.itemTileHeight)
+                    .heightIn(min = GroceryTheme.metrics.itemTileHeight)
                     .combinedClickable(
                         onClick = onToggleControls,
                         onLongClick = onTagStores
@@ -220,73 +225,98 @@ fun NeedItemTile(
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(1.dp, GroceryTheme.colors.outline)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Aisle tint edge: the same colour as the sign above this item.
-                    Box(
-                        modifier = Modifier
-                            .width(4.dp)
-                            .fillMaxHeight()
-                            .background(tint)
-                    )
-                    AnimatedContent(
-                        targetState = showControls,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "NeedItemControls",
-                        modifier = Modifier.weight(1f)
-                    ) { isEditing ->
-                        if (isEditing) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                IconButton(onClick = onDecrement) {
-                                    Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = GroceryTheme.colors.onSurface)
-                                }
+                // The aisle tint edge is painted rather than laid out, so the tile is free to grow
+                // when the stacked controls appear underneath the name.
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawRect(
+                                color = tint,
+                                size = Size(TintEdgeWidth.toPx(), size.height)
+                            )
+                        }
+                ) {
+                    val name = @Composable { modifier: Modifier ->
+                        Row(
+                            modifier = modifier.heightIn(min = GroceryTheme.metrics.itemTileHeight),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ItemLeadingMark(
+                                itemName = item.name,
+                                fallbackIcon = aisleIcon,
+                                tint = tint
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = item.name,
+                                style = GroceryTheme.metrics.itemName,
+                                color = GroceryTheme.colors.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            // While the stepper is showing it already states the quantity.
+                            if (!showControls && item.quantity.isNotBlank() && item.quantity != "1") {
+                                Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = item.quantity,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = GroceryTheme.colors.onSurface
+                                    text = "x${item.quantity}",
+                                    style = GroceryTheme.metrics.itemMeta,
+                                    color = GroceryTheme.colors.onSurfaceMuted
                                 )
-                                IconButton(onClick = onIncrement) {
-                                    Icon(Icons.Default.Add, contentDescription = "Increase", tint = GroceryTheme.colors.onSurface)
-                                }
-                                IconButton(onClick = onEditCategory) {
-                                    Icon(Icons.Default.Category, contentDescription = "Category", tint = GroceryTheme.colors.onSurface)
-                                }
-                                IconButton(onClick = onDelete) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = GroceryTheme.colors.danger)
-                                }
                             }
-                        } else {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 10.dp, end = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        }
+                    }
+                    val controls = @Composable { modifier: Modifier, arrangement: Arrangement.Horizontal ->
+                        ItemQuantityControls(
+                            quantity = item.quantity,
+                            onDecrement = onDecrement,
+                            onIncrement = onIncrement,
+                            onEditCategory = onEditCategory,
+                            onDelete = onDelete,
+                            modifier = modifier,
+                            horizontalArrangement = arrangement
+                        )
+                    }
+
+                    if (inlineControlsFit(
+                            maxWidth,
+                            withDelete = true,
+                            buttonSize = GroceryTheme.metrics.itemTileControlSize
+                        )
+                    ) {
+                        // Wide enough (tablet tiles, and the planning list on any device) to reveal
+                        // the controls beside the name.
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = TintEdgeWidth + 10.dp, end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            name(Modifier.weight(1f))
+                            AnimatedVisibility(
+                                visible = showControls,
+                                enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
+                                exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)
                             ) {
-                                ItemLeadingMark(
-                                    itemName = item.name,
-                                    fallbackIcon = aisleIcon,
-                                    tint = tint
+                                controls(Modifier, Arrangement.End)
+                            }
+                        }
+                    } else {
+                        // Narrow phone tile: the controls drop to their own line so the name stays.
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            name(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = TintEdgeWidth + 10.dp, end = 12.dp)
+                            )
+                            AnimatedVisibility(visible = showControls) {
+                                controls(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = TintEdgeWidth, bottom = 4.dp),
+                                    Arrangement.SpaceEvenly
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = item.name,
-                                    style = GroceryTheme.metrics.itemName,
-                                    color = GroceryTheme.colors.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                if ((item.quantity.isNotBlank()) && (item.quantity != "1")) {
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text = "x${item.quantity}",
-                                        style = GroceryTheme.metrics.itemMeta,
-                                        color = GroceryTheme.colors.onSurfaceMuted
-                                    )
-                                }
                             }
                         }
                     }

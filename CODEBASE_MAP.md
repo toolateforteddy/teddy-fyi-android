@@ -46,7 +46,7 @@ fyi/teddy/android/
 ├── todo/{data,repository,domain,ui,util}      ui/theme/ holds the Todo app palette
 ├── grocery/{data,repository,domain,ui}      domain/ai/ = SLM categorizer, ui/theme/ = Grocery palette
 ├── ui/{navigation,screens,components,theme}  theme/ = host-shell palette only
-├── widget/                  Glance widgets + renderers
+├── widget/                  not in `main` — the `Widgets` seam per flavour, the widgets in `src/full/`
 └── util/, utils/            two packages, both exist — `util/StringUtils`, `utils/{Emulator,Gms,Icon}Utils`
 ```
 
@@ -232,8 +232,13 @@ categories with icons, recommended items driven by `timesBought`, and shared lis
 side-loaded. Output is validated against the allowed category list to reject hallucinations.
 
 **Widgets** — two Glance widgets (`TodoTacticalWidget`, `GroceryWidget`) with custom canvas renderers
-(`TacticalHexCanvasRenderer`). Refreshed from `MainActivity.onStop` / `onWindowFocusChanged(false)` /
-lifecycle `ON_PAUSE` and after every repository mutation via `WidgetUpdateHelper`.
+(`TacticalHexCanvasRenderer`). They are a `full`-only feature and live entirely in
+`src/full/java/.../widget/` — code, layouts, `xml/*_widget_info`, receivers and the Glance
+dependency (`fullImplementation`). Shared code never touches them directly: it calls the
+`fyi.teddy.android.widget.Widgets` seam, which each flavour supplies — the `full` copy delegates to
+`WidgetUpdateHelper` and the widget actions, the `grocery` copy is a no-op that answers "no" to
+`opensTodo` / `opensGrocery`. Refreshed from `MainActivity.onStop` / `onWindowFocusChanged(false)` /
+lifecycle `ON_PAUSE` and after every repository mutation.
 
 **DebugScreen** (1061 lines) — the largest single file. Sync-log inspection, forced re-sync,
 per-table `NEED_UPDATE` marking, auth probes. First stop for manual diagnosis.
@@ -259,8 +264,10 @@ no flavour-less `testDebugUnitTest` task any more — the tests are shared, so
 
 What the `grocery` flavour changes, all of it driven by `BuildConfig.INCLUDE_TODO`: sign-in lands
 on `Screen.Grocery` instead of the dashboard (`HOME_DESTINATION` in `MainActivity`), the `Home`
-and `Todo` routes are not registered, the todo widget is declared only in `src/full/`'s manifest,
-and sign-out moves into grocery settings because there is no dashboard to carry it. Everything
+and `Todo` routes are not registered, and sign-out moves into grocery settings because there is no
+dashboard to carry it. Independently of `INCLUDE_TODO`, the grocery build ships no home-screen
+widgets at all — it runs on a Fire tablet, whose launcher hosts none — so both widgets, their
+receivers and Glance are `full`-only. Everything
 below the UI — the database, both sync managers, the todo tables — is shared and unchanged, so
 the two installs are the same account's lists rather than copies.
 
@@ -315,7 +322,8 @@ Rules:
   use the ARGB-int mirrors `TodoWidgetPalette` / `GroceryWidgetPalette`. Keep those in step with
   their palette.
 - Widget layout backgrounds have to be Android resources; they live in `values/colors.xml`,
-  prefixed `todo_` / `grocery_` so they can move out with their app.
+  prefixed `todo_` / `grocery_` so they can move out with their app. The layouts that read them are
+  in `src/full/res/`, and resource merging makes `main`'s colours visible there.
 - Todo space colours are user-chosen and persisted, so they are hex strings, not `Color`s:
   `TodoSpaceSwatches`.
 

@@ -33,7 +33,7 @@ The Grocery module streamlines shopping and item gathering:
 - **Bidirectional Cloud Sync**: Every syncable row carries a client-generated UUID plus `sync_state` / `version` / `is_deleted`
   columns. A WorkManager job (`SyncWorker`) exchanges batched deltas with a Rust backend over a single
   `POST /api/sync` round-trip, with adaptive backoff and a metered-network guard.
-- **Home-Screen Widgets**: Two Jetpack Glance widgets (tactical todo grid, grocery list) with custom canvas renderers.
+- **Home-Screen Widgets**: Two Jetpack Glance widgets (tactical todo grid, grocery list) with custom canvas renderers, in the `full` build only — the `grocery` build targets a Fire tablet, whose launcher hosts no widgets.
 - **On-Device AI (opt-in)**: MediaPipe-backed grocery categorization that no-ops unless a model is side-loaded.
 
 ## Getting Started

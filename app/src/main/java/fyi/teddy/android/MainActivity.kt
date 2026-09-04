@@ -38,9 +38,7 @@ import fyi.teddy.android.ui.screens.DebugScreen
 import fyi.teddy.android.ui.screens.HomeScreen
 import fyi.teddy.android.ui.screens.WeatherScreen
 import fyi.teddy.android.ui.theme.TeddyTheme
-import fyi.teddy.android.widget.GroceryWidget
-import fyi.teddy.android.widget.TodoTacticalWidget
-import fyi.teddy.android.widget.WidgetUpdateHelper
+import fyi.teddy.android.widget.Widgets
 import kotlinx.coroutines.launch
 
 /**
@@ -84,15 +82,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        WidgetUpdateHelper.updateAllTodoWidgets(this)
-        WidgetUpdateHelper.updateAllGroceryWidgets(this)
+        Widgets.refreshTodo(this)
+        Widgets.refreshGrocery(this)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus) {
-            WidgetUpdateHelper.updateAllTodoWidgets(this)
-            WidgetUpdateHelper.updateAllGroceryWidgets(this)
+            Widgets.refreshTodo(this)
+            Widgets.refreshGrocery(this)
         }
     }
 
@@ -134,11 +132,11 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(intent) {
                     val targetAction = intent?.getStringExtra("widget_action") ?: intent?.action
                     when {
-                        targetAction == TodoTacticalWidget.ACTION_OPEN_TODO &&
+                        Widgets.opensTodo(targetAction) &&
                             BuildConfig.INCLUDE_TODO -> {
                             navController.navigate(Screen.Todo.createRoute("TODAY"))
                         }
-                        targetAction == GroceryWidget.ACTION_OPEN_GROCERY -> {
+                        Widgets.opensGrocery(targetAction) -> {
                             navController.navigate(Screen.Grocery.route)
                         }
                     }
@@ -177,8 +175,8 @@ class MainActivity : ComponentActivity() {
                                 SyncWorker.enqueue(context)
                             }
                             Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
-                                WidgetUpdateHelper.updateAllTodoWidgets(context)
-                                WidgetUpdateHelper.updateAllGroceryWidgets(context)
+                                Widgets.refreshTodo(context)
+                                Widgets.refreshGrocery(context)
                             }
                             else -> {}
                         }
@@ -225,9 +223,9 @@ class MainActivity : ComponentActivity() {
                         SyncWorker.schedulePeriodicSync(context)
                         val targetAction = intent?.getStringExtra("widget_action") ?: intent?.action
                         val destination = when {
-                            targetAction == TodoTacticalWidget.ACTION_OPEN_TODO &&
+                            Widgets.opensTodo(targetAction) &&
                                 BuildConfig.INCLUDE_TODO -> Screen.Todo.createRoute("TODAY")
-                            targetAction == GroceryWidget.ACTION_OPEN_GROCERY -> Screen.Grocery.route
+                            Widgets.opensGrocery(targetAction) -> Screen.Grocery.route
                             else -> HOME_DESTINATION
                         }
                         navController.navigate(destination) {
