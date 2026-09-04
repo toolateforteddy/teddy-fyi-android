@@ -279,6 +279,7 @@ class GroceryViewModel(
             is GroceryUiEvent.InsertItem -> insertItem(event.name, event.quantity, event.categoryId, event.unit)
             is GroceryUiEvent.UpdateItem -> updateItem(event.item)
             is GroceryUiEvent.DeleteItem -> deleteItem(event.item)
+            is GroceryUiEvent.RestoreItem -> restoreItem(event.item)
             is GroceryUiEvent.MoveItemUp -> viewModelScope.launch { moveGroceryItemUpUseCase(event.item, event.siblings) }
             is GroceryUiEvent.MoveItemDown -> viewModelScope.launch { moveGroceryItemDownUseCase(event.item, event.siblings) }
             is GroceryUiEvent.UpdateStoreInfo -> updateStoreInfo(event.info)
@@ -322,8 +323,11 @@ class GroceryViewModel(
             is GroceryUiEvent.CreateInvite -> createInvite(event.listId)
             is GroceryUiEvent.JoinList -> joinList(event.code)
             is GroceryUiEvent.DismissSnackbar -> {
-                if (_snackbarMessage.value?.id == event.messageId) {
+                val dismissed = _snackbarMessage.value
+                if (dismissed?.id == event.messageId) {
                     _snackbarMessage.value = null
+                    // An undoable message held sync open; the choice has been made, so let it go.
+                    if (dismissed.action != null) SyncWorker.releaseSyncHold(application)
                 }
             }
             is GroceryUiEvent.RemoveListMember -> removeListMember(event.member)

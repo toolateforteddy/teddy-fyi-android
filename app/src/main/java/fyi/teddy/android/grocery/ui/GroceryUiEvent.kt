@@ -26,6 +26,8 @@ sealed interface GroceryUiEvent {
     data class InsertItem(val name: String, val quantity: String? = null, val categoryId: String?, val unit: String? = null) : GroceryUiEvent
     data class UpdateItem(val item: GroceryItem) : GroceryUiEvent
     data class DeleteItem(val item: GroceryItem) : GroceryUiEvent
+    /** Puts a just-deleted item back exactly as it was, id and position included. */
+    data class RestoreItem(val item: GroceryItem) : GroceryUiEvent
     data class MoveItemUp(val item: GroceryItem, val siblings: List<GroceryItem>) : GroceryUiEvent
     data class MoveItemDown(val item: GroceryItem, val siblings: List<GroceryItem>) : GroceryUiEvent
     data class UpdateStoreInfo(val info: GroceryItemStoreInfo) : GroceryUiEvent
