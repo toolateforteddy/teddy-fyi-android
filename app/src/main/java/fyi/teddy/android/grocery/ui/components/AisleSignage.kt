@@ -80,6 +80,7 @@ fun AisleHeader(
     onToggle: (() -> Unit)? = null,
 ) {
     val colors = GroceryTheme.colors
+    val metrics = GroceryTheme.metrics
     val collapsible = isExpanded != null && onToggle != null
 
     Surface(
@@ -90,7 +91,7 @@ fun AisleHeader(
         shape = RoundedCornerShape(6.dp),
     ) {
         Row(
-            modifier = Modifier.height(36.dp),
+            modifier = Modifier.height(metrics.signHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The tint edge, repeated on every tile below this sign.
@@ -105,12 +106,13 @@ fun AisleHeader(
                 imageVector = icon,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(metrics.glyphSize),
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = name.uppercase(),
                 style = MaterialTheme.typography.labelLarge.copy(
+                    fontSize = metrics.itemFontSize,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 1.sp,
                 ),
@@ -151,19 +153,20 @@ fun ItemLeadingMark(
     tint: Color,
     modifier: Modifier = Modifier,
 ) {
+    val metrics = GroceryTheme.metrics
     val glyph = remember(itemName) { glyphForItem(itemName) }
     Box(
-        modifier = modifier.size(18.dp),
+        modifier = modifier.size(metrics.glyphSize),
         contentAlignment = Alignment.Center,
     ) {
         if (glyph != null) {
-            Text(text = glyph, fontSize = 14.sp)
+            Text(text = glyph, fontSize = metrics.itemFontSize)
         } else {
             Icon(
                 imageVector = fallbackIcon,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(15.dp),
+                modifier = Modifier.size(metrics.glyphSize),
             )
         }
     }
