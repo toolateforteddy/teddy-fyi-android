@@ -78,103 +78,222 @@ fun PlanningPhaseContent(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 1. The Top Store Bar: Horizontal chips for store context
-        Text(
-            text = "Where are you heading?",
-            style = MaterialTheme.typography.labelMedium,
-            color = GroceryTheme.colors.onSurfaceMuted,
-            modifier = Modifier.padding(bottom = 4.dp)
+        StoreContextBar(
+            stores = stores,
+            selectedStoreId = state.planningStoreContextId,
+            onSelectStore = { onEvent(GroceryUiEvent.SetPlanningStoreContext(it)) }
         )
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
-        ) {
-            item {
-                FilterChip(
-                    selected = state.planningStoreContextId == null,
-                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
-                    label = { Text("General") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-            items(stores) { store ->
-                FilterChip(
-                    selected = state.planningStoreContextId == store.id,
-                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(store.id)) },
-                    label = { Text(store.name) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        }
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 2. The "Commonly Bought" Recommendation Tray
-        val storeSpecificRecs = remember(state.planningStoreContextId, recommendedItems, storeInfos, state.dismissedRecommendationIds) {
-            val storeId = state.planningStoreContextId
-            val availableRecs = recommendedItems.filter { rec ->
-                !state.dismissedRecommendationIds.contains(rec.id)
-            }
-            if (storeId == null) {
-                // General: items with high frequency
-                availableRecs.take(8)
-            } else {
-                // Filter OUT items that are explicitly marked as unavailable for this store
-                // Items with NO mapping for this store are included by default
-                val filtered = availableRecs.filter { rec ->
-                    val info = storeInfos.find { (it.groceryItemId == rec.id) && (it.storeId == storeId) }
-                    info?.isAvailable ?: true
-                }
-                
-                filtered.take(8)
-            }
-        }
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            // Planning is a memory-jogging screen: where there is width for it, the
+            // jogs and the list sit side by side instead of the tray being squeezed
+            // into a strip above the list.
+            val twoPane = maxWidth >= TwoPaneMinWidth
 
-        if (storeSpecificRecs.isNotEmpty()) {
-            val selectedStoreName = stores.find { it.id == state.planningStoreContextId }?.name ?: "Common"
-            
-            Text(
-                text = "$selectedStoreName Recommendations",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            // Two-column grid of recommendations
-            Box(modifier = Modifier.heightIn(max = 200.dp)) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+            val recommendationLimit = if (twoPane) WIDE_RECOMMENDATION_COUNT else STACKED_RECOMMENDATION_COUNT
+            val storeSpecificRecs = remember(
+                state.planningStoreContextId,
+                recommendedItems,
+                storeInfos,
+                state.dismissedRecommendationIds,
+                recommendationLimit
+            ) {
+                val storeId = state.planningStoreContextId
+                val availableRecs = recommendedItems.filter { rec ->
+                    !state.dismissedRecommendationIds.contains(rec.id)
+                }
+                if (storeId == null) {
+                    // General: items with high frequency
+                    availableRecs.take(recommendationLimit)
+                } else {
+                    // Filter OUT items that are explicitly marked as unavailable for this store
+                    // Items with NO mapping for this store are included by default
+                    val filtered = availableRecs.filter { rec ->
+                        val info = storeInfos.find { (it.groceryItemId == rec.id) && (it.storeId == storeId) }
+                        info?.isAvailable ?: true
+                    }
+
+                    filtered.take(recommendationLimit)
+                }
+            }
+
+            val recommendationTitle =
+                (stores.find { it.id == state.planningStoreContextId }?.name ?: "Common") + " Recommendations"
+
+            val listPane: @Composable (Modifier) -> Unit = { paneModifier ->
+                PlanningListPane(
+                    items = items,
+                    expandedItemId = expandedItemId,
+                    onToggleControls = { item ->
+                        expandedItemId = if (expandedItemId == item.id) null else item.id
+                    },
+                    onEditCategory = { itemToEditCategory = it },
+                    onTagStores = { itemToTagStores = it },
+                    onEvent = onEvent,
+                    modifier = paneModifier
+                )
+            }
+
+            if (twoPane) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(storeSpecificRecs, key = { it.id }) { rec ->
-                        RecommendationTile(
-                            name = rec.name,
-                            onClick = { onEvent(GroceryUiEvent.AddRecommendedItems(listOf(rec.id))) },
-                            onDismiss = { onEvent(GroceryUiEvent.DismissRecommendation(rec.id)) }
+                    if (storeSpecificRecs.isNotEmpty()) {
+                        RecommendationTray(
+                            title = recommendationTitle,
+                            recommendations = storeSpecificRecs,
+                            onEvent = onEvent,
+                            modifier = Modifier
+                                .weight(TRAY_PANE_WEIGHT)
+                                .fillMaxHeight()
                         )
                     }
+                    listPane(
+                        Modifier
+                            .weight(LIST_PANE_WEIGHT)
+                            .fillMaxHeight()
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (storeSpecificRecs.isNotEmpty()) {
+                        RecommendationTray(
+                            title = recommendationTitle,
+                            recommendations = storeSpecificRecs,
+                            onEvent = onEvent,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = StackedTrayMaxHeight)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    listPane(Modifier.weight(1f))
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
 
-        // 3. The Main List View
+/** Below this width the tray stacks above the list, as it always has. */
+private val TwoPaneMinWidth = 600.dp
+
+/** Height the tray is allowed when it is stacked above the list. */
+private val StackedTrayMaxHeight = 200.dp
+
+private const val TRAY_PANE_WEIGHT = 0.4f
+private const val LIST_PANE_WEIGHT = 0.6f
+
+private const val STACKED_RECOMMENDATION_COUNT = 8
+
+/** A full-height tray has room for more jogs than a 200dp strip does. */
+private const val WIDE_RECOMMENDATION_COUNT = 16
+
+@Composable
+private fun StoreContextBar(
+    stores: List<Store>,
+    selectedStoreId: String?,
+    onSelectStore: (String?) -> Unit
+) {
+    Text(
+        text = "Where are you heading?",
+        style = MaterialTheme.typography.labelMedium,
+        color = GroceryTheme.colors.onSurfaceMuted,
+        modifier = Modifier.padding(bottom = 4.dp)
+    )
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 4.dp)
+    ) {
+        item {
+            FilterChip(
+                selected = selectedStoreId == null,
+                onClick = { onSelectStore(null) },
+                label = { Text("General") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+        items(stores) { store ->
+            FilterChip(
+                selected = selectedStoreId == store.id,
+                onClick = { onSelectStore(store.id) },
+                label = { Text(store.name) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    }
+}
+
+/** The "Commonly Bought" recommendation tray. */
+@Composable
+private fun RecommendationTray(
+    title: String,
+    recommendations: List<GroceryItem>,
+    onEvent: (GroceryUiEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = RecommendationTileMinWidth),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(recommendations, key = { it.id }) { rec ->
+                RecommendationTile(
+                    name = rec.name,
+                    onClick = { onEvent(GroceryUiEvent.AddRecommendedItems(listOf(rec.id))) },
+                    onDismiss = { onEvent(GroceryUiEvent.DismissRecommendation(rec.id)) }
+                )
+            }
+        }
+    }
+}
+
+/** Two columns at phone width, more only once a pane is genuinely wide. */
+private val RecommendationTileMinWidth = 150.dp
+
+/** "Your List": every active item, whatever else is on screen beside it. */
+@Composable
+private fun PlanningListPane(
+    items: List<GroceryItem>,
+    expandedItemId: String?,
+    onToggleControls: (GroceryItem) -> Unit,
+    onEditCategory: (GroceryItem) -> Unit,
+    onTagStores: (GroceryItem) -> Unit,
+    onEvent: (GroceryUiEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
         Text(
             text = "Your List",
             style = MaterialTheme.typography.titleSmall,
             color = GroceryTheme.colors.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        
+
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -184,9 +303,7 @@ fun PlanningPhaseContent(
                 PlanningItemTile(
                     item = item,
                     showControls = expandedItemId == item.id,
-                    onToggleControls = {
-                        expandedItemId = if (expandedItemId == item.id) null else item.id
-                    },
+                    onToggleControls = { onToggleControls(item) },
                     onIncrement = {
                         val current = item.quantity.toIntOrNull() ?: 1
                         onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current + 1).toString())))
@@ -197,11 +314,11 @@ fun PlanningPhaseContent(
                             onEvent(GroceryUiEvent.UpdateItem(item.copy(quantity = (current - 1).toString())))
                         }
                     },
-                    onEditCategory = { itemToEditCategory = item },
-                    onTagStores = { itemToTagStores = item }
+                    onEditCategory = { onEditCategory(item) },
+                    onTagStores = { onTagStores(item) }
                 )
             }
-            
+
             if (sortedItems.isEmpty()) {
                 item {
                     Box(
