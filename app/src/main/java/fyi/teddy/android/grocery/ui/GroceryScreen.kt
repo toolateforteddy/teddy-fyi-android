@@ -2,10 +2,6 @@ package fyi.teddy.android.grocery.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -16,38 +12,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
+import fyi.teddy.android.grocery.ui.components.AddItemForm
 import fyi.teddy.android.grocery.ui.components.AddListDialog
 import fyi.teddy.android.grocery.ui.components.RenameListDialog
 import fyi.teddy.android.grocery.ui.components.JoinListDialog
+import fyi.teddy.android.grocery.ui.components.DOCKED_ADD_PANE_WIDTH
+import fyi.teddy.android.grocery.ui.components.DockedAddItemPane
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
 import fyi.teddy.android.grocery.ui.components.PlanningPhaseContent
 import fyi.teddy.android.grocery.ui.components.RecommendedItemsDialog
 import fyi.teddy.android.grocery.ui.components.ReorderGrocerySpacesDialog
 import fyi.teddy.android.grocery.ui.components.ShareListDialog
 import fyi.teddy.android.grocery.ui.components.ShoppingPhaseContent
+import fyi.teddy.android.grocery.ui.components.shouldDockAddItemPane
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 import kotlinx.coroutines.delay
 import java.util.*
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
-/** How many just-added names the rapid-entry sheet keeps on screen as a receipt. */
+/** How many just-added names the rapid-entry field keeps on screen as a receipt. */
 private const val MAX_RAPID_ENTRY_RECEIPTS = 8
-
-/** Long enough for the bottom sheet's entry animation to place the field before it is focused. */
-private val FOCUS_SETTLE_DELAY = 150.milliseconds
 
 enum class GroceryPhase {
     NEED, PLANNING, SHOPPING;
@@ -145,8 +138,8 @@ private fun GroceryScreenContent(
     
     val nameFocusRequester = remember { FocusRequester() }
 
-    // Names filed since the add sheet was opened, newest first, so a long entry run shows
-    // its own progress without the list behind the sheet having to be visible.
+    // Names filed since entry began, newest first, so a long entry run shows its own progress
+    // without the list behind the sheet having to be visible.
     var addedThisSession by remember { mutableStateOf(emptyList<String>()) }
 
     val uniqueNames = remember(items) {
@@ -167,6 +160,27 @@ private fun GroceryScreenContent(
     // NavigationRail, which hands ~80dp of height back to the list and puts the phases under
     // the thumb of whichever hand is holding the tablet's left bezel.
     val useNavigationRail = LocalConfiguration.current.screenWidthDp >= MEDIUM_WIDTH_BREAKPOINT_DP
+
+    // Wider still, the modal sheet is a full-width slab and the soft keyboard buries the very
+    // list being added to, so entry docks beside the list instead of on top of it.
+    val useDockedAddPane = shouldDockAddItemPane(LocalConfiguration.current.screenWidthDp)
+    val showDockedAddPane = useDockedAddPane && state.currentPhase == GroceryPhase.NEED
+
+    // Rotating into the docked layout should not leave a stale sheet queued up behind it.
+    LaunchedEffect(useDockedAddPane) {
+        if (useDockedAddPane) showAddItemSheet = false
+    }
+
+    // Rapid entry: each submit files the item, clears the field and hands focus straight back,
+    // with the running tally acting as the receipt. Shared by the sheet and the docked pane.
+    val submitItem: () -> Unit = {
+        val entry = state.newItemInput.trim()
+        if (entry.isNotEmpty()) {
+            viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(entry))
+            addedThisSession = (listOf(entry) + addedThisSession).take(MAX_RAPID_ENTRY_RECEIPTS)
+        }
+        nameFocusRequester.requestFocus()
+    }
 
     Scaffold(
         snackbarHost = {
@@ -274,7 +288,7 @@ private fun GroceryScreenContent(
             )
         },
         floatingActionButton = {
-            if (state.currentPhase == GroceryPhase.NEED) {
+            if (state.currentPhase == GroceryPhase.NEED && !useDockedAddPane) {
                 FloatingActionButton(
                     onClick = { showAddItemSheet = true },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -485,35 +499,58 @@ private fun GroceryScreenContent(
 
     //                Spacer(modifier = Modifier.height(8.dp))
 
-                    when (state.currentPhase) {
-                        GroceryPhase.NEED -> {
-                            NeedPhaseContent(
-                                items = standardCategoryItems,
-                                categories = categories,
-                                stores = stores,
-                                storeInfos = storeInfos,
-                                onEvent = viewModel::onEvent
-                            )
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            when (state.currentPhase) {
+                                GroceryPhase.NEED -> {
+                                    NeedPhaseContent(
+                                        items = standardCategoryItems,
+                                        categories = categories,
+                                        stores = stores,
+                                        storeInfos = storeInfos,
+                                        onEvent = viewModel::onEvent
+                                    )
+                                }
+                                GroceryPhase.PLANNING -> {
+                                    PlanningPhaseContent(
+                                        state = state,
+                                        items = items.filter { it.isActive },
+                                        stores = stores,
+                                        storeInfos = storeInfos,
+                                        recommendedItems = recommendedItems,
+                                        categories = categories,
+                                        onEvent = viewModel::onEvent
+                                    )
+                                }
+                                GroceryPhase.SHOPPING -> {
+                                    ShoppingPhaseContent(
+                                        state = state,
+                                        items = standardCategoryItems,
+                                        inCartItems = inCartItems,
+                                        stores = stores,
+                                        categories = categories,
+                                        onEvent = viewModel::onEvent
+                                    )
+                                }
+                            }
                         }
-                        GroceryPhase.PLANNING -> {
-                            PlanningPhaseContent(
-                                state = state,
-                                items = items.filter { it.isActive },
-                                stores = stores,
-                                storeInfos = storeInfos,
-                                recommendedItems = recommendedItems,
-                                categories = categories,
-                                onEvent = viewModel::onEvent
-                            )
-                        }
-                        GroceryPhase.SHOPPING -> {
-                            ShoppingPhaseContent(
-                                state = state,
-                                items = standardCategoryItems,
-                                inCartItems = inCartItems,
-                                stores = stores,
-                                categories = categories,
-                                onEvent = viewModel::onEvent
+
+                        if (showDockedAddPane) {
+                            // The pane's own receipt starts fresh each time the Need phase opens.
+                            LaunchedEffect(Unit) { addedThisSession = emptyList() }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+                            DockedAddItemPane(
+                                input = state.newItemInput,
+                                suggestions = suggestions,
+                                isAiReady = state.isAiReady,
+                                addedThisSession = addedThisSession,
+                                focusRequester = nameFocusRequester,
+                                onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
+                                onSubmit = submitItem,
+                                modifier = Modifier
+                                    .width(DOCKED_ADD_PANE_WIDTH)
+                                    .fillMaxHeight()
                             )
                         }
                     }
@@ -521,169 +558,34 @@ private fun GroceryScreenContent(
             }
         }
 
-        if (showAddItemSheet) {
+        if (showAddItemSheet && !useDockedAddPane) {
             // Rapid entry: the sheet stays open so a whole week's list can be typed in one
-            // sitting. Each submit files the item, clears the field and hands focus straight
-            // back, with the running tally below acting as the receipt.
+            // sitting.
             LaunchedEffect(showAddItemSheet) { addedThisSession = emptyList() }
-
-            val submitItem: () -> Unit = {
-                val entry = state.newItemInput.trim()
-                if (entry.isNotEmpty()) {
-                    viewModel.onEvent(GroceryUiEvent.InsertItemFromInput(entry))
-                    addedThisSession = (listOf(entry) + addedThisSession).take(MAX_RAPID_ENTRY_RECEIPTS)
-                }
-                nameFocusRequester.requestFocus()
-            }
 
             ModalBottomSheet(
                 onDismissRequest = { showAddItemSheet = false },
                 sheetState = sheetState,
                 containerColor = groceryColors.card
             ) {
-                Column(
+                AddItemForm(
+                    input = state.newItemInput,
+                    suggestions = suggestions,
+                    isAiReady = state.isAiReady,
+                    addedThisSession = addedThisSession,
+                    focusRequester = nameFocusRequester,
+                    onInputChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
+                    onSubmit = submitItem,
+                    onClose = { showAddItemSheet = false },
+                    autoFocusOnAppear = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                         .padding(bottom = 32.dp)
-                ) {
-                    // Claim focus once the sheet has settled, so the keyboard is already up
-                    // and the first item can be typed without a tap.
-                    LaunchedEffect(Unit) {
-                        delay(FOCUS_SETTLE_DELAY)
-                        nameFocusRequester.requestFocus()
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "What do we need?",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = groceryColors.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (addedThisSession.isNotEmpty()) {
-                            Text(
-                                "${addedThisSession.size} added",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = groceryColors.accent
-                            )
-                        }
-                    }
-
-                    TextField(
-                        value = state.newItemInput,
-                        onValueChange = { viewModel.onEvent(GroceryUiEvent.SetNewItemInput(it)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(nameFocusRequester),
-                        singleLine = true,
-                        placeholder = { Text("e.g. 2 bunches of Bananas", color = groceryColors.onSurfaceMuted) },
-                        colors = TextFieldDefaults.colors(
-                            focusedTextColor = groceryColors.onSurface,
-                            unfocusedTextColor = groceryColors.onSurface,
-                            focusedContainerColor = groceryColors.well,
-                            unfocusedContainerColor = groceryColors.well
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Next
-                        ),
-                        // Both actions do the same thing: a hardware Enter reports Done on
-                        // some keyboards even when the field asks for Next.
-                        keyboardActions = KeyboardActions(
-                            onNext = { submitItem() },
-                            onDone = { submitItem() }
-                        )
-                    )
-
-                    if (addedThisSession.isNotEmpty()) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(top = 12.dp)
-                        ) {
-                            items(addedThisSession) { added ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = groceryColors.success,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        added,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = groceryColors.onSurfaceMuted
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (suggestions.isNotEmpty()) {
-                        Text(
-                            "Suggestions",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = groceryColors.onSurfaceMuted,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(suggestions) { suggestion ->
-                                SuggestionChip(
-                                    onClick = {
-                                        viewModel.onEvent(GroceryUiEvent.SetNewItemInput(suggestion))
-                                    },
-                                    label = { Text(suggestion) }
-                                )
-                            }
-                        }
-                    }
-                    
-                    if (state.isAiReady) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = groceryColors.accent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "Smart sorting is on",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = groceryColors.accent
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = submitItem,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Add it")
-                        }
-                        OutlinedButton(onClick = { showAddItemSheet = false }) {
-                            Text(if (addedThisSession.isEmpty()) "Close" else "Done")
-                        }
-                    }
-                }
+                )
             }
         }
-        
+
         if (state.showRecommendedDialog) {
             RecommendedItemsDialog(
                 recommendedItems = recommendedItems,
