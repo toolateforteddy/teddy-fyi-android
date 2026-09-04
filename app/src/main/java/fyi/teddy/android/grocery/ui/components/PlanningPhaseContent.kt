@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -20,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.data.Category
@@ -30,6 +28,9 @@ import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 import fyi.teddy.android.grocery.ui.GroceryUiState
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
+
+/** The resting height of a planning row; it grows only when stacked controls open beneath the name. */
+private val PlanningTileMinHeight = 48.dp
 
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
@@ -77,30 +78,30 @@ fun PlanningPhaseContent(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 1. The Top Store Bar: Horizontal chips for store context
+        // 1. The Top Store Bar: wrapping chips for store context
         Text(
             text = "Where are you heading?",
             style = MaterialTheme.typography.labelMedium,
             color = GroceryTheme.colors.onSurfaceMuted,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            item {
-                FilterChip(
-                    selected = state.planningStoreContextId == null,
-                    onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
-                    label = { Text("General") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
+            FilterChip(
+                selected = state.planningStoreContextId == null,
+                onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(null)) },
+                label = { Text("General") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
-            }
-            items(stores) { store ->
+            )
+            stores.forEach { store ->
                 FilterChip(
                     selected = state.planningStoreContextId == store.id,
                     onClick = { onEvent(GroceryUiEvent.SetPlanningStoreContext(store.id)) },
@@ -149,7 +150,7 @@ fun PlanningPhaseContent(
             // Two-column grid of recommendations
             Box(modifier = Modifier.heightIn(max = 200.dp)) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(220.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -310,7 +311,7 @@ fun PlanningItemTile(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .heightIn(min = PlanningTileMinHeight)
             .combinedClickable(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
@@ -319,53 +320,72 @@ fun PlanningItemTile(
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, GroceryTheme.colors.outline)
     ) {
-        AnimatedContent(
-            targetState = showControls,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "PlanningItemControls"
-        ) { isEditing ->
-            if (isEditing) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val name = @Composable { modifier: Modifier ->
                 Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    IconButton(onClick = onDecrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Remove, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
-                    }
-                    Text(
-                        text = item.quantity,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = onIncrement, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = GroceryTheme.colors.onSurface, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onEditCategory, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Category, contentDescription = "Change Category", tint = GroceryTheme.colors.onSurfaceMuted, modifier = Modifier.size(18.dp))
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp),
+                    modifier = modifier.heightIn(min = PlanningTileMinHeight),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.bodyLarge,
                         color = GroceryTheme.colors.onSurface,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f, fill = false),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (item.quantity.isNotBlank() && item.quantity != "1") {
+                    // The stepper states the quantity while it is open, so don't repeat it.
+                    if (!showControls && item.quantity.isNotBlank() && item.quantity != "1") {
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
                             style = MaterialTheme.typography.bodySmall,
                             color = GroceryTheme.colors.onSurfaceMuted
+                        )
+                    }
+                }
+            }
+            val controls = @Composable { modifier: Modifier, arrangement: Arrangement.Horizontal ->
+                ItemQuantityControls(
+                    quantity = item.quantity,
+                    onDecrement = onDecrement,
+                    onIncrement = onIncrement,
+                    onEditCategory = onEditCategory,
+                    modifier = modifier,
+                    quantityColor = MaterialTheme.colorScheme.primary,
+                    horizontalArrangement = arrangement
+                )
+            }
+
+            if (inlineControlsFit(maxWidth, withDelete = false)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    name(Modifier.weight(1f))
+                    AnimatedVisibility(
+                        visible = showControls,
+                        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
+                        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)
+                    ) {
+                        controls(Modifier, Arrangement.End)
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    name(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                    )
+                    AnimatedVisibility(visible = showControls) {
+                        controls(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp),
+                            Arrangement.SpaceEvenly
                         )
                     }
                 }

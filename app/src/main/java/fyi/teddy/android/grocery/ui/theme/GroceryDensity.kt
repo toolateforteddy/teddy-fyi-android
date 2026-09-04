@@ -50,8 +50,9 @@ data class GroceryMetrics(
     val tileHeight: Dp,
     /**
      * Narrowest a shopping-grid column may be. The grid is adaptive, so this is what decides
-     * how many columns a screen gets: roughly two on a phone and five on a tablet at
-     * [GroceryDensity.COMFORTABLE], more when compact, fewer when the tablet is across the room.
+     * how many columns a screen gets. [GroceryDensity.COMFORTABLE] keeps the 220dp the grid
+     * has always used -- the width an item name actually needs -- so the default layout is
+     * unchanged; compact trades that for more columns, and across-the-kitchen for fewer.
      */
     val minTileWidth: Dp,
     /** Gap between tiles, and between the grid and the aisle rail. */
@@ -69,7 +70,7 @@ data class GroceryMetrics(
 private val CompactMetrics = GroceryMetrics(
     density = GroceryDensity.COMPACT,
     tileHeight = 40.dp,
-    minTileWidth = 120.dp,
+    minTileWidth = 150.dp,
     gutter = 6.dp,
     signHeight = 30.dp,
     glyphSize = 16.dp,
@@ -80,7 +81,7 @@ private val CompactMetrics = GroceryMetrics(
 private val ComfortableMetrics = GroceryMetrics(
     density = GroceryDensity.COMFORTABLE,
     tileHeight = 48.dp,
-    minTileWidth = 150.dp,
+    minTileWidth = 220.dp,
     gutter = 8.dp,
     signHeight = 36.dp,
     glyphSize = 18.dp,
@@ -91,7 +92,7 @@ private val ComfortableMetrics = GroceryMetrics(
 private val AcrossTheKitchenMetrics = GroceryMetrics(
     density = GroceryDensity.ACROSS_THE_KITCHEN,
     tileHeight = 64.dp,
-    minTileWidth = 220.dp,
+    minTileWidth = 300.dp,
     gutter = 12.dp,
     signHeight = 48.dp,
     glyphSize = 24.dp,
