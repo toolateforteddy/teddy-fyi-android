@@ -1,6 +1,5 @@
 package fyi.teddy.android.grocery.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -15,17 +14,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
 import fyi.teddy.android.grocery.ui.components.AddListDialog
+import fyi.teddy.android.grocery.ui.components.GrocerySpaceOption
+import fyi.teddy.android.grocery.ui.components.GrocerySpaceRailSection
+import fyi.teddy.android.grocery.ui.components.GrocerySpaceSwitcherTitle
+import fyi.teddy.android.grocery.ui.components.GroceryRailEntry
+import fyi.teddy.android.grocery.ui.components.grocerySpaceOptions
+import fyi.teddy.android.grocery.ui.components.nameFor
 import fyi.teddy.android.grocery.ui.components.RenameListDialog
 import fyi.teddy.android.grocery.ui.components.JoinListDialog
 import fyi.teddy.android.grocery.ui.components.NeedPhaseContent
@@ -115,7 +122,6 @@ private fun GroceryScreenContent(
     val sheetState = rememberModalBottomSheetState()
     var showAddItemSheet by remember { mutableStateOf(false) }
     
-    var showListSelectorMenu by remember { mutableStateOf(value = false) }
     var showAddListDialog by remember { mutableStateOf(value = false) }
     var showRenameListDialog by remember { mutableStateOf(value = false) }
     var showJoinListDialog by remember { mutableStateOf(value = false) }
@@ -138,6 +144,13 @@ private fun GroceryScreenContent(
         }
     }
 
+    // A wide screen (the kitchen tablet) gets a rail; a phone gets the bottom bar.
+    val isWideScreen = LocalConfiguration.current.screenWidthDp >= 600
+
+    val spaceOptions = remember(lists, state.hasItemsInDefaultList, state.selectedListId) {
+        grocerySpaceOptions(lists, state.hasItemsInDefaultList, state.selectedListId)
+    }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
@@ -152,12 +165,19 @@ private fun GroceryScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    val activeList = lists.find { it.id == state.selectedListId }
-                    val activeListName = activeList?.name ?: "Default List"
-
-                    if (state.isEditMode) Text("Grocery: ${state.currentPhase.displayName}")
-                    else Text("Grocery: ${state.currentPhase.displayName}: $activeListName")
-                        },
+                    // On a phone the switcher is the title, so lists can be changed
+                    // without entering edit mode. On a wide screen the rail carries it.
+                    if (isWideScreen) {
+                        Text("Grocery: ${state.currentPhase.displayName}")
+                    } else {
+                        GrocerySpaceSwitcherTitle(
+                            phaseLabel = state.currentPhase.displayName,
+                            options = spaceOptions,
+                            selectedListId = state.selectedListId,
+                            onSelect = { viewModel.onEvent(GroceryUiEvent.SetSelectedListId(it)) }
+                        )
+                    }
+                },
                 actions = {
                     if (state.currentPhase == GroceryPhase.NEED || state.currentPhase == GroceryPhase.SHOPPING) {
                         val syncIconColor = when (state.lastSyncStatus) {
@@ -255,234 +275,197 @@ private fun GroceryScreenContent(
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = groceryColors.screen) {
-                NavigationBarItem(
-                    selected = state.currentPhase == GroceryPhase.NEED,
-                    onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.NEED)) },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Need") },
-                    label = { Text("Need") }
-                )
-                NavigationBarItem(
-                    selected = state.currentPhase == GroceryPhase.PLANNING,
-                    onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.PLANNING)) },
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Planning") },
-                    label = { Text("Planning") }
-                )
-                NavigationBarItem(
-                    selected = state.currentPhase == GroceryPhase.SHOPPING,
-                    onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(GroceryPhase.SHOPPING)) },
-                    icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Shopping") },
-                    label = { Text("Shopping") }
-                )
+            if (!isWideScreen) {
+                NavigationBar(containerColor = groceryColors.screen) {
+                    phaseDestinations.forEach { destination ->
+                        NavigationBarItem(
+                            selected = state.currentPhase == destination.phase,
+                            onClick = { viewModel.onEvent(GroceryUiEvent.SetPhase(destination.phase)) },
+                            icon = { Icon(destination.icon, contentDescription = destination.label) },
+                            label = { Text(destination.label) }
+                        )
+                    }
+                }
             }
         }
     ) { paddingValues ->
-        Surface(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = groceryColors.screen
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+        Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (isWideScreen) {
+                GroceryRail(
+                    currentPhase = state.currentPhase,
+                    onPhaseSelected = { viewModel.onEvent(GroceryUiEvent.SetPhase(it)) },
+                    spaceOptions = spaceOptions,
+                    selectedListId = state.selectedListId,
+                    onSpaceSelected = { viewModel.onEvent(GroceryUiEvent.SetSelectedListId(it)) }
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = groceryColors.screen
             ) {
-                // List / Space selector Row for Shared Lists
-                val activeList = lists.find { it.id == state.selectedListId }
-                val activeListName = activeList?.name ?: "Default List"
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp)
+                ) {
+                    // Edit mode is now only the list *management* actions: switching
+                    // between spaces lives in the top bar (phone) or the rail (tablet).
+                    val activeList = lists.find { it.id == state.selectedListId }
+                    val activeListName = spaceOptions.nameFor(state.selectedListId)
 
-                if (state.isEditMode) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Box {
-                            Row(
-                                modifier = Modifier
-                                    .clickable { showListSelectorMenu = true }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Menu,
-                                    contentDescription = "Lists",
-                                    tint = groceryColors.onSurfaceMuted
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = activeListName,
-                                    color = groceryColors.onSurface,
-                                    fontSize = 18.sp,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Icon(
-                                    Icons.Default.ArrowDropDown,
-                                    contentDescription = "Switch List",
-                                    tint = groceryColors.onSurface
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showListSelectorMenu,
-                                onDismissRequest = { showListSelectorMenu = false }
-                            ) {
-                                if (state.hasItemsInDefaultList) {
-                                    DropdownMenuItem(
-                                        text = { Text("Default List") },
-                                        onClick = {
-                                            viewModel.onEvent(GroceryUiEvent.SetSelectedListId(null))
-                                            showListSelectorMenu = false
-                                        }
-                                    )
-                                }
-                                lists.forEach { list ->
-                                    DropdownMenuItem(
-                                        text = { Text(list.name) },
-                                        onClick = {
-                                            viewModel.onEvent(GroceryUiEvent.SetSelectedListId(list.id))
-                                            showListSelectorMenu = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    if (state.isEditMode) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Editing $activeListName",
+                                color = groceryColors.onSurfaceMuted,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { showJoinListDialog = true }) {
-                                    Icon(
-                                        Icons.Default.GroupAdd,
-                                        contentDescription = "Join List",
-                                        tint = groceryColors.onSurface
-                                    )
-                                }
-                                IconButton(onClick = { showAddListDialog = true }) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = "New List",
-                                        tint = groceryColors.onSurface
-                                    )
-                                }
-                                if (state.selectedListId != null) {
-                                    IconButton(onClick = { showRenameListDialog = true }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { showJoinListDialog = true }) {
                                         Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Rename List",
+                                            Icons.Default.GroupAdd,
+                                            contentDescription = "Join List",
                                             tint = groceryColors.onSurface
                                         )
                                     }
-                                    IconButton(onClick = { showShareListDialog = true }) {
+                                    IconButton(onClick = { showAddListDialog = true }) {
                                         Icon(
-                                            Icons.Default.Share,
-                                            contentDescription = "Share List",
+                                            Icons.Default.Add,
+                                            contentDescription = "New List",
                                             tint = groceryColors.onSurface
                                         )
                                     }
-                                    IconButton(onClick = {
-                                        viewModel.onEvent(GroceryUiEvent.DeleteList(activeList!!))
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Delete List",
-                                            tint = groceryColors.danger
-                                        )
+                                    if (state.selectedListId != null) {
+                                        IconButton(onClick = { showRenameListDialog = true }) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = "Rename List",
+                                                tint = groceryColors.onSurface
+                                            )
+                                        }
+                                        IconButton(onClick = { showShareListDialog = true }) {
+                                            Icon(
+                                                Icons.Default.Share,
+                                                contentDescription = "Share List",
+                                                tint = groceryColors.onSurface
+                                            )
+                                        }
+                                        IconButton(onClick = {
+                                            viewModel.onEvent(GroceryUiEvent.DeleteList(activeList!!))
+                                        }) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Delete List",
+                                                tint = groceryColors.danger
+                                            )
+                                        }
                                     }
                                 }
+
+                        }
+                    }
+
+                    // Add List Dialog
+                    if (showAddListDialog) {
+                        AddListDialog(
+                            onDismiss = { showAddListDialog = false },
+                            onConfirm = { name ->
+                                viewModel.onEvent(GroceryUiEvent.InsertList(name))
+                                showAddListDialog = false
                             }
-
-                    }
-                }
-
-                // Add List Dialog
-                if (showAddListDialog) {
-                    AddListDialog(
-                        onDismiss = { showAddListDialog = false },
-                        onConfirm = { name ->
-                            viewModel.onEvent(GroceryUiEvent.InsertList(name))
-                            showAddListDialog = false
-                        }
-                    )
-                }
-
-                // Rename List Dialog
-                if (showRenameListDialog && activeList != null) {
-                    RenameListDialog(
-                        initialName = activeList.name,
-                        onDismiss = { showRenameListDialog = false },
-                        onConfirm = { newName ->
-                            viewModel.onEvent(GroceryUiEvent.UpdateList(activeList.copy(name = newName)))
-                            showRenameListDialog = false
-                        }
-                    )
-                }
-
-                // Join List Dialog
-                if (showJoinListDialog) {
-                    JoinListDialog(
-                        onDismiss = { showJoinListDialog = false },
-                        onJoin = { code ->
-                            viewModel.onEvent(GroceryUiEvent.JoinList(code))
-                        }
-                    )
-                }
-
-                // Share List Dialog
-                if (showShareListDialog && (state.selectedListId != null)) {
-                    ShareListDialog(
-                        listName = activeListName,
-                        membersFlow = remember(state.selectedListId) { viewModel.getListMembers(state.selectedListId!!) },
-                        activeInviteCode = state.activeInviteCode,
-                        onDismiss = { showShareListDialog = false },
-                        onCreateInvite = {
-                            viewModel.onEvent(GroceryUiEvent.CreateInvite(state.selectedListId!!))
-                        },
-                        onRemoveMember = { member ->
-                            viewModel.onEvent(GroceryUiEvent.RemoveListMember(member))
-                        }
-                    )
-                }
-
-                if (showReorderSpacesModal) {
-                    ReorderGrocerySpacesDialog(
-                        spaces = lists,
-                        onDismiss = { showReorderSpacesModal = false },
-                        onSave = { reordered ->
-                            viewModel.onEvent(GroceryUiEvent.ReorderLists(reordered))
-                            showReorderSpacesModal = false
-                        }
-                    )
-                }
-
-//                Spacer(modifier = Modifier.height(8.dp))
-
-                when (state.currentPhase) {
-                    GroceryPhase.NEED -> {
-                        NeedPhaseContent(
-                            items = standardCategoryItems,
-                            categories = categories,
-                            stores = stores,
-                            storeInfos = storeInfos,
-                            onEvent = viewModel::onEvent
                         )
                     }
-                    GroceryPhase.PLANNING -> {
-                        PlanningPhaseContent(
-                            state = state,
-                            items = items.filter { it.isActive },
-                            stores = stores,
-                            storeInfos = storeInfos,
-                            recommendedItems = recommendedItems,
-                            categories = categories,
-                            onEvent = viewModel::onEvent
+
+                    // Rename List Dialog
+                    if (showRenameListDialog && activeList != null) {
+                        RenameListDialog(
+                            initialName = activeList.name,
+                            onDismiss = { showRenameListDialog = false },
+                            onConfirm = { newName ->
+                                viewModel.onEvent(GroceryUiEvent.UpdateList(activeList.copy(name = newName)))
+                                showRenameListDialog = false
+                            }
                         )
                     }
-                    GroceryPhase.SHOPPING -> {
-                        ShoppingPhaseContent(
-                            state = state,
-                            items = standardCategoryItems,
-                            inCartItems = inCartItems,
-                            stores = stores,
-                            categories = categories,
-                            onEvent = viewModel::onEvent
+
+                    // Join List Dialog
+                    if (showJoinListDialog) {
+                        JoinListDialog(
+                            onDismiss = { showJoinListDialog = false },
+                            onJoin = { code ->
+                                viewModel.onEvent(GroceryUiEvent.JoinList(code))
+                            }
                         )
+                    }
+
+                    // Share List Dialog
+                    if (showShareListDialog && (state.selectedListId != null)) {
+                        ShareListDialog(
+                            listName = activeListName,
+                            membersFlow = remember(state.selectedListId) { viewModel.getListMembers(state.selectedListId!!) },
+                            activeInviteCode = state.activeInviteCode,
+                            onDismiss = { showShareListDialog = false },
+                            onCreateInvite = {
+                                viewModel.onEvent(GroceryUiEvent.CreateInvite(state.selectedListId!!))
+                            },
+                            onRemoveMember = { member ->
+                                viewModel.onEvent(GroceryUiEvent.RemoveListMember(member))
+                            }
+                        )
+                    }
+
+                    if (showReorderSpacesModal) {
+                        ReorderGrocerySpacesDialog(
+                            spaces = lists,
+                            onDismiss = { showReorderSpacesModal = false },
+                            onSave = { reordered ->
+                                viewModel.onEvent(GroceryUiEvent.ReorderLists(reordered))
+                                showReorderSpacesModal = false
+                            }
+                        )
+                    }
+
+    //                Spacer(modifier = Modifier.height(8.dp))
+
+                    when (state.currentPhase) {
+                        GroceryPhase.NEED -> {
+                            NeedPhaseContent(
+                                items = standardCategoryItems,
+                                categories = categories,
+                                stores = stores,
+                                storeInfos = storeInfos,
+                                onEvent = viewModel::onEvent
+                            )
+                        }
+                        GroceryPhase.PLANNING -> {
+                            PlanningPhaseContent(
+                                state = state,
+                                items = items.filter { it.isActive },
+                                stores = stores,
+                                storeInfos = storeInfos,
+                                recommendedItems = recommendedItems,
+                                categories = categories,
+                                onEvent = viewModel::onEvent
+                            )
+                        }
+                        GroceryPhase.SHOPPING -> {
+                            ShoppingPhaseContent(
+                                state = state,
+                                items = standardCategoryItems,
+                                inCartItems = inCartItems,
+                                stores = stores,
+                                categories = categories,
+                                onEvent = viewModel::onEvent
+                            )
+                        }
                     }
                 }
             }
@@ -599,3 +582,64 @@ private fun GroceryScreenContent(
     }
 }
 
+/** A phase destination, rendered in the phone's bottom bar or the tablet's rail. */
+private data class PhaseDestination(
+    val phase: GroceryPhase,
+    val icon: ImageVector,
+    val label: String,
+)
+
+private val phaseDestinations = listOf(
+    PhaseDestination(GroceryPhase.NEED, Icons.AutoMirrored.Filled.List, "Need"),
+    PhaseDestination(GroceryPhase.PLANNING, Icons.Default.DateRange, "Planning"),
+    PhaseDestination(GroceryPhase.SHOPPING, Icons.Default.ShoppingCart, "Shopping"),
+)
+
+/**
+ * The tablet rail: the three phases, then every grocery space, all permanently on
+ * screen. Changing lists here costs one tap and never routes through edit mode.
+ */
+@Composable
+private fun GroceryRail(
+    currentPhase: GroceryPhase,
+    onPhaseSelected: (GroceryPhase) -> Unit,
+    spaceOptions: List<GrocerySpaceOption>,
+    selectedListId: String?,
+    onSpaceSelected: (String?) -> Unit,
+) {
+    val groceryColors = GroceryTheme.colors
+    Surface(
+        modifier = Modifier.width(216.dp).fillMaxHeight(),
+        color = groceryColors.screen
+    ) {
+        Column(modifier = Modifier.fillMaxHeight().padding(vertical = 12.dp)) {
+            phaseDestinations.forEach { destination ->
+                val selected = currentPhase == destination.phase
+                GroceryRailEntry(
+                    label = destination.label,
+                    selected = selected,
+                    onClick = { onPhaseSelected(destination.phase) },
+                    icon = {
+                        Icon(
+                            destination.icon,
+                            contentDescription = null,
+                            tint = if (selected) groceryColors.accentBright else groceryColors.onSurfaceMuted
+                        )
+                    }
+                )
+            }
+
+            HorizontalDivider(
+                color = groceryColors.outline,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+
+            GrocerySpaceRailSection(
+                options = spaceOptions,
+                selectedListId = selectedListId,
+                onSelect = onSpaceSelected,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
+    }
+}
