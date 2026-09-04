@@ -6,10 +6,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -36,6 +34,7 @@ import kotlinx.coroutines.launch
 /**
  * Shopping Phase: High-velocity in-store mode.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ShoppingPhaseContent(
     state: GroceryUiState,
@@ -76,9 +75,10 @@ fun ShoppingPhaseContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         stores.forEach { store ->
                             AssistChip(
@@ -179,7 +179,7 @@ fun ShoppingPhaseContent(
             Box(modifier = Modifier.weight(1f)) {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(220.dp),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 88.dp, start = 8.dp, end = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -187,7 +187,7 @@ fun ShoppingPhaseContent(
                 ) {
                     aisles.forEach { aisle ->
                         val isExpanded = expandedCategories[aisle.categoryId] ?: true
-                        item(span = { GridItemSpan(2) }) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             AisleHeader(
                                 name = aisle.name,
                                 icon = aisle.icon,
@@ -214,7 +214,7 @@ fun ShoppingPhaseContent(
 
                     if (inCartItems.isNotEmpty()) {
                         val sortedInCartItems = inCartItems.sortedBy { it.name }
-                        item(span = { GridItemSpan(2) }) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             Text(
                                 "In the cart (${sortedInCartItems.size})",
                                 style = MaterialTheme.typography.titleSmall,
