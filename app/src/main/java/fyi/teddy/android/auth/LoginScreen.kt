@@ -59,6 +59,9 @@ fun LoginScreen(
     val isGmsAvailable = remember { GmsUtils.isGmsAvailable(context) }
 
     var pairingState by remember { mutableStateOf<DevicePairingState>(DevicePairingState.Idle) }
+    // Pairing asked for on a device that could have used Google. Debug builds only, and off
+    // until somebody taps for it: see [showPairing].
+    var codeRequested by remember { mutableStateOf(value = false) }
     // Bumped to ask for a code; zeroed to stop. Keying the effect on it means leaving the
     // screen, or cancelling, cancels the poll loop with it.
     var pairingAttempt by remember { mutableIntStateOf(0) }
@@ -119,7 +122,13 @@ fun LoginScreen(
             if (isLoggingIn) {
                 CircularProgressIndicator(color = TeddyTheme.colors.accent)
             } else {
-                if (isGmsAvailable) {
+                // Pairing is the only way in with no Play Services. With Play Services it is
+                // still the quicker way to test the pairing path -- no Fire tablet needed, and
+                // no Android OAuth client for this build's package name -- so a debug build can
+                // ask for it. A release build offers exactly one way in per device.
+                val showPairing = !isGmsAvailable || codeRequested
+
+                if (!showPairing) {
                     Button(onClick = {
                         scope.launch {
                             isLoggingIn = true
@@ -158,6 +167,20 @@ fun LoginScreen(
                     }) {
                         Text("Sign in with Google")
                     }
+
+                    if (BuildConfig.DEBUG) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextButton(onClick = {
+                            // Straight to a code: somebody who taps this has already decided.
+                            codeRequested = true
+                            pairingAttempt += 1
+                        }) {
+                            Text(
+                                "Sign in with a code (debug)",
+                                color = TeddyTheme.colors.onSurfaceMuted,
+                            )
+                        }
+                    }
                 } else {
                     DevicePairingSection(
                         state = pairingState,
@@ -165,6 +188,8 @@ fun LoginScreen(
                         onCancel = {
                             pairingAttempt = 0
                             pairingState = DevicePairingState.Idle
+                            // On a device with Google sign-in, cancelling goes back to it.
+                            codeRequested = false
                         },
                     )
 

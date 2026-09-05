@@ -116,6 +116,26 @@ Tablet (no Play Services)          api-rust.teddy.fyi                    teddy.f
 Client code: `network/DevicePairingRepository.kt` (the calls), `auth/DevicePairingState.kt` (what
 the screen is showing), `auth/DevicePairingSection.kt` (the code on screen).
 
+**Debug builds also offer pairing where Google sign-in works** — a "Sign in with a code (debug)"
+link under the Google button, `BuildConfig.DEBUG` only. It is the quick way to exercise the whole
+flow without a Fire tablet, and the way in on a build whose package name has no Android OAuth
+client yet (see below). A release build offers exactly one way in per device: whichever one that
+device can run.
+
+### Google sign-in needs an Android OAuth client per applicationId
+
+`GetGoogleIdOption` authorises the *caller*, not just the audience: Google Identity checks the
+calling app's **package name + signing certificate SHA-1** against an Android OAuth client in the
+same Cloud project, and `setServerClientId(...)` is only the audience the backend validates.
+
+So every applicationId this repo ships needs its own Android client entry, or Credential Manager
+reports that there are no credentials on a device that plainly has a Google account — which is
+what the `grocery` flavour's `fyi.teddy.android.grocery` did the first time it was installed on a
+Pixel. Adding a flavour with an `applicationIdSuffix`, or signing a build with a new key (an
+upload key, or Amazon's re-signing certificate), means another entry on the same client.
+
+Pairing sign-in is unaffected: it never asks the device for a Google credential.
+
 **A paired session has no Google ID token**, which is the one thing downstream code has to know:
 the user id comes out of the access token's `sub` rather than out of an ID token, there is no
 `picture` claim to read an avatar from, and `session.idToken` stays null. Anything asking "is
