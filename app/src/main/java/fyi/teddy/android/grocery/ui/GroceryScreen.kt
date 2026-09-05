@@ -14,6 +14,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,9 @@ enum class GroceryPhase {
             SHOPPING -> Icons.Default.ShoppingCart
         }
 }
+
+/** Width at or above which the layout stops being a phone layout (Material compact/medium boundary). */
+private const val MEDIUM_WIDTH_BREAKPOINT_DP = 600
 
 /**
  * The rail is wider than a Material NavigationRail's 80dp because it carries list names, not
@@ -129,6 +133,16 @@ private fun GroceryScreenContent(
     
     val lists by viewModel.lists.collectAsState()
     
+    // A tablet riding in a shopping cart is useless if it sleeps between aisles, and Fire
+    // tablets ship with a short screen timeout. Hold the screen awake for the Shopping phase
+    // only -- the phase you are actually looking at while walking -- and let it go the moment
+    // you leave, so a tablet parked on the counter still sleeps.
+    val view = LocalView.current
+    DisposableEffect(view, state.currentPhase) {
+        view.keepScreenOn = state.currentPhase == GroceryPhase.SHOPPING
+        onDispose { view.keepScreenOn = false }
+    }
+
     // Periodic sync every 5 minutes while Shopping tab is open
     LaunchedEffect(state.currentPhase) {
         if (state.currentPhase == GroceryPhase.SHOPPING) {
@@ -170,10 +184,10 @@ private fun GroceryScreenContent(
         }
     }
 
-    // Material's compact/medium breakpoint, shared with the tile metrics. At medium and up the
-    // phases and the list switcher both move to a rail, which hands ~80dp of height back to the
-    // list and puts them under the thumb of whichever hand is holding the tablet's left bezel.
-    val useNavigationRail = GroceryTheme.metrics.isExpandedWidth
+    // Material's compact/medium breakpoint. At medium and up the phases and the list switcher
+    // both move to a rail, which hands ~80dp of height back to the list and puts them under
+    // the thumb of whichever hand is holding the tablet's left bezel.
+    val useNavigationRail = LocalConfiguration.current.screenWidthDp >= MEDIUM_WIDTH_BREAKPOINT_DP
 
     val spaceOptions = remember(lists, state.hasItemsInDefaultList, state.selectedListId) {
         grocerySpaceOptions(lists, state.hasItemsInDefaultList, state.selectedListId)

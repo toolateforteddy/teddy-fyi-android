@@ -2,6 +2,8 @@ package fyi.teddy.android.grocery.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
@@ -16,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fyi.teddy.android.R
+import fyi.teddy.android.grocery.ui.theme.GroceryDensity
+import fyi.teddy.android.grocery.ui.theme.GroceryDisplayPreferences
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,8 +66,14 @@ fun GroceryConfigScreen(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             color = GroceryTheme.colors.screen
         ) {
+            // Scrolls rather than stretches: at the largest density setting the options
+            // below are taller than a phone screen, and a settings screen that hides its
+            // own way back is worse than one that scrolls.
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // List Selector
@@ -137,6 +147,8 @@ fun GroceryConfigScreen(
                     onClick = { onManageCategories(state.selectedListId) }
                 )
                 
+                DensityPicker()
+
                 if (onSignOut != null) {
                     ConfigItem(
                         title = stringResource(R.string.sign_out),
@@ -146,13 +158,74 @@ fun GroceryConfigScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-                
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Button(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.back_to_list))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * How big to draw the list.
+ *
+ * A device on the counter and the same device in your hands in aisle six want different
+ * sizes, and nothing about the window can tell those apart -- so it is asked, not guessed.
+ * The choice is kept on the device rather than on the list: it describes where this screen
+ * is, not what anybody is buying.
+ */
+@Composable
+private fun DensityPicker() {
+    val context = LocalContext.current
+    val selected by GroceryDisplayPreferences.density.collectAsState()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = GroceryTheme.colors.card)
+    ) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.FormatSize, contentDescription = null, tint = GroceryTheme.colors.onSurface)
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    "Text and tile size",
+                    color = GroceryTheme.colors.onSurface,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            GroceryDensity.entries.forEach { density ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { GroceryDisplayPreferences.setDensity(context, density) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = density == selected,
+                        onClick = { GroceryDisplayPreferences.setDensity(context, density) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            density.label,
+                            color = GroceryTheme.colors.onSurface,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            density.blurb,
+                            color = GroceryTheme.colors.onSurfaceMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }

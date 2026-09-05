@@ -187,6 +187,7 @@ fun NeedItemTile(
     onTagStores: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
+    val metrics = GroceryTheme.metrics
 
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
@@ -216,7 +217,7 @@ fun NeedItemTile(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = GroceryTheme.metrics.itemTileHeight)
+                    .heightIn(min = metrics.tileHeight)
                     .combinedClickable(
                         onClick = onToggleControls,
                         onLongClick = onTagStores
@@ -239,7 +240,7 @@ fun NeedItemTile(
                 ) {
                     val name = @Composable { modifier: Modifier ->
                         Row(
-                            modifier = modifier.heightIn(min = GroceryTheme.metrics.itemTileHeight),
+                            modifier = modifier.heightIn(min = metrics.tileHeight),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             ItemLeadingMark(
@@ -250,7 +251,7 @@ fun NeedItemTile(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = item.name,
-                                style = GroceryTheme.metrics.itemName,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = metrics.itemFontSize),
                                 color = GroceryTheme.colors.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -261,7 +262,7 @@ fun NeedItemTile(
                                 Spacer(Modifier.width(4.dp))
                                 Text(
                                     text = "x${item.quantity}",
-                                    style = GroceryTheme.metrics.itemMeta,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = GroceryTheme.colors.onSurfaceMuted
                                 )
                             }
@@ -279,12 +280,7 @@ fun NeedItemTile(
                         )
                     }
 
-                    if (inlineControlsFit(
-                            maxWidth,
-                            withDelete = true,
-                            buttonSize = GroceryTheme.metrics.itemTileControlSize
-                        )
-                    ) {
+                    if (inlineControlsFit(maxWidth, withDelete = true, buttonSize = metrics.controlSize)) {
                         // Wide enough (tablet tiles, and the planning list on any device) to reveal
                         // the controls beside the name.
                         Row(

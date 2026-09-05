@@ -460,10 +460,12 @@ fun PlanningItemTile(
     onEditCategory: () -> Unit,
     onTagStores: () -> Unit
 ) {
+    val metrics = GroceryTheme.metrics
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = GroceryTheme.metrics.itemTileHeight)
+            .heightIn(min = metrics.tileHeight)
             .combinedClickable(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
@@ -475,12 +477,12 @@ fun PlanningItemTile(
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val name = @Composable { modifier: Modifier ->
                 Row(
-                    modifier = modifier.heightIn(min = GroceryTheme.metrics.itemTileHeight),
+                    modifier = modifier.heightIn(min = metrics.tileHeight),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = item.name,
-                        style = GroceryTheme.metrics.itemName,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = metrics.itemFontSize),
                         color = GroceryTheme.colors.onSurface,
                         modifier = Modifier.weight(1f, fill = false),
                         maxLines = 1,
@@ -491,7 +493,7 @@ fun PlanningItemTile(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = item.quantity + (item.unit?.let { " $it" } ?: ""),
-                            style = GroceryTheme.metrics.itemMeta,
+                            style = MaterialTheme.typography.bodySmall,
                             color = GroceryTheme.colors.onSurfaceMuted
                         )
                     }
@@ -509,12 +511,7 @@ fun PlanningItemTile(
                 )
             }
 
-            if (inlineControlsFit(
-                    maxWidth,
-                    withDelete = false,
-                    buttonSize = GroceryTheme.metrics.itemTileControlSize
-                )
-            ) {
+            if (inlineControlsFit(maxWidth, withDelete = false, buttonSize = metrics.controlSize)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

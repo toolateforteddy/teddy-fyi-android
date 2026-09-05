@@ -6,9 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import fyi.teddy.android.ui.layout.windowSizeDp
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Semantic colour slots for the Grocery app.
@@ -142,20 +145,24 @@ private val GroceryDarkColorScheme = darkColorScheme(
 
 private val LocalGroceryColors = staticCompositionLocalOf { GroceryDarkColors }
 
+private val LocalGroceryMetrics = staticCompositionLocalOf { metricsFor(GroceryDensity.Default) }
+
 /**
  * Wraps the Grocery app's UI. Sits inside the host [fyi.teddy.android.ui.theme.TeddyTheme]
  * and overrides it entirely, so Grocery screens look the same wherever they are hosted.
  */
 @Composable
 fun GroceryTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = GroceryDarkColorScheme) {
-        // Metrics are read inside MaterialTheme so they can be built from its type scale.
-        // The width is the window's rather than the display's, so a split-screen Grocery
-        // gets phone metrics even on a tablet.
-        val metrics = groceryMetricsFor(windowSizeDp().width)
-        CompositionLocalProvider(
-            LocalGroceryColors provides GroceryDarkColors,
-            LocalGroceryMetrics provides metrics,
+    val context = LocalContext.current
+    val densityFlow = remember(context) { GroceryDisplayPreferences.densityIn(context) }
+    val density by densityFlow.collectAsState()
+
+    CompositionLocalProvider(
+        LocalGroceryColors provides GroceryDarkColors,
+        LocalGroceryMetrics provides metricsFor(density),
+    ) {
+        MaterialTheme(
+            colorScheme = GroceryDarkColorScheme,
             content = content,
         )
     }
@@ -168,7 +175,7 @@ object GroceryTheme {
         @ReadOnlyComposable
         get() = LocalGroceryColors.current
 
-    /** Width-dependent sizes and text styles; see [GroceryMetrics]. */
+    /** Sizes for the density this device is set to; see [GroceryDensity]. */
     val metrics: GroceryMetrics
         @Composable
         @ReadOnlyComposable

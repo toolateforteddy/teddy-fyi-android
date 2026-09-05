@@ -30,10 +30,10 @@ import androidx.compose.ui.unit.dp
 import fyi.teddy.android.grocery.ui.theme.GroceryTheme
 
 /**
- * Compact control buttons: a 48dp-tall tile has no room for full-size
- * [androidx.compose.material3.IconButton]s. This is the phone size, and the default for
- * [inlineControlsFit], which is not composable; composables take the button size from
- * [GroceryTheme.metrics] so it grows with the tile on a tablet.
+ * Control buttons are smaller than a full [androidx.compose.material3.IconButton]: they share
+ * a tile row with the item name. This is the comfortable-density size, and the default for
+ * [inlineControlsFit], which is not composable; composables take the size from
+ * [GroceryTheme.metrics] so the buttons follow the display-density preference.
  */
 private val CompactButtonSize: Dp = 32.dp
 
@@ -69,7 +69,7 @@ fun ItemQuantityControls(
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
     quantityColor: Color = GroceryTheme.colors.onSurface,
-    buttonSize: Dp = GroceryTheme.metrics.itemTileControlSize,
+    buttonSize: Dp = GroceryTheme.metrics.controlSize,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
 ) {
     Row(
@@ -87,7 +87,7 @@ fun ItemQuantityControls(
         val shownQuantity = quantity.ifBlank { "1" }
         Text(
             text = shownQuantity,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = GroceryTheme.metrics.itemFontSize),
             fontWeight = FontWeight.Bold,
             color = quantityColor,
             textAlign = TextAlign.Center,
@@ -130,6 +130,7 @@ private fun ControlButton(
     tint: Color,
     size: Dp,
 ) {
+    val iconSize = GroceryTheme.metrics.glyphSize
     Box(
         modifier = Modifier
             .size(size)
@@ -141,7 +142,7 @@ private fun ControlButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(GroceryTheme.metrics.itemTileControlIconSize)
+            modifier = Modifier.size(iconSize)
         )
     }
 }
