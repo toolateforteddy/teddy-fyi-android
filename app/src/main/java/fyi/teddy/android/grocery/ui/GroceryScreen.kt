@@ -14,6 +14,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -132,6 +133,16 @@ private fun GroceryScreenContent(
     
     val lists by viewModel.lists.collectAsState()
     
+    // A tablet riding in a shopping cart is useless if it sleeps between aisles, and Fire
+    // tablets ship with a short screen timeout. Hold the screen awake for the Shopping phase
+    // only -- the phase you are actually looking at while walking -- and let it go the moment
+    // you leave, so a tablet parked on the counter still sleeps.
+    val view = LocalView.current
+    DisposableEffect(view, state.currentPhase) {
+        view.keepScreenOn = state.currentPhase == GroceryPhase.SHOPPING
+        onDispose { view.keepScreenOn = false }
+    }
+
     // Periodic sync every 5 minutes while Shopping tab is open
     LaunchedEffect(state.currentPhase) {
         if (state.currentPhase == GroceryPhase.SHOPPING) {

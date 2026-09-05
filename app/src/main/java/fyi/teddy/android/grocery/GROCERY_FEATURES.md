@@ -35,6 +35,9 @@ Current Features List.
 - [x] **Shared Lists / Multi-List Collaboration**: Support creating multiple distinct grocery lists and sharing access with other users for synchronized, collaborative shopping.
 - [x] **Robust Unit Support & Custom Units**: Support standard and custom unit types with flexible inline entry and editing.
 - [x] **Subtasks, Notes, and Item Descriptions**: Add a text notes column to grocery items for detail descriptions with inline editing.
+- [x] **Aisle Jump Rail**: On screens 600dp and wider, a thin column of aisle glyphs beside the shopping grid scrolls straight to that aisle's sign. Hidden on phones, where it would cost a column of tiles to save a scroll.
+- [x] **Screen Stays Awake While Shopping**: The screen is held on for the Shopping phase only, so a tablet riding in a cart does not sleep between aisles. It sleeps normally everywhere else.
+- [x] **Display Density**: A per-device "comfortable / compact / across the kitchen" setting drives tile height, column count, sign size and text size across the Grocery UI, because a counter-top tablet and the same tablet in your hands want different sizes.
 
 ## Requested Features
 

@@ -6,8 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Semantic colour slots for the Grocery app.
@@ -141,13 +145,22 @@ private val GroceryDarkColorScheme = darkColorScheme(
 
 private val LocalGroceryColors = staticCompositionLocalOf { GroceryDarkColors }
 
+private val LocalGroceryMetrics = staticCompositionLocalOf { metricsFor(GroceryDensity.Default) }
+
 /**
  * Wraps the Grocery app's UI. Sits inside the host [fyi.teddy.android.ui.theme.TeddyTheme]
  * and overrides it entirely, so Grocery screens look the same wherever they are hosted.
  */
 @Composable
 fun GroceryTheme(content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalGroceryColors provides GroceryDarkColors) {
+    val context = LocalContext.current
+    val densityFlow = remember(context) { GroceryDisplayPreferences.densityIn(context) }
+    val density by densityFlow.collectAsState()
+
+    CompositionLocalProvider(
+        LocalGroceryColors provides GroceryDarkColors,
+        LocalGroceryMetrics provides metricsFor(density),
+    ) {
         MaterialTheme(
             colorScheme = GroceryDarkColorScheme,
             content = content,
@@ -161,6 +174,12 @@ object GroceryTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalGroceryColors.current
+
+    /** Sizes for the density this device is set to; see [GroceryDensity]. */
+    val metrics: GroceryMetrics
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalGroceryMetrics.current
 
     /**
      * Non-composable palette access for surfaces that cannot read a CompositionLocal,

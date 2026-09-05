@@ -320,6 +320,10 @@ Rules:
   in `src/full/res/`, and resource merging makes `main`'s colours visible there.
 - Todo space colours are user-chosen and persisted, so they are hex strings, not `Color`s:
   `TodoSpaceSwatches`.
+- **No literal sizes in Grocery UI either.** `GroceryTheme.metrics` carries the tile height,
+  column width, sign height, glyph size and item text size for the density the device is set
+  to (`GroceryDensity`, chosen in grocery settings and stored per device in
+  `GroceryDisplayPreferences`). Hard-coding a dp there makes one surface ignore the setting.
 
 ---
 
