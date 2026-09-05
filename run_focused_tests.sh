@@ -25,14 +25,26 @@ if [ $# -gt 0 ]; then
   fi
 fi
 
-# Determine base branch or target for comparison
-TARGET_REF="main"
-if ! git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
-  if git rev-parse --verify "master" >/dev/null 2>&1; then
-    TARGET_REF="master"
-  else
-    TARGET_REF="HEAD"
+# Determine base branch or target for comparison.
+#
+# A CI checkout is detached with no local branches, so a bare "main" does not
+# resolve there and the remote-tracking ref has to be tried too. Without that
+# the comparison silently falls back to HEAD, every diff comes back empty, and
+# the selection below degrades to "always run everything". Remote-tracking refs
+# come first because a local branch can be stale; GITHUB_BASE_REF names the
+# branch the pull request actually targets, when it is set.
+TARGET_REF=""
+for CANDIDATE in ${GITHUB_BASE_REF:+"origin/$GITHUB_BASE_REF"} origin/main origin/master main master; do
+  if git rev-parse --verify --quiet "$CANDIDATE" >/dev/null 2>&1; then
+    TARGET_REF="$CANDIDATE"
+    break
   fi
+done
+
+if [ -z "$TARGET_REF" ]; then
+  echo "==> No base branch ref found (tried origin/main, origin/master, main, master)."
+  echo "==> Falling back to the full unit test suite."
+  exec ./gradlew "$UNIT_TEST_TASK"
 fi
 
 echo "==> Analyzing git changes against target: $TARGET_REF"
@@ -52,7 +64,7 @@ echo "$CHANGED_FILES" | sed 's/^/  - /'
 NON_CODE_ONLY=true
 while IFS= read -r file; do
   case "$file" in
-    *.md|*.txt|*.png|*.jpg|*.jpeg|*.svg|*.webp|.gitignore|LICENSE|AGENTS.md|AI_CONTEXT.md|setup.md)
+    *.md|*.txt|*.png|*.jpg|*.jpeg|*.svg|*.webp|.gitignore|LICENSE|.claude/*|.artifacts/*)
       ;;
     *)
       NON_CODE_ONLY=false
@@ -98,6 +110,17 @@ while IFS= read -r file; do
 done <<< "$CHANGED_FILES"
 
 UNIQUE_PACKAGES=$(echo "$PACKAGES" | tr ' ' '\n' | sort -u | sed '/^$/d')
+
+# No feature package matched: the change is code, but it lives outside
+# app/src/**/java/fyi/teddy/android/*. `wc -l` counts the newline echo adds to
+# an empty string, so this has to be checked before the count -- otherwise an
+# empty package list reads as "exactly one package" and builds the unmatchable
+# filter "fyi.teddy.android..*", which selects no tests at all.
+if [ -z "$UNIQUE_PACKAGES" ]; then
+  echo "==> [Rule 3] Changes touch no feature package. Executing full unit test suite."
+  exec ./gradlew "$UNIT_TEST_TASK"
+fi
+
 PKG_COUNT=$(echo "$UNIQUE_PACKAGES" | wc -l | tr -d ' ')
 
 if [ "$PKG_COUNT" -eq 1 ]; then
