@@ -28,9 +28,6 @@ import fyi.teddy.android.grocery.data.GroceryItemStoreInfo
 import fyi.teddy.android.grocery.data.Store
 import fyi.teddy.android.grocery.ui.GroceryUiEvent
 
-/** The resting height of an item tile; it grows only when stacked controls open beneath the name. */
-private val TileMinHeight = 48.dp
-
 /** Width of the aisle tint stripe painted down the leading edge of each tile. */
 private val TintEdgeWidth = 4.dp
 
@@ -190,6 +187,7 @@ fun NeedItemTile(
     onTagStores: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
+    val metrics = GroceryTheme.metrics
 
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
@@ -219,7 +217,7 @@ fun NeedItemTile(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = TileMinHeight)
+                    .heightIn(min = metrics.tileHeight)
                     .combinedClickable(
                         onClick = onToggleControls,
                         onLongClick = onTagStores
@@ -242,7 +240,7 @@ fun NeedItemTile(
                 ) {
                     val name = @Composable { modifier: Modifier ->
                         Row(
-                            modifier = modifier.heightIn(min = TileMinHeight),
+                            modifier = modifier.heightIn(min = metrics.tileHeight),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             ItemLeadingMark(
@@ -253,7 +251,7 @@ fun NeedItemTile(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = item.name,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = metrics.itemFontSize),
                                 color = GroceryTheme.colors.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -282,7 +280,7 @@ fun NeedItemTile(
                         )
                     }
 
-                    if (inlineControlsFit(maxWidth, withDelete = true)) {
+                    if (inlineControlsFit(maxWidth, withDelete = true, buttonSize = metrics.controlSize)) {
                         // Wide enough (tablet tiles, and the planning list on any device) to reveal
                         // the controls beside the name.
                         Row(

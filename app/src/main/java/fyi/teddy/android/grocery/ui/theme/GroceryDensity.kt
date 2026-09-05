@@ -61,6 +61,11 @@ data class GroceryMetrics(
     val signHeight: Dp,
     /** Size of the mark at the head of an item tile. */
     val glyphSize: Dp,
+    /**
+     * Touch target of the +/-/category buttons that open inside a need or planning tile.
+     * They sit in a [tileHeight]-tall row, so they have to move with it.
+     */
+    val controlSize: Dp,
     /** Item name size on a shopping tile. */
     val itemFontSize: TextUnit,
     /** Width of the aisle jump rail. */
@@ -74,6 +79,7 @@ private val CompactMetrics = GroceryMetrics(
     gutter = 6.dp,
     signHeight = 30.dp,
     glyphSize = 16.dp,
+    controlSize = 28.dp,
     itemFontSize = 13.sp,
     railWidth = 36.dp,
 )
@@ -85,6 +91,7 @@ private val ComfortableMetrics = GroceryMetrics(
     gutter = 8.dp,
     signHeight = 36.dp,
     glyphSize = 18.dp,
+    controlSize = 32.dp,
     itemFontSize = 15.sp,
     railWidth = 44.dp,
 )
@@ -96,6 +103,7 @@ private val AcrossTheKitchenMetrics = GroceryMetrics(
     gutter = 12.dp,
     signHeight = 48.dp,
     glyphSize = 24.dp,
+    controlSize = 44.dp,
     itemFontSize = 20.sp,
     railWidth = 56.dp,
 )

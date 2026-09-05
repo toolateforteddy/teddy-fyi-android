@@ -32,9 +32,6 @@ import fyi.teddy.android.ui.layout.columnsForWidth
 import fyi.teddy.android.ui.layout.fractionOfHeight
 import fyi.teddy.android.ui.layout.itemsThatFit
 
-/** The resting height of a planning row; it grows only when stacked controls open beneath the name. */
-private val PlanningTileMinHeight = 48.dp
-
 /**
  * Planning Phase: Memory-jogging tool to build the global list.
  */
@@ -463,10 +460,12 @@ fun PlanningItemTile(
     onEditCategory: () -> Unit,
     onTagStores: () -> Unit
 ) {
+    val metrics = GroceryTheme.metrics
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = PlanningTileMinHeight)
+            .heightIn(min = metrics.tileHeight)
             .combinedClickable(
                 onClick = onToggleControls,
                 onLongClick = onTagStores
@@ -478,12 +477,12 @@ fun PlanningItemTile(
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val name = @Composable { modifier: Modifier ->
                 Row(
-                    modifier = modifier.heightIn(min = PlanningTileMinHeight),
+                    modifier = modifier.heightIn(min = metrics.tileHeight),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = metrics.itemFontSize),
                         color = GroceryTheme.colors.onSurface,
                         modifier = Modifier.weight(1f, fill = false),
                         maxLines = 1,
@@ -512,7 +511,7 @@ fun PlanningItemTile(
                 )
             }
 
-            if (inlineControlsFit(maxWidth, withDelete = false)) {
+            if (inlineControlsFit(maxWidth, withDelete = false, buttonSize = metrics.controlSize)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
