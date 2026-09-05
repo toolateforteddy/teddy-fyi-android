@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(**/build/intermediates/**)",
+      "Read(**/build/tmp/**)",
+      "Read(**/build/kotlin/**)",
+      "Read(**/build/classes/**)",
+      "Read(**/build/outputs/apk/**)",
+      "Read(**/build/outputs/bundle/**)",
+      "Read(**/build/outputs/mapping/**)",
+      "Read(**/build/outputs/logs/**)",
+      "Read(.gradle/**)",
+      "Read(.kotlin/**)",
+      "Read(.cxx/**)",
+      "Read(.externalNativeBuild/**)",
+      "Read(captures/**)",
+      "Read(.idea/caches/**)",
+      "Read(.idea/libraries/**)",
+      "Read(.idea/workspace.xml)",
+
+      "Read(*.apk)",
+      "Read(*.aab)",
+      "Read(*.ap_)",
+      "Read(*.dex)",
+      "Read(*.aar)",
+      "Read(*.jar)",
+      "Read(*.class)",
+      "Read(*.hprof)",
+
+      "Read(local.properties)",
+      "Read(*.keystore)",
+      "Read(*.jks)",
+      "Read(keystore.properties)",
+      "Read(signing.properties)",
+      "Read(google-services.json)",
+      "Read(.env)",
+      "Read(.env.*)"
+    ]
+  }
+}

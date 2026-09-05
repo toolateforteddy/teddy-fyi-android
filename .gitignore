@@ -1,46 +1,101 @@
-# Built objects
+# ---------------------------------------------------------------------------
+# Build output & intermediates
+# ---------------------------------------------------------------------------
 bin/
 gen/
 out/
 build/
+release/
 .gradle/
-
-# Android
-local.properties
-captures/
-.externalNativeBuild/
+.kotlin/
 .cxx/
+.externalNativeBuild/
+.navigation/
+captures/
+
+# ---------------------------------------------------------------------------
+# Android artifacts
+# ---------------------------------------------------------------------------
+local.properties
 *.apk
+*.apks
+*.aab
+*.aar
 *.ap_
 *.dex
+*.class
 
-# Kotlin
-.kotlin/
+# Signing material. The checked-in debug keystore is the one exception.
+*.keystore
+*.jks
+keystore.properties
+signing.properties
+!debug.keystore
 
-# IntelliJ IDEA
-.idea/modules.xml
+# Firebase / Google config is per-developer and often carries API keys.
+google-services.json
+
+# ---------------------------------------------------------------------------
+# JVM & Gradle scratch
+# `org.gradle.jvmargs` sets -XX:+HeapDumpOnOutOfMemoryError, so an OOM run
+# drops a multi-gigabyte .hprof next to the build.
+# ---------------------------------------------------------------------------
+*.hprof
+hs_err_pid*.log
+replay_pid*.log
+.gradletasknamecache
+gradle-app.setting
+
+# ---------------------------------------------------------------------------
+# Local tool output
+# ---------------------------------------------------------------------------
+*.log
+lint.errors
+lint-results*.xml
+lint-results*.html
+
+# ---------------------------------------------------------------------------
+# IntelliJ IDEA / Android Studio
+# Shared config under .idea/ is intentionally tracked; only per-developer and
+# cache files are listed here.
+# ---------------------------------------------------------------------------
 .idea/workspace.xml
 .idea/tasks.xml
+.idea/modules.xml
 .idea/navEditor.xml
 .idea/assetWizardSettings.xml
 .idea/deploymentTargetSelector.xml
+.idea/deploymentTargetDropDown.xml
+.idea/androidTestResultsUserPreferences.xml
+.idea/shelf/
 .idea/caches/
 .idea/libraries/
+.idea/httpRequests/
+.idea/sonarlint/
 *.iml
 *.iws
 
-# Android Studio
-*.keystore
-!debug.keystore
+# ---------------------------------------------------------------------------
+# Other editors
+# ---------------------------------------------------------------------------
+.vscode/
+.fleet/
+*.swp
+*~
 
-# macOS
+# ---------------------------------------------------------------------------
+# Agent tooling
+# Shared agent config (.claude/settings.json) is tracked; personal overrides
+# and session scratch are not.
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+.claude/*.local.json
+
+# ---------------------------------------------------------------------------
+# OS cruft
+# ---------------------------------------------------------------------------
 .DS_Store
-
-# Log files
-*.log
-
-# Gradle
-# .gradle/ and build/ are already ignored above
-
-# Scratch output from local lint/detekt runs
-lint.errors
+._*
+.AppleDouble
+Thumbs.db
+desktop.ini
