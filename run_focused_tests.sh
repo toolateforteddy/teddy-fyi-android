@@ -49,8 +49,18 @@ fi
 
 echo "==> Analyzing git changes against target: $TARGET_REF"
 
-# Collect list of changed files (unstaged + staged + unpushed commits compared to target ref)
-CHANGED_FILES=$( (git diff --name-only "$TARGET_REF"...HEAD 2>/dev/null || true; git status --porcelain | awk '{print $2}') | sort -u | sed '/^$/d' )
+# Collect the changed files: unpushed commits against the target ref, plus the
+# working tree.
+#
+# `git status --porcelain | awk '{print $2}'` used to stand in for the working
+# tree, but it reported the pre-rename path for renames and truncated any path
+# containing a space. The plumbing below needs no parsing instead: `diff HEAD`
+# covers staged and unstaged tracked edits, `ls-files --others` the untracked.
+CHANGED_FILES=$( (
+  git diff --name-only "$TARGET_REF"...HEAD 2>/dev/null || true
+  git diff --name-only HEAD 2>/dev/null || true
+  git ls-files --others --exclude-standard 2>/dev/null || true
+) | sort -u | sed '/^$/d' )
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "==> No modified files detected. Executing default unit test suite."
@@ -60,11 +70,28 @@ fi
 echo "==> Modified files detected:"
 echo "$CHANGED_FILES" | sed 's/^/  - /'
 
-# Rule 1: Skip tests if ONLY non-code/documentation files are modified
+# Rule 1: Skip tests if ONLY non-code/documentation files are modified.
+#
+# Anything not listed here counts as code, so the list stays narrow and
+# explicit. `*.json` in particular is deliberately absent: the Room schema
+# exports under app/schemas/ and the migration fixtures under
+# app/src/androidTest/assets/ are JSON, and a change to either is a database
+# change the tests have to run against. Agent state files that happen to be
+# JSON are named individually instead.
 NON_CODE_ONLY=true
 while IFS= read -r file; do
   case "$file" in
-    *.md|*.txt|*.png|*.jpg|*.jpeg|*.svg|*.webp|.gitignore|LICENSE|.claude/*|.artifacts/*)
+    # Prose and images, at any depth.
+    *.md|*.txt|*.png|*.jpg|*.jpeg|*.svg|*.webp)
+      ;;
+    # Repo metadata.
+    .gitignore|*/.gitignore|.gitattributes|*/.gitattributes|LICENSE|*/LICENSE)
+      ;;
+    # IDE settings and agent tooling config/state/scratch, none of which is on
+    # the test classpath: .idea/ and .run/ are Android Studio's, .claude/ and
+    # .artifacts/ are agent working files, and .janitor-state.json is the Code
+    # Janitor action's own bookkeeping.
+    .idea/*|.run/*|.claude/*|.artifacts/*|.janitor*)
       ;;
     *)
       NON_CODE_ONLY=false
