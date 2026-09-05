@@ -120,6 +120,13 @@ from `/auth/device/start`, shows it, and polls `/auth/device/poll` until somebod
 `teddy.fyi/link` on a device that does have a Google account. What comes back is the same token
 pair `/auth/login` mints, so steps 4 and 5 above are unchanged.
 
+Debug builds also carry a "Sign in with a code (debug)" link where Google sign-in works, so the
+pairing path can be exercised on any device; release builds offer one way in per device.
+
+Google sign-in needs an **Android OAuth client per applicationId** (package name + signing SHA-1),
+so the `grocery` flavour needs its own entry or Credential Manager reports no credentials on a
+device that has a Google account — see §7 of [AUTH_SPECIFICATION.md](AUTH_SPECIFICATION.md).
+
 The one thing to know downstream: **a paired session has no Google ID token.** The user id comes
 out of the access token's `sub`, there is no avatar, and `session.idToken` is null — so
 "is somebody signed in?" is `UserSession.isSignedIn` (the access token), never `idToken != null`.
