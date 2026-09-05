@@ -52,7 +52,7 @@ echo "$CHANGED_FILES" | sed 's/^/  - /'
 NON_CODE_ONLY=true
 while IFS= read -r file; do
   case "$file" in
-    *.md|*.txt|*.png|*.jpg|*.jpeg|*.svg|*.webp|.gitignore|LICENSE|AGENTS.md|AI_CONTEXT.md|setup.md)
+    *.md|*.txt|*.png|*.jpg|*.jpeg|*.svg|*.webp|.gitignore|LICENSE|AGENTS.md|AI_CONTEXT.md|setup.md|.janitor*|*.json)
       ;;
     *)
       NON_CODE_ONLY=false
@@ -98,7 +98,11 @@ while IFS= read -r file; do
 done <<< "$CHANGED_FILES"
 
 UNIQUE_PACKAGES=$(echo "$PACKAGES" | tr ' ' '\n' | sort -u | sed '/^$/d')
-PKG_COUNT=$(echo "$UNIQUE_PACKAGES" | wc -l | tr -d ' ')
+if [ -z "$UNIQUE_PACKAGES" ]; then
+  PKG_COUNT=0
+else
+  PKG_COUNT=$(echo "$UNIQUE_PACKAGES" | wc -l | tr -d ' ')
+fi
 
 if [ "$PKG_COUNT" -eq 1 ]; then
   PKG=$(echo "$UNIQUE_PACKAGES" | tr -d '\r\n')
