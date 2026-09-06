@@ -102,6 +102,11 @@ object DevicePairingRepository {
         val accessToken: String,
         val refreshToken: String,
         val userId: String,
+        /**
+         * The account's surrogate id, when the poll carried one. See
+         * [fyi.teddy.android.data.UserIdMigration]; null on a server that does not send it yet.
+         */
+        val userUuid: String? = null,
     )
 
     /**
@@ -163,6 +168,7 @@ object DevicePairingRepository {
                             accessToken = tokens.accessToken,
                             refreshToken = tokens.refreshToken,
                             userId = userId,
+                            userUuid = tokens.userUuid?.takeIf { it.isNotBlank() },
                         )
                     )
                 }

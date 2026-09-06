@@ -32,7 +32,13 @@ data class RefreshRequest(
 @Serializable
 data class TokenResponse(
     @SerialName("access_token") val accessToken: String,
-    @SerialName("refresh_token") val refreshToken: String
+    @SerialName("refresh_token") val refreshToken: String,
+    /**
+     * The account's surrogate id. Optional on the wire and omitted by a server that has not
+     * shipped it, so null means "not told" rather than "the account has none". See
+     * [fyi.teddy.android.data.UserIdMigration].
+     */
+    @SerialName("user_uuid") val userUuid: String? = null
 )
 
 @Suppress("TooGenericExceptionCaught")
@@ -67,6 +73,10 @@ object AuthRepository {
             if (response.status.value in 200..299) {
                 val tokens = response.body<TokenResponse>()
                 session.userId = userIdValue
+                // What the server is told, kept apart from the local key it is currently equal
+                // to; see [UserSession.authUserId].
+                session.authUserId = userIdValue
+                tokens.userUuid?.takeIf { it.isNotBlank() }?.let { session.userUuid = it }
                 session.accessToken = tokens.accessToken
                 session.refreshToken = tokens.refreshToken
                 session.clientUuid = clientUuid

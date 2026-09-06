@@ -38,6 +38,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun syncLogDao(): SyncLogDao
     abstract fun userSyncMetadataDao(): UserSyncMetadataDao
 
+    /** The one-off re-key in [UserIdMigration]. Adds no schema; see that file for when it runs. */
+    abstract fun userIdMigrationDao(): UserIdMigrationDao
+
     companion object {
         @Volatile
         private var Instance: AppDatabase? = null

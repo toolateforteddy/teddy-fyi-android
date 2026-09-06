@@ -10,6 +10,7 @@ import androidx.room.withTransaction
 import androidx.work.*
 import fyi.teddy.android.data.AppDatabase
 import fyi.teddy.android.data.SyncLog
+import fyi.teddy.android.data.UserIdMigration
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
@@ -210,6 +211,35 @@ class SyncWorker(
         )
     }
 
+    /**
+     * Moves this device's rows onto the account's surrogate id, but only once the server has
+     * proved it is using it.
+     *
+     * The proof is a row in [syncResponse] owned by the surrogate. It is not the mere fact that
+     * the surrogate differs from the id in use: that has been true since the server started
+     * *returning* it and stays true until it starts *sending* it, and re-keying in between would
+     * scope every query onto an id that no arriving row carries. See
+     * [fyi.teddy.android.data.UserIdMigration].
+     *
+     * @return the id the local rows are keyed by after this returns.
+     */
+    private suspend fun migrateUserIdIfCutover(
+        db: AppDatabase,
+        sessionUserId: String,
+        syncResponse: SyncResponse
+    ): String {
+        val surrogate = NetworkClient.session.userUuid
+        val migrate = sessionUserId.isNotBlank() &&
+            !surrogate.isNullOrBlank() &&
+            surrogate != sessionUserId &&
+            UserIdMigration.cutoverEvidence(syncResponse, surrogate)
+
+        if (!migrate) return sessionUserId
+
+        UserIdMigration.migrate(db.userIdMigrationDao(), sessionUserId, surrogate!!)
+        return surrogate
+    }
+
     @Suppress("TooGenericExceptionCaught", "LongParameterList", "LongMethod")
     private suspend fun handleServerResponse(
         response: io.ktor.client.statement.HttpResponse,
@@ -235,7 +265,12 @@ class SyncWorker(
 
             val isFirstSync = db.userSyncMetadataDao().getLastSyncedAt(sessionUserId) == null
             try {
-                db.withTransaction {
+                val ownerId = db.withTransaction {
+                    // First, before a single incoming row is applied: if these rows are keyed by
+                    // the account's surrogate id then this device's are not, and applying them
+                    // would file the server's copy of a list under an id nothing here queries by.
+                    val ownerId = migrateUserIdIfCutover(db, sessionUserId, syncResponse)
+
                     TodoSyncManager.handleSyncSuccess(
                         db = db,
                         successIds = syncResponse.successIds,
@@ -256,11 +291,15 @@ class SyncWorker(
                     )
                     db.userSyncMetadataDao().upsert(
                         fyi.teddy.android.data.UserSyncMetadata(
-                            userId = sessionUserId,
+                            userId = ownerId,
                             lastSyncedAt = syncResponse.serverTimestamp
                         )
                     )
+                    ownerId
                 }
+                // Only once the rows are committed under it. A session pointed at an id whose
+                // migration rolled back is a device that queries by a key nothing is stored under.
+                if (ownerId != sessionUserId) session.userId = ownerId
                 session.save(applicationContext)
                 recordSyncLog(
                     status = "SUCCESS",
