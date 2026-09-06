@@ -27,4 +27,5 @@ jobs:
           test_command: './run_focused_tests.sh'
           test_timeout: 10
           exclude_paths: '.github/workflows/**, build/**, **/build/**'
+          assignees: 'toolateforteddy'
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
