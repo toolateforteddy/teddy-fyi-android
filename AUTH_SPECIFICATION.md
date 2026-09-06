@@ -61,6 +61,10 @@ and becomes this device's local key only once the server is demonstrably using i
 one place that decides. Sending it where a `user_id` is asked for would fail the session lookup
 and sign the device out.
 
+The ordered steps between here and the server actually keying accounts by the surrogate — and
+what breaks if the refresh shim is skipped — are in
+[USER_IDENTITY_CUTOVER.md](USER_IDENTITY_CUTOVER.md).
+
 ## 3. Request Headers
 Every authenticated request MUST include the following headers:
 
