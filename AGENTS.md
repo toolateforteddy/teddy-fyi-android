@@ -64,3 +64,4 @@ Still open:
 *   [AI_CONTEXT.md](AI_CONTEXT.md) — the sync state machine and mutation lifecycle rules.
 *   [AI_SCHEDULING_RULES.md](AI_SCHEDULING_RULES.md) — snooze/recurrence semantics.
 *   [ROOM_SYNC_SPECIFICATION.md](ROOM_SYNC_SPECIFICATION.md), [AUTH_SPECIFICATION.md](AUTH_SPECIFICATION.md) — wire formats.
+*   [USER_IDENTITY_CUTOVER.md](USER_IDENTITY_CUTOVER.md) — the runbook for the account id becoming an opaque surrogate: what is left to do here, what the API has to do first, and what an un-upgraded install does at the flip.
