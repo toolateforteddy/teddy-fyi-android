@@ -151,7 +151,9 @@ object NetworkClient {
                     contentType(ContentType.Application.Json)
                     setBody(
                         RefreshRequest(
-                            userId = session.userId ?: "",
+                            // Not [session.userId]: this endpoint means the provider subject by
+                            // `user_id`, and the local key may have moved on to the surrogate.
+                            userId = session.authUserId ?: session.userId ?: "",
                             clientUuid = session.clientUuid ?: "",
                             refreshToken = currentRefresh,
                             expiresInSecs = ctx?.let { getAuthTimeoutSecs(it) } ?: 3600L,
@@ -169,6 +171,10 @@ object NetworkClient {
                 when {
                     status.value in 200..299 -> {
                         val tokens = response.body<TokenResponse>()
+                        // Stored, not adopted: a refresh happens inside somebody else's request
+                        // and has no business re-keying a database. [UserIdMigration] picks it up
+                        // when the server proves it is using it.
+                        tokens.userUuid?.takeIf { it.isNotBlank() }?.let { session.userUuid = it }
                         session.updateTokens(tokens.accessToken, tokens.refreshToken)
                         if (ctx != null) {
                             session.tokenStorage.saveTokens(ctx, tokens.accessToken, tokens.refreshToken)

@@ -22,7 +22,8 @@ Used to exchange a Google ID Token for application-specific tokens.
 ```json
 {
   "access_token": "string (JWT)",
-  "refresh_token": "string (Long-lived UUID or JWT)"
+  "refresh_token": "string (Long-lived UUID or JWT)",
+  "user_uuid": "string (optional; the account's surrogate id)"
 }
 ```
 
@@ -41,9 +42,24 @@ Used when the `access_token` has expired.
 ```json
 {
   "access_token": "string",
-  "refresh_token": "string"
+  "refresh_token": "string",
+  "user_uuid": "string (optional; the account's surrogate id)"
 }
 ```
+
+### **The two user ids**
+
+`user_id` in a **request** body means the identity provider's subject — the `sub` this client
+reads out of Google's ID token, and what `/auth/refresh` finds the session by, together with
+`client_uuid`. It never carries anything else, and `UserSession.authUserId` is what supplies it.
+
+`user_uuid` in a **response** is a different value: the account's **surrogate id**, an opaque UUID
+the server generates and is migrating to. It is optional and omitted by a server that has not
+shipped it, so its absence means "not told", never "the account has none". It is stored on sight
+and becomes this device's local key only once the server is demonstrably using it — see
+[UserIdMigration.kt](app/src/main/java/fyi/teddy/android/data/UserIdMigration.kt), which is the
+one place that decides. Sending it where a `user_id` is asked for would fail the session lookup
+and sign the device out.
 
 ## 3. Request Headers
 Every authenticated request MUST include the following headers:

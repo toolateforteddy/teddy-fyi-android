@@ -151,6 +151,7 @@ class MainActivity : ComponentActivity() {
                         session.userName = result.displayName
                         session.idToken = result.idToken
                         session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
+                        session.authUserId = session.userId
                         session.profilePictureUri = result.profilePictureUri?.toString()
 
                         scope.launch {
@@ -241,6 +242,7 @@ class MainActivity : ComponentActivity() {
                                 session.userName = result.displayName
                                 session.idToken = result.idToken
                                 session.userId = AuthUtils.extractUserIdFromToken(result.idToken)
+                                session.authUserId = session.userId
                                 session.profilePictureUri = result.profilePictureUri?.toString()
 
                                 scope.launch {
@@ -261,6 +263,11 @@ class MainActivity : ComponentActivity() {
                             // exchange and no Google ID token on this device to exchange it with.
                             onPaired = { paired ->
                                 session.userId = paired.userId
+                                // This route reads the id out of our own access token, so this
+                                // is also what /auth/refresh will be told. The surrogate is
+                                // stored beside it and adopted later; see [UserIdMigration].
+                                session.authUserId = paired.userId
+                                paired.userUuid?.let { session.userUuid = it }
                                 session.updateTokens(paired.accessToken, paired.refreshToken)
 
                                 scope.launch {
